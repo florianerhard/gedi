@@ -1,0 +1,214 @@
+package gedi.util.sequence;
+
+import java.util.Arrays;
+import java.util.Iterator;
+
+import cern.colt.bitvector.BitVector;
+
+public class Alphabet {
+	
+	private BitVector contains = new BitVector(256);
+	
+	public Alphabet(char... chars) {
+		for (char c : chars)
+			contains.putQuick(c, true);
+	}
+
+	
+	public Iterator<char[]> iterateWords(int length) {
+		return new WordIterator(length);
+	}
+	
+	public Iterator<char[]> iterateWords(char[] buf) {
+		return new WordIterator(buf);
+	}
+	
+	public final boolean isValid(char c) {
+		return contains.getQuick(c);
+	}
+	
+	public boolean isValid(CharSequence s) {
+		for (int i=0; i<s.length(); i++)
+			if (!isValid(s.charAt(i)))
+				return false;
+		return true;
+	}
+	
+	public int getInvalidIndex(CharSequence s) {
+		for (int i=0; i<s.length(); i++)
+			if (!isValid(s.charAt(i)))
+				return i;
+		return -1;
+	}
+	
+	public String notValidPart(CharSequence s) {
+		for (int i=0; i<s.length(); i++)
+			if (!isValid(s.charAt(i)))
+				return s.charAt(i)+" @ "+i;
+		return null;
+	}
+
+	/**
+	 * Can be accessed like index['A']. Invalid chars return -1, the others an index in ascii order.
+	 * Reverse is toCharArray
+	 * @return
+	 */
+	public int[] createIndex() {
+		int[] re = new int[256];
+		int index = 0;
+		for (int i=0; i<re.length; i++)
+			re[i] = contains.getQuick(i)?index++:-1;
+		return re;
+	}
+	
+	
+	public char getNonAlphabetCharacter() {
+		for (int i='!'; i<contains.size(); i++)
+			if (!contains.getQuick(i))
+				return (char) i;
+		throw new RuntimeException("Not enough characters left!");
+	}
+	
+	public char[] getNonAlphabetCharacters(int num) {
+		char[] re = new char[num];
+		int index=0;
+		for (int i='!'; index<num && i<contains.size(); i++)
+			if (!contains.getQuick(i))
+				re[index++] = (char) i;
+		if (index<num)
+			throw new RuntimeException("Not enough characters left!");
+		return re;
+	}
+	
+	public char[] getNonAlphabetCharactersEx(int num) {
+		char[] re = new char[num];
+		int index=0;
+		for (int i=256; index<num; i++)
+			re[index++] = (char) i;
+		return re;
+	}
+	
+	public char[] toCharArray() {
+		char[] re = new char[contains.cardinality()];
+		int index = 0;
+		for (int i=0; i<contains.size(); i++) 
+			if (contains.getQuick(i))
+				re[index++] = (char)i;
+		return re;
+	}
+	
+	public int size() {
+		return contains.cardinality();
+	}
+	
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("[");
+		for (int i=0; i<contains.size(); i++) 
+			if (contains.getQuick(i)){
+				sb.append((char)i);
+				sb.append(",");
+			}
+		if (sb.length()>1)
+			sb.deleteCharAt(sb.length()-1);
+		sb.append("]");
+		return sb.toString();
+	}
+	
+	private class WordIterator implements Iterator<char[]> {
+		int length;
+		char[] buf;
+		char[] valid;
+		char[] next;
+		boolean init = false;
+		
+		public WordIterator(int length) {
+			this.length = length;
+			valid = toCharArray();
+			next = new char[256];
+			for (int i=0; i<valid.length-1; i++)
+				next[valid[i]] = valid[i+1];
+		}
+		
+		public WordIterator(char[] buf) {
+			this.length = buf.length;
+			valid = toCharArray();
+			next = new char[256];
+			for (int i=0; i<valid.length-1; i++)
+				next[valid[i]] = valid[i+1];
+			this.buf = buf;
+		}
+
+		@Override
+		public boolean hasNext() {
+			if (buf==null)
+				return true;
+			char last = valid[valid.length-1];
+			for (int i=0; i<length; i++)
+				if (buf[i]!=last)
+					return true;
+			return false;
+		}
+
+		@Override
+		public char[] next() {
+			increment();
+			return buf;
+		}
+		
+		private void increment() {
+			if (!init) {
+				init = true;
+				if (buf==null)
+					buf = new char[length];
+				Arrays.fill(buf, valid[0]);
+				return;
+			}
+			for (int i=length-1; i>=0; i--) {
+				buf[i] = next[buf[i]];
+				if (buf[i]==0) 
+					buf[i] = valid[0];
+				else 
+					return;
+			}
+		}
+
+		@Override
+		public void remove() {}
+		
+	}
+	
+	
+	private static Alphabet rna;
+	public static Alphabet getRna() {
+		if (rna==null)
+			rna = new Alphabet("ACGU".toCharArray());
+		return rna;
+	}
+	private static Alphabet dna;
+	public static Alphabet getDna() {
+		if (dna==null)
+			dna = new Alphabet("ACGT".toCharArray());
+		return dna;
+	}
+	
+	public static Alphabet buildAlphabet(CharSequence sequence) {
+		Alphabet re = new Alphabet();
+		for (int i=0; i<sequence.length(); i++)
+			re.contains.putQuick(sequence.charAt(i), true);
+		return re;
+	}
+
+
+	public Alphabet extend(char... chars) {
+		Alphabet re = new Alphabet();
+		re.contains = (BitVector) contains.clone();
+		for (char c : chars)
+			re.contains.putQuick(c, true);
+		return re;
+	}
+
+
+	
+}

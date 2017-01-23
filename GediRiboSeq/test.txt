@@ -1,0 +1,14 @@
+var m = RiboModel.fromFile('wt_2.merged.model')
+var inf = new CodonInference(m)
+var tree = new IntervalTree(Chromosome.obtain("chr1+"))
+for (var i=0; i<10; i++) m.generateRead(tree,50,function(p) 'A')
+EI.wrap(inf.inferCodons(tree.ei())).sort(function(a,b) Double.compare(a.getTotalActivity(),b.getTotalActivity())).print()
+
+var tree = new IntervalTree(Chromosome.obtain("chr1+"))
+for (var p=11; p<100; p+=3) for (var i=0; i<10; i++) m.generateRead(tree,p,function(p) 'A')
+for (var p=10; p<100; p+=3) for (var i=0; i<10; i++) m.generateRead(tree,p,function(p) 'A')
+EI.wrap(inf.inferCodons(tree.ei())).sort(function(a,b) a.compareTo(b)).print()
+
+
+
+var m = RiboModel.fromFile('/home/users/erhard/java/gems/GediRiboSeq/wt_2.merged.model')

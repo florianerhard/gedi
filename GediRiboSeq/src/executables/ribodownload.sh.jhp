@@ -1,0 +1,53 @@
+#!/bin/sh
+
+curd=`pwd`
+mkdir -p /usr/local/storage/<?JS name ?>
+cd /usr/local/storage/<?JS name ?>
+
+<?JS if (mode=="SRR") { ?>
+fastq-dump <?JS if(test) print("-X 10000"); ?> -Z <?JS files ?> > <?JS name ?>.fastq
+<?JS } else if (mode=="FASTQ" && !test) {  ?>
+cp <?JS files ?> <?JS name ?>.fastq
+<?JS } else if (mode=="FASTQ" && test) {  ?>
+head -n40000 <?JS files ?> > <?JS name ?>.fastq
+<?JS } ?>
+
+minion search-adapter -i <?JS name ?>.fastq -show 1 -write-fasta adaptor.fasta #2><?JS logfolder ?>/<?JS name ?>.minion.stderr ><?JS logfolder ?>/<?JS name ?>.minion.stdout
+
+ADAPT=`head -n2 adaptor.fasta | tail -n1`
+
+reaper --nozip --noqc -clean-length 18 -3p-prefix 1/1/0/0 -swp 1/4/4 -geom no-bc -i <?JS name ?>.fastq -basename <?JS name ?>  -3pa $ADAPT #2><?JS logfolder ?>/<?JS name ?>.reaper.stderr ><?JS logfolder ?>/<?JS name ?>.reaper.stdout
+perl -ne '$_="@".($n++)."\n" if ($l++%4==0); print' < <?JS name ?>.lane.clean > <?JS name ?>.fastq
+rm <?JS name ?>.lint <?JS name ?>.lane.clean
+
+pids=""
+<?JS for (var i=0; i<jobs.length; i++) { ?>
+bowtie -a -m 100 -v 3 --best --strata <?JS if (jobs[i].norc) print("--norc"); ?> --sam <?JS print(jobs[i].index); ?> <?JS name ?>.fastq <?JS print(jobs[i].type) ?>.sam & #> <?JS logfolder ?>/<?JS print(name+"."+jobs[i].type); ?>.bowtie.stdout 2> <?JS logfolder ?>/<?JS print(name+"."+jobs[i].type); ?>.bowtie.stderr &
+pids="$pids $!"
+<?JS } ?>
+wait $pids
+
+<?JS if (prio) { ?>
+gems -t . -e MergeSam -D -t $curd/scripts/<?JS name ?>.prio.csv -prio $curd/scripts/<?JS name ?>.prio.oml -chrM -o <?JS name ?>_prio.cit
+<?JS } 
+if (nopr) { ?>
+gems -t . -e MergeSam -D -t $curd/scripts/<?JS name ?>.nopr.csv -chrM -o <?JS name ?>_nopr.cit
+<?JS } ?>
+
+<?JS if (keeptrimmed) { ?>
+mv <?JS name ?>.fastq $curd
+<?JS } ?>
+
+mv *.cit $curd
+
+rm -rf /usr/local/storage/<?JS name ?>
+
+
+cd $curd
+<?JS if (prio) { ?>
+echo '{"conditions":[{"name":"<?JS name ?>"}]}' > <?JS name ?>_prio.cit.metadata.json
+<?JS } 
+if (nopr) { ?>
+echo '{"conditions":[{"name":"<?JS name ?>"}]}' > <?JS name ?>_nopr.cit.metadata.json
+<?JS } ?>
+

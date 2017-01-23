@@ -1,0 +1,20 @@
+<GenomicRegionFeaturePipeline>
+
+
+	<FeatureMapping id="Transcript Type">
+		<AnnotationFeature data="true" >
+			<Transcripts g="genomic"/>
+			<Field p="transcriptId" />
+		</AnnotationFeature>
+		<Transcripts g="genomic" to="biotype" />
+	</FeatureMapping>
+
+
+	<FeatureMapping id="Priority" input="Transcript Type"  >
+		<ChainMode c="FirstForAny" />
+		<ContainsMapping from="rRNA" to="1" />
+		<ContainsMapping from="protein_coding" to="2" />
+		<Default to="" />
+	</FeatureMapping>
+</GenomicRegionFeaturePipeline>
+

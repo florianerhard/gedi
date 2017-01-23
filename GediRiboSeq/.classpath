@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Gedi"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediCenteredDiskIntervalTreeStorage"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediOml"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediProteomics"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediCommandLine"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediPreprocess"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

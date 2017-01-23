@@ -1,0 +1,49 @@
+<project name="gedi" basedir="." default="main">
+
+    <property name="src.dir"     value="src"/>
+    <property name="build.dir"   value="build"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+    <property name="jar.dir"     value="."/>
+    <property name="main-class"  value="executables.Config"/>
+    <property name="lib.dir"     value="lib"/>
+
+    <path id="classpath">
+        <fileset dir="${lib.dir}" includes="**/*.jar"/>
+    </path>
+
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="jar" depends="compile">
+        <mkdir dir="${jar.dir}"/>
+	<manifestclasspath property="manifest_cp" jarfile="${jar.dir}/${ant.project.name}.jar">
+		<classpath refid="classpath" />
+	    </manifestclasspath>
+        <jar destfile="${jar.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+		<attribute name="Class-Path" value="${manifest_cp}"/>
+            </manifest>
+        </jar>
+	 
+    </target>
+
+    <target name="compile">
+        <mkdir dir="${classes.dir}"/>
+        <javac includeantruntime="false" srcdir="${src.dir}" destdir="${classes.dir}" classpathref="classpath" nowarn="true" source="1.8" target="1.8" debug="true">
+		<compilerarg line="-Xlint:-unchecked -Xlint:-deprecation -XDignore.symbol.file -parameters"/>
+	</javac>
+	<copy todir="${classes.dir}">
+	    <fileset dir="${src.dir}" excludes="**/*.java"/>
+	  </copy>
+    </target>
+
+    <target name="run" depends="jar">
+        <java jar="${jar.dir}/${ant.project.name}.jar" fork="true"/>
+    </target>
+
+    <target name="main" depends="clean,run"/>
+
+</project>

@@ -1,0 +1,140 @@
+package gedi.util.math.stat.kernel;
+
+import gedi.util.ArrayUtils;
+
+public class PreparedIntKernel implements Kernel {
+
+	private Kernel kernel;
+	private double[] weights;
+	private double[] cumWeights;
+	private int halfInt;
+	
+	public PreparedIntKernel(Kernel kernel) {
+		this.kernel = kernel;
+		halfInt = (int)Math.floor(kernel.halfSize());
+		weights = new double[halfInt*2+1];
+		for (int i=0; i<weights.length; i++)
+			weights[i] = kernel.applyAsDouble(i-halfInt);
+		cumWeights = weights.clone();
+		ArrayUtils.cumSumInPlace(cumWeights, 1);
+	}
+	
+	@Override
+	public String[] parameterNames() {
+		return kernel.parameterNames();
+	}
+	
+	@Override
+	public String getParameter(String name) {
+		return kernel.getParameter(name);
+	}
+	
+	@Override
+	public String name() {
+		return kernel.name();
+	}
+	
+	@Override
+	public String toString() {
+		return toKernelString();
+	}
+	
+	public int getMinAffectedIndex(int index) {
+		return index-halfInt;
+	}
+	
+	public int getMaxAffectedIndex(int index) {
+		return index+halfInt;
+	}
+	
+	@Override
+	public double applyAsDouble(double operand) {
+		if ((int)operand!=operand) throw new RuntimeException("Only ints allowed!");
+		int p = (int)operand;
+		if (p<-halfInt||p>halfInt) return 0;
+		return weights[p+halfInt];
+	}
+
+	@Override
+	public double halfSize() {
+		return halfInt;
+	}
+
+	
+	public double applyToArraySlice(double[] a, int pos) {
+		
+		int start = Math.max(0, pos-halfInt);
+		int stop = Math.min(a.length-1, pos+halfInt);
+		
+		double re = 0;
+		for (int i=start; i<=stop; i++)
+			re+=weights[i-pos+halfInt]*a[i];
+		
+		return re;
+	}
+
+	
+	public double applyToArraySlice(int[] a, int pos) {
+		
+		int start = Math.max(0, pos-halfInt);
+		int stop = Math.min(a.length-1, pos+halfInt);
+		
+		double re = 0;
+		for (int i=start; i<=stop; i++)
+			re+=weights[i-pos+halfInt]*a[i];
+		
+		return re;
+	}
+	public double applyToArraySlice(long[] a, int pos) {
+		
+		int start = Math.max(0, pos-halfInt);
+		int stop = Math.min(a.length-1, pos+halfInt);
+		
+		double re = 0;
+		for (int i=start; i<=stop; i++)
+			re+=weights[i-pos+halfInt]*a[i];
+		
+		return re;
+	}
+
+
+	public void processInPlace(double[] a, int from, int to) {
+		double[] buff = new double[halfInt+1];
+		
+		for (int i=from; i<to; i++) {
+			buff[i%buff.length] = applyToArraySlice(a, i);
+			if (i-halfInt>=from)
+				a[i-halfInt] = buff[(i+1)%buff.length];
+		}
+		for (int i=to; i<to+Math.min(halfInt, to-from); i++)
+			a[i-halfInt] = buff[(i+1)%buff.length];
+	}
+	
+	
+	public void processInPlace(int[] a, int from, int to, double fac) {
+		int[] buff = new int[halfInt+1];
+		
+		for (int i=from; i<to; i++) {
+			buff[i%buff.length] = (int) (fac*applyToArraySlice(a, i));
+			if (i-halfInt>=from)
+				a[i-halfInt] = buff[(i+1)%buff.length];
+		}
+		for (int i=to; i<to+Math.min(halfInt, to-from); i++)
+			a[i-halfInt] = buff[(i+1)%buff.length];
+	}
+
+	public void processInPlace(long[] a, int from, int to, double fac) {
+		long[] buff = new long[halfInt+1];
+		
+		for (int i=from; i<to; i++) {
+			buff[i%buff.length] = (long) (fac*applyToArraySlice(a, i));
+			if (i-halfInt>=from)
+				a[i-halfInt] = buff[(i+1)%buff.length];
+		}
+		for (int i=to; i<to+Math.min(halfInt, to-from); i++)
+			a[i-halfInt] = buff[(i+1)%buff.length];
+	}
+
+	
+	
+}

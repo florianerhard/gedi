@@ -1,0 +1,136 @@
+#!/bin/sh
+
+curd=`pwd`
+
+<?JS if (map) { ?>
+# call download scripts
+<?JS for (var i=0; i<scripts.length; i++) { ?>
+id=$( qsub -b y -l vf=4g $QSUBPARAM -N <?JS collection ?>.<?JS print(scripts[i]); ?>.map -wd $curd -o $curd/logs/<?JS print(scripts[i]); ?>.map.stdout -e $curd/logs/<?JS print(scripts[i]); ?>.map.stderr $curd/scripts/<?JS print(scripts[i]); ?>.sh | cut -f3 -d' ' )
+ids="$ids,$id"
+<?JS } ?>
+
+# merge their output into single cit
+
+<?JS if (prio) { ?>
+prio=$( qsub -b y -l vf=4g $QSUBPARAM -hold_jid ${ids#,} -N <?JS collection ?>_prio.merge -wd $curd -o $curd/logs/<?JS collection ?>_prio.merge.stdout -e $curd/logs/<?JS collection ?>_prio.merge.stderr `which gedi` -e MergeCIT -c <?JS collection ?>_prio.cit <?JS print(EI.wrap(scripts).map(function(f) f+"_prio.cit").concat(" ")); ?> | cut -f3 -d' ' )
+<?JS } ?>
+
+<?JS if (nopr) { ?>
+nopr=$( qsub -b y -l vf=4g $QSUBPARAM -hold_jid ${ids#,} -N <?JS collection ?>_nopr.merge -wd $curd -o $curd/logs/<?JS collection ?>_nopr.merge.stdout -e $curd/logs/<?JS collection ?>_nopr.merge.stderr `which gedi` -e MergeCIT -c <?JS collection ?>_nopr.cit <?JS print(EI.wrap(scripts).map(function(f) f+"_nopr.cit").concat(" ")); ?> | cut -f3 -d' ' )
+<?JS } 
+
+}
+ ?>
+
+<?JS if (bams.length>0) { 
+var meta = {"conditions": []};
+for each (var bn in bamnames) meta.conditions.push({"name": bn});
+?>
+bam=$( qsub -b y -l vf=4g $QSUBPARAM -N <?JS collection ?>_bam.merge -wd $curd -o $curd/logs/<?JS collection ?>_bam.merge.stdout -e $curd/logs/<?JS collection ?>_bam.merge.stderr `which gedi` -e Bam2CIT <?JS if (rescue) print("-id"); ?> <?JS collection ?>.cit <?JS print(EI.wrap(bams).concat(" ")); ?> | cut -f3 -d' ' )
+echo '<?JS print(JSON.stringify(meta)); ?>' > <?JS collection ?>.cit.metadata.json
+<?JS 
+
+} 
+
+function resc(cit,keep,depends,output) {
+if (depends.length()>0) depends="-hold_jid $"+depends;
+
+?>
+# rescue multimapping reads
+<?JS output ?>=$( qsub -b y <?JS depends ?> -l vf=4g $QSUBPARAM -N <?JS cit ?>.rescue -wd $curd -o $curd/logs/<?JS cit ?>.rescue.stdout -e $curd/logs/<?JS cit ?>.rescue.stderr `which gedi` -t <?JS tmp ?>  -e ResolveAmbiguities -r <?JS cit ?>.cit -s <?JS cit ?>.rescue.csv -o <?JS if (keep) print(cit+"_rescued"); else print(cit); ?>.cit -g <?JS genomes ?> -D | cut -f3 -d' ' )
+<?JS  }
+
+
+function statprice(cit,depends) {
+var pref = depends;
+if (depends.length()>0) depends="-hold_jid $"+depends;
+
+if (stat) { ?>
+
+# statistics
+qsub -b y <?JS depends ?> -l vf=512m $QSUBPARAM -N <?JS cit ?>.stat -wd $curd -o $curd/logs/<?JS cit ?>.stat.stdout -e $curd/logs/<?JS cit ?>.stat.stderr `which gedi` -t <?JS tmp ?> -e RiboStatistics -r <?JS cit ?>.cit -g <?JS genomes ?> -o $curd/stats/<?JS cit ?>. -D > /dev/null
+<?JS } 
+
+if (lambdas.length>0) {
+
+for each (var lambda in lambdas) { ?>
+qsub -b y -l vf=4g $QSUBPARAM -N <?JS cit ?>.<?JS lambda ?>.err -wd $curd -o $curd/logs/<?JS cit ?>.<?JS lambda ?>.err.stdout -e $curd/logs/<?JS cit ?>.<?JS lambda ?>.err.stderr `which gedi` -t <?JS tmp ?> -e EstimateModelError -lambda <?JS lambda ?> -r <?JS cit ?>.cit -o $curd/price/<?JS cit ?>.<?JS lambda ?>.merged -D <?JS startcodon ?> -m $curd/price/<?JS cit ?>.merged.model -g <?JS genomes ?>
+
+<?JS }
+}
+else 
+if (price) { ?>
+# price model
+<?JS pref ?>model=$( qsub -b y <?JS depends ?> -l vf=4g $QSUBPARAM -N <?JS cit ?>.model -wd $curd -o $curd/logs/<?JS cit ?>.model.stdout -e $curd/logs/<?JS cit ?>.model.stderr `which gedi` -t <?JS tmp ?> -e EstimateRiboModel -r <?JS cit ?>.cit -g <?JS genomes ?>  -o $curd/price/<?JS cit ?> -D | cut -f3 -d' ' )
+
+# price error estimation
+<?JS pref ?>err=$( qsub -b y -hold_jid $<?JS pref ?>model -l vf=4g $QSUBPARAM -N <?JS cit ?>.err -wd $curd -o $curd/logs/<?JS cit ?>.err.stdout -e $curd/logs/<?JS cit ?>.err.stderr `which gedi` -t <?JS tmp ?> -e EstimateModelError -r <?JS cit ?>.cit -o $curd/price/<?JS cit ?>.merged -D <?JS startcodon ?> -m $curd/price/<?JS cit ?>.merged.model -g <?JS genomes ?> | cut -f3 -d' ' )
+
+
+# price prediction
+qsub -b y -hold_jid $<?JS pref ?>err -l vf=4g $QSUBPARAM -N <?JS cit ?>.orfs -wd $curd -o $curd/logs/<?JS cit ?>.orfs.stdout -e $curd/logs/<?JS cit ?>.orfs.stderr `which gedi` -t <?JS tmp ?> -e InferOrfs -r <?JS cit ?>.cit -o $curd/price/<?JS cit ?>.merged -D -m $curd/price/<?JS cit ?>.merged.model -g <?JS genomes ?> > /dev/null
+
+<?JS }
+} 
+
+
+if (prio) {
+	if (norescue && !rescue) {
+		statprice(collection+"_prio","prio");
+	}
+	else if (!norescue && rescue) {
+		resc(collection+"_prio",false,"prio",collection+"_prio_rescue");
+		statprice(collection+"_prio",collection+"_prio_rescue");
+	}
+	else {
+		resc(collection+"_prio",true,"prio",collection+"_prio_rescue");
+		statprice(collection+"_prio_rescued",collection+"_prio_rescue");
+		statprice(collection+"_prio","prio");
+	}
+}
+
+if (nopr) {
+	if (norescue && !rescue) {
+		statprice(collection+"_nopr","nopr");
+	}
+	else if (!norescue && rescue) {
+		resc(collection+"_nopr",false,"nopr",collection+"_nopr_rescue");
+		statprice(collection+"_nopr",collection+"_nopr_rescue");
+	}
+	else {
+		resc(collection+"_nopr",true,"nopr",collection+"_nopr_rescue");
+		statprice(collection+"_nopr_rescued",collection+"_nopr_rescue");
+		statprice(collection+"_nopr","nopr");
+	}
+}
+
+for each (var cit in cits) {
+	if (norescue && !rescue) {
+		statprice(cit,"");
+	}
+	else if (!norescue && rescue) {
+		resc(cit,false,"",cit+"_rescue");
+		statprice(cit,cit+"_rescue");
+	}
+	else {
+		resc(cit,true,"",cit+"_rescue");
+		statprice(cit+"_rescued",cit+"_rescue");
+		statprice(cit,"");
+	}
+}
+if (bams.length>0) {
+	if (norescue && !rescue) {
+		statprice(collection,"bam");
+	}
+	else if (!norescue && rescue) {
+		resc(collection,false,"bam",collection+"_rescue");
+		statprice(collection,collection+"_rescue");
+	}
+	else {
+		resc(collection,true,"bam",collection+"_rescue");
+		statprice(collection+"_rescued",collection+"_rescue");
+		statprice(collection,"bam");
+	}
+}
+
+?>

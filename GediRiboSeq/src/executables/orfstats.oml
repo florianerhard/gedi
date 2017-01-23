@@ -1,0 +1,33 @@
+<GenomicRegionFeaturePipeline>
+	<Labels l="${labels}" />
+
+	<ChromosomeFeature id="Chromosome" />
+	<FeatureMapping id="chr" input="Chromosome">
+		<ContainsMapping contains="chr" to="chr"/>
+	</FeatureMapping>
+
+	<OrfTypeFeature id="Orf type" />
+	
+	<CodonUsageFeature file="${prefix}codonusage.stat">
+		<RepresentationA/>
+		<MaxDownsampling/>
+		<Rscript url='classpath:/scripts/plot.codonusage.R' />		
+	</CodonUsageFeature>
+	
+	<CodonUsageFeature file="${prefix}codonusage_cds.stat">
+		<Condition inputs="Orf type" cond="['CDS']" />
+		<RepresentationA/>
+		<MaxDownsampling/>
+		<Rscript url='classpath:/scripts/plot.codonusage.R' />		
+	</CodonUsageFeature>
+	
+	<CodonUsageFeature file="${prefix}codonusage_cds_chr.stat">
+		<Condition inputs="Orf type" cond="['CDS']" />
+		<Condition inputs="chr" cond="['chr']" />
+		<RepresentationA/>
+		<MaxDownsampling/>
+		<Rscript url='classpath:/scripts/plot.codonusage.R' />		
+	</CodonUsageFeature>
+	
+
+</GenomicRegionFeaturePipeline>

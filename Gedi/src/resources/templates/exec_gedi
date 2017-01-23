@@ -1,0 +1,60 @@
+#!/bin/bash
+
+function ccp {
+<?JS if (type=="devel") { ?>
+
+workspace="<?JS root ?>";
+projects=`cd $workspace/; ls -d */`;
+
+out=$(mktemp)
+
+for project in $projects; do
+	cpPath="$workspace/${project}.classpath"
+
+	grep 'kind="lib"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" >> $out
+	grep 'kind="output"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" >> $out
+
+done
+
+
+cp=`sort -u $out | xargs | tr " " ":"`
+rm $out
+
+echo -n $cp
+
+<?JS } else  { ?>
+
+echo -n "<?JS root ?>/gedi.jar:<?JS root ?>/lib/.*"
+
+<?JS }  ?>
+}
+
+d=
+p=
+e=
+add=
+tmpfolder=
+
+
+while [[ $1 == -* ]]
+do
+   case $1 in
+       -h)  printf "gedi [-d] [-d2] [-p] [-t <tmpfolder] [-e] [-<java-option>] main-class [param...]\n\n -d\tStart in debug mode (server on port 8998)\n -d2\tStart in secondary debug mode (server on port 8999)\n -p\tStart cpu hprof\n -t\tspecify tmp folder\n -e\tprepend executables. before main-class\n\n"
+		exit
+		;;
+       -d) d=" -agentlib:jdwp=transport=dt_socket,address=8998,server=y";;
+       -d2) d=" -agentlib:jdwp=transport=dt_socket,address=8999,server=y";;
+       -p) p=" -Xrunhprof:cpu=samples";;
+       -n) exit 10;;
+       -t) shift;
+	   tmpfolder=" -Djava.io.tmpdir=$1"
+	   mkdir -p $1
+	   ;;
+       -e) e=executables.;;
+       -*) add=$add $1;; 
+   esac
+   shift;
+done
+
+
+java $xp$d$p$tmpfolder$add -Xmx8192m -Xms2048m -cp "`ccp`" $e"$@"

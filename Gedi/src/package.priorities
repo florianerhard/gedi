@@ -1,0 +1,19 @@
+# package.* means all classes directly in the package
+# package.** means all classes somewhere below the package; an exception is thrown if there are multiple classes with the same name below package
+# package.? means all classes somewhere below the package; the first class encountered is taken
+gedi.app.**
+gedi.core.**
+gedi.util.**
+gedi.gui.**
+gedi.fx.**
+gedi.remote.**
+java.lang.**
+gedi.**
+# this is necessary to circumvent all those stupid classes with the same name in the jdk
+java.util.*
+java.nio.**
+java.?
+javafx.**
+javax.swing.?
+org.freehep.?
+?

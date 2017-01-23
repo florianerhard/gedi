@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Author: Florian Erhard
+ Copyright (C) 2015 Florian Erhard <florian.erhard@bio.ifi.lmu.de>
+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ Boston, MA 02111-1307, USA.
+
+-->
+<language id="cps" _name="CPS" version="2.0" _section="Others">
+  <metadata>
+    <property name="mimetypes">text/cps</property>
+    <property name="globs">*.cps;*.cps.jhp</property>
+    <property name="block-comment-start">/*</property>
+    <property name="block-comment-end">*/</property>
+  </metadata>
+
+  <styles>
+        <style id="class"               _name="Class"		map-to="def:identifier"/>
+     	<style id="comment"             _name="Comment"	map-to="def:comment"/>
+	<style id="keyword" 		_name="Keyword"	map-to="def:keyword"/>
+    <style id="error"         _name="Error"                 map-to="def:error"/>
+  </styles>
+
+  <definitions>
+
+	
+	<context id="js-block">
+	       <start>&lt;([?](JS))</start>
+	      <end>[?]&gt;</end>
+	      <include>
+		<context sub-pattern="0" where="start" style-ref="keyword"/>
+		<context sub-pattern="0" where="end" style-ref="keyword"/>
+		<context ref="js:js"/>
+	      </include>
+	    </context>
+
+
+	 <context id="cps-element">
+		 <match>\.(\S+)\s+</match>
+            <include>
+              <context sub-pattern="1" style-ref="class"/>
+            </include>
+        </context>
+
+    <context id="comment" style-ref="comment">
+      <start>/\*</start>
+      <end>\*/</end>
+      <include>
+        <context style-ref="error" extend-parent="false">
+          <match>/\*</match>
+        </context>
+        <context ref="def:in-comment"/>
+      </include>
+    </context>
+
+    <context id="close-comment-outside-comment" style-ref="error">
+      <match>\*/(?!\*)</match>
+    </context>
+
+	<replace id="json:embedded-lang-hook" ref="js-block"/>
+
+
+    <context id="cps">
+      <include>
+        <context ref="js-block"/>
+        <context ref="cps-element"/>
+        <context ref="comment"/>
+        <context ref="close-comment-outside-comment"/>
+        <context ref="json:json"/>
+      </include>
+    </context>
+
+  </definitions>
+</language>

@@ -1,0 +1,186 @@
+<Pipeline>
+
+	
+	<MemoryIntervalTreeStorage id="annotator" cls="NameAnnotation" />
+	<StorageSource id="+.anno" filter="+">
+		<add st="annotator" />
+	</StorageSource>
+	<StorageSource id="-.anno" filter="-">
+		<add st="annotator" />
+	</StorageSource>
+
+
+	<StorageSource id="+.trans" filter="+">
+		<Transcripts st="genomic" />
+	</StorageSource>
+	<StorageSource id="-.trans" filter="-">
+		<Transcripts st="genomic" />
+	</StorageSource>
+
+	<?JS for (var i=0; i<names.length; i++) { ?>
+	<StorageSource id="+.<?JS print(names[i]); ?>" filter="+">
+		<add file="cits<?JS print(new Integer(i)) ?>" />
+	</StorageSource>
+	<StorageSource id="-.<?JS print(names[i]); ?>" filter="-">
+		<add file="cits<?JS print(new Integer(i)) ?>" />
+	</StorageSource>
+
+	<AlignedReadsDataToCoverageMapper id="+.<?JS print(names[i]); ?>.coverage" input="+.<?JS print(names[i]); ?>" />
+	<AlignedReadsDataToJunctionCountMapper id="+.<?JS print(names[i]); ?>.junctions" input="+.<?JS print(names[i]); ?>" />
+	<AlignedReadsDataToMismatchesMapper id="+.<?JS print(names[i]); ?>.mismatches" input="+.<?JS print(names[i]); ?>" />	
+	<AlignedReadsDataToCoverageMapper id="-.<?JS print(names[i]); ?>.coverage" input="-.<?JS print(names[i]); ?>" />
+	<AlignedReadsDataToJunctionCountMapper id="-.<?JS print(names[i]); ?>.junctions" input="-.<?JS print(names[i]); ?>" />
+	<AlignedReadsDataToMismatchesMapper id="-.<?JS print(names[i]); ?>.mismatches" input="-.<?JS print(names[i]); ?>" />	
+	
+	<?JS } ?>
+
+
+	<SequenceSource id="seq">
+		<Genomic file="genomic" />
+	</SequenceSource>
+
+	<ChromosomesTrack suffix="+" id="+.Chromosomes" >
+		<Height h="25" />
+		<Font name="Arial" size="20" bold="true" italic="false" />
+	</ChromosomesTrack>
+	<PositionTrack id="+.Positions" >
+		<Height h="20" />
+		<Font name="Arial" size="15" bold="false" italic="false" />
+	</PositionTrack>	
+
+	<AnnotateRegionsTrack input="+.anno" id="+.Editor" st="annotator" strand="+" >
+		<Background c="#777777" />
+		<BoxRenderer>
+			<BoxRenderer>
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="2" />
+				<Background c="white" />
+			</BoxRenderer>
+		</BoxRenderer>
+	</AnnotateRegionsTrack>
+
+	<PackRegionTrack input="+.trans" id="+.Transcripts" >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+
+
+	<?JS for (var e=0; e<names.length; e++) { ?>
+	<NumericTrackGroup id="+.<?JS print(names[e]) ?>.Data" >
+		<RegionLinesTrack input="+.<?JS print(names[e]) ?>.junctions" id="+.<?JS print(names[e]) ?>.Junctions" >
+			<LogScale base="10" />
+		</RegionLinesTrack>
+		<StackedLinesTrack input="+.<?JS print(names[e]) ?>.coverage" id="+.<?JS print(names[e]) ?>.Coverage" >
+			<LogScale base="10" />
+			<FixedMin min="0"/>
+			<Points p="false" />
+		</StackedLinesTrack>
+	</NumericTrackGroup>
+
+	<NumericTrackGroup id="+.<?JS print(names[e]) ?>.Mismatches.Group" >
+		<StackedLinesTrack input="+.<?JS print(names[e]) ?>.coverage" id="+.<?JS print(names[e]) ?>.Mismatches.Coverage" >
+			<FixedMin min="0"/>
+			<Points p="false" />
+		</StackedLinesTrack>
+		<StackedBoxesTrack input="+.<?JS print(names[e]) ?>.mismatches" id="+.<?JS print(names[e]) ?>.Mismatches.Mismatches" class="basecolors">
+		</StackedBoxesTrack>
+		<Hidden h="true" />
+	</NumericTrackGroup>
+
+	<PackRegionTrack input="+.<?JS print(names[e]) ?>" id="+.<?JS print(names[e]) ?>.Reads"  >
+		<Hspace space="0" />
+		<Vspace space="0" />
+		<Background c="#e5efff" />
+		<Strand strand="+"/>
+		<BoxRenderer>
+			<AlignedReadsDataBoxRenderer />
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<Hidden h="true" />
+	</PackRegionTrack>
+
+	<?JS  } ?>
+
+	<SequenceTrack input="seq" id="+.Sequence (dna)"/>
+
+
+
+
+
+	<ChromosomesTrack suffix="-" id="-.Chromosomes" >
+		<Height h="25" />
+		<Font name="Arial" size="20" bold="true" italic="false" />
+	</ChromosomesTrack>
+	<PositionTrack id="-.Positions">
+		<Height h="20" />
+		<Font name="Arial" size="15" bold="false" italic="false" />
+	</PositionTrack>	
+
+	<AnnotateRegionsTrack input="-.anno" id="-.Editor" st="annotator" strand="-">
+		<Background c="#777777" />
+		<BoxRenderer>
+			<BoxRenderer>
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="2" />
+				<Background c="white" />
+			</BoxRenderer>
+		</BoxRenderer>
+	</AnnotateRegionsTrack>
+
+	<PackRegionTrack input="-.trans" id="-.Transcripts" >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+
+
+	<?JS for (var e=0; e<names.length; e++) { ?>
+
+	<NumericTrackGroup id="-.<?JS print(names[e]) ?>.Data" >
+		<RegionLinesTrack input="-.<?JS print(names[e]) ?>.junctions" id="-.<?JS print(names[e]) ?>.Junctions" >
+			<LogScale base="10" />
+		</RegionLinesTrack>
+		<StackedLinesTrack input="-.<?JS print(names[e]) ?>.coverage" id="-.<?JS print(names[e]) ?>.Coverage" >
+			<LogScale base="10" />
+			<FixedMin min="0"/>
+			<Points p="false" />
+		</StackedLinesTrack>
+	</NumericTrackGroup>
+
+	<NumericTrackGroup id="-.<?JS print(names[e]) ?>.Mismatches.Group" >
+		<StackedLinesTrack input="-.<?JS print(names[e]) ?>.coverage" id="-.<?JS print(names[e]) ?>.Mismatches.Coverage" >
+			<FixedMin min="0"/>
+			<Points p="false" />
+		</StackedLinesTrack>
+		<StackedBoxesTrack input="-.<?JS print(names[e]) ?>.mismatches" id="-.<?JS print(names[e]) ?>.Mismatches.Mismatches" class="basecolors">
+		</StackedBoxesTrack>
+		<Hidden h="true" />
+	</NumericTrackGroup>
+
+
+	<PackRegionTrack input="-.<?JS print(names[e]) ?>" id="-.<?JS print(names[e]) ?>.Reads"  >
+		<Hspace space="0" />
+		<Vspace space="0" />
+		<Background c="#e5efff" />
+		<Strand strand="-"/>
+		<BoxRenderer>
+			<AlignedReadsDataBoxRenderer />
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<Hidden h="true" />
+	</PackRegionTrack>
+
+	<?JS  } ?>
+
+	<SequenceTrack input="seq" complement="true" id="-.Sequence (dna)" />
+
+</Pipeline>
