@@ -24,6 +24,7 @@ import gedi.bam.tools.SamToRegion;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.AlignedReadsDataFactory;
 import gedi.core.data.reads.DefaultAlignedReadsData;
+import gedi.core.data.reads.ReadCountMode;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
@@ -34,14 +35,11 @@ import gedi.core.region.GenomicRegionStorageExtensionPoint;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeatureProgram;
-import gedi.oml.OmlNodeExecutor;
-import gedi.oml.OmlReader;
-import gedi.oml.PlaceholderInterceptor;
-import gedi.oml.petrinet.GenomicRegionFeaturePipeline;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -50,9 +48,16 @@ import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializer;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
-import gedi.util.io.text.jph.Jhp;
+import gedi.util.io.text.jhp.Jhp;
 import gedi.util.io.text.tsv.formats.CsvReaderFactory;
+import gedi.util.mutable.MutableDouble;
+import gedi.util.mutable.MutableInteger;
+import gedi.util.mutable.MutableMonad;
 import gedi.util.nashorn.JS;
+import gedi.util.oml.OmlNodeExecutor;
+import gedi.util.oml.OmlReader;
+import gedi.util.oml.PlaceholderInterceptor;
+import gedi.util.oml.petrinet.GenomicRegionFeaturePipeline;
 import gedi.util.orm.Orm;
 import gedi.util.userInteraction.log.ErrorProtokoll;
 import gedi.util.userInteraction.log.LogErrorProtokoll;
@@ -123,6 +128,7 @@ public class MergeSam {
 
 		String table = null;
 		String bcFile = null;
+		String bcJson = null;
 		int bcOffset = -1;
 		int filterPrio = 1;
 		String output = null;
@@ -132,6 +138,7 @@ public class MergeSam {
 		boolean correctMc = false;
 		HashMap<String, Object> param = JS.parseParameter(args, false);
 		String prioPipeline = null;
+		boolean removeNonStandard = true;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -142,6 +149,9 @@ public class MergeSam {
 			}
 			else if (args[i].equals("-p")) {
 				progress=new ConsoleProgress();
+			}
+			else if (args[i].equals("-nonstandard")) {
+				removeNonStandard = false;
 			}
 			else if (args[i].equals("-prio")) {
 				prioPipeline = checkParam(args, ++i);
@@ -157,6 +167,9 @@ public class MergeSam {
 			}
 			else if (args[i].equals("-bcfile")) {
 				bcFile = checkParam(args,++i);
+			}
+			else if (args[i].equals("-bcjson")) {
+				bcJson = checkParam(args,++i);
 			}
 			else if (args[i].equals("-c")) {
 				conditionsFile = checkParam(args,++i);
@@ -190,25 +203,39 @@ public class MergeSam {
 		EI.wrap(mo).forEachRemaining(m->m.g=genomics.get(m.Genome));
 				
 		Genomic g = Genomic.merge(genomics.values());
-		SamMismatchCorrectionBarcodeAnnotator bca;
+		SamMismatchCorrectionBarcodeAnnotator bca = null;
 		
-		if (bcFile!=null && bcOffset>=0 && conditionsFile!=null) { 
-			bca = new SamMismatchCorrectionBarcodeAnnotator(bcFile, bcOffset, conditionsFile);
-		
-			if (oml!=null) {
-				PlaceholderInterceptor pi = new PlaceholderInterceptor();
-				pi.addPlaceHolders(param);
-//				if (param.containsKey("run")) pi.addPlaceHolder("run",(String) param.get("run"));
-				pi.addPlaceHolder("conditions",conditionsFile);
-				pi.addPlaceHolder("folder", new File(output).getAbsoluteFile().getParent());
-				bca.startPrograms(
-						new OmlNodeExecutor().addInterceptor(new PlaceholderInterceptor(pi).addPlaceHolder("mode","collapsed")).<GenomicRegionFeaturePipeline>execute(new OmlReader().parse(new File(oml))).getProgram(),
-						new OmlNodeExecutor().addInterceptor(new PlaceholderInterceptor(pi).addPlaceHolder("mode","corrected")).<GenomicRegionFeaturePipeline>execute(new OmlReader().parse(new File(oml))).getProgram(),
-						new OmlNodeExecutor().addInterceptor(new PlaceholderInterceptor(pi).addPlaceHolder("mode","read")).<GenomicRegionFeaturePipeline>execute(new OmlReader().parse(new File(oml))).getProgram()
-					);
+		if (bcFile!=null) { 
+			
+			if (bcJson!=null) {
+				DynamicObject barcodes = DynamicObject.parseJson(FileUtils.readAllText(new File(bcJson)));
+				String[] bcs = EI.wrap(barcodes.getEntry("condition").asArray()).map(d->d.getEntry("barcode").asString()).toArray(String.class);
+				
+				bcOffset = barcodes.getEntry("offset").asInt();
+				
+				bca = new SamMismatchCorrectionBarcodeAnnotator(bcFile, bcOffset, bcs);
+			}
+			
+			else if (bcOffset>=0 && conditionsFile!=null) {
+				bca = new SamMismatchCorrectionBarcodeAnnotator(bcFile, bcOffset, conditionsFile);
+			}
+			
+			if (bca!=null) {
+				bca.setTotalOut(new LineOrientedFile(FileUtils.getExtensionSibling(output,".barcodecorrection.tsv")).write());
+				if (oml!=null) {
+					PlaceholderInterceptor pi = new PlaceholderInterceptor();
+					pi.addPlaceHolders(param);
+	//				if (param.containsKey("run")) pi.addPlaceHolder("run",(String) param.get("run"));
+					pi.addPlaceHolder("conditions",conditionsFile);
+					pi.addPlaceHolder("folder", new File(output).getAbsoluteFile().getParent());
+					bca.startPrograms(
+							new OmlNodeExecutor().addInterceptor(new PlaceholderInterceptor(pi).addPlaceHolder("mode","collapsed")).<GenomicRegionFeaturePipeline>execute(new OmlReader().parse(new File(oml))).getProgram(),
+							new OmlNodeExecutor().addInterceptor(new PlaceholderInterceptor(pi).addPlaceHolder("mode","corrected")).<GenomicRegionFeaturePipeline>execute(new OmlReader().parse(new File(oml))).getProgram(),
+							new OmlNodeExecutor().addInterceptor(new PlaceholderInterceptor(pi).addPlaceHolder("mode","read")).<GenomicRegionFeaturePipeline>execute(new OmlReader().parse(new File(oml))).getProgram()
+						);
+				}
 			}
 		}
-		else bca = null;
 		
 		
 		HashMap<String,Object> context = new HashMap<String, Object>();
@@ -220,10 +247,15 @@ public class MergeSam {
 			uprioPipeline.begin();
 		}
 		
+		boolean uremoveNonStandard = removeNonStandard;
 		ExtendedIterator<ReferenceGenomicRegion<MergeData>>[] iterators = 
-				EI.wrap(mo).map(m->m.iterator()).toArray(new ExtendedIterator[0]);
+				EI.wrap(mo).map(m->m.iterator()
+						.iff(uremoveNonStandard, ei->ei.filter(rgr->rgr.getReference().isStandard()))
+						).toArray(new ExtendedIterator[0]);
 		
+		MutableMonad<NumericArray> total = new MutableMonad<>();
 		int ufilterPrio = filterPrio;
+		SamMismatchCorrectionBarcodeAnnotator ubca = bca;
 		Comparator<ReferenceGenomicRegion<MergeData>> byId = (a,b)->Integer.compare(a.getData().getId(), b.getData().getId());
 		ExtendedIterator<ReferenceGenomicRegion<AlignedReadsData>> it = EI.merge(byId,iterators)
 			.iff(correctM,ite->ite.map(r->correctChrM(g,errors,r)).removeNulls())
@@ -236,23 +268,41 @@ public class MergeSam {
 			.sort(new MergeDataSerializer())
 			.progress(progress, -1, r->"Location: "+r.toLocationString())
 			.multiplex(MergeSam::compareWoUnmapped, MergeSam::mergeRegions)
-			.iff(bca!=null,ite->ite.map(bca::transform).removeNulls())
+			.iff(bca!=null,ite->ite.map(ubca::transform).removeNulls())
 			.filter(r->!r.getReference().equals(Chromosome.UNMAPPED) && r.getRegion().getTotalLength()>=18)
+			.sideEffect(r->{
+				total.Item = r.getData().addTotalCountsForConditions(total.Item, ReadCountMode.Weight);
+			})
 			;
 
 		
 		GenomicRegionStorage p = GenomicRegionStorageExtensionPoint.getInstance().get(DefaultAlignedReadsData.class,output, GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
 		p.fill(it);
 		
-		if (bca!=null)
+		if (bca!=null) {
 			bca.finishPrograms();
+			bca.finish();
+		}
 
 		if (uprioPipeline!=null) {
 			uprioPipeline.end();
 		}
 		
 		if (conditionsFile!=null) {
-			String meta = "{\"conditions\":"+DynamicObject.from(new CsvReaderFactory().createReader(conditionsFile).iterateMap(true).map(m->{m.remove("barcode"); return m;}).toArray()).toJson().replaceAll("\"condition\"","\"name\"")+"}";
+			DynamicObject d = DynamicObject.from(new CsvReaderFactory().createReader(conditionsFile).iterateMap(true).map(m->{m.remove("barcode"); return m;}).toArray());
+			DynamicObject t = DynamicObject.parseJson("["+EI.wrap(total.Item.toDoubleArray()).map(tx-> "{\"total\": "+tx+"}").concat(",")+"]");
+			d = d.cascade(t);
+			String meta = "{\"conditions\":"+d.toJson().replaceAll("\"condition\"","\"name\"")+"}";
+			FileUtils.writeAllText(meta, new File(output+".metadata.json"));
+		} else if (bcJson!=null) {
+			DynamicObject barcodes = DynamicObject.parseJson(FileUtils.readAllText(new File(bcJson)));
+			DynamicObject d = barcodes.getEntry("condition");
+			DynamicObject t = DynamicObject.parseJson("["+EI.wrap(total.Item.toDoubleArray()).map(tx-> "{\"total\": "+tx+"}").concat(",")+"]");
+			d = d.cascade(t);
+			String meta = "{\"conditions\":"+d.toJson().replaceAll("\"condition\"","\"name\"")+"}";
+			FileUtils.writeAllText(meta, new File(output+".metadata.json"));
+		} else {
+			String meta = "{\"conditions\":[{\"name\":\""+p.getName()+"\", \"total\": "+(total.Item==null?0:total.Item.getLong(0))+"}]}";
 			FileUtils.writeAllText(meta, new File(output+".metadata.json"));
 		}
 	}
@@ -293,7 +343,6 @@ public class MergeSam {
 	
 	private static ReferenceGenomicRegion<MergeData>[] retainMinMismatchByPriority(int filterPrio, ReferenceGenomicRegion<MergeData>[] a, GenomicRegionFeatureProgram prio) {
 		// there may be still multiple mappings to the same location! (e.g. due to transcriptomic to genomic)
-		
 		if (a.length==1) return a;
 		
 		

@@ -1,0 +1,14 @@
+<?JS0
+execute("genomic","0");
+execute("annotator","0");
+execute("header","0");
+execute("genetrans","0");
+execute("sequence","0");
+?>
+<?JS
+template("genomic");
+template("annotator");
+template("header");
+template("genetrans");
+template("sequence");
+?>

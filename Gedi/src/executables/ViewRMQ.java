@@ -20,6 +20,7 @@ package executables;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 
 import gedi.core.data.numeric.GenomicNumericProvider.SpecialAggregators;
 import gedi.core.data.numeric.diskrmq.DiskGenomicNumericProvider;
@@ -66,9 +67,9 @@ public class ViewRMQ {
 			SpecialAggregators agg = SpecialAggregators.valueOf(args[2]);
 			
 			for (int s = 0; s<region.getTotalLength(); s+=interval) {
-				System.out.printf("%s\t%d",ref,region.induce(s));
+				System.out.printf(Locale.US,"%s\t%d",ref,region.induce(s));
 				for (int i=0; i<prov.getNumDataRows(); i++)
-					System.out.printf("\t"+agg.getAggregatedValue(prov, ref, new ArrayGenomicRegion(s,s+interval), i));
+					System.out.printf(Locale.US,"\t"+agg.getAggregatedValue(prov, ref, new ArrayGenomicRegion(s,s+interval), i));
 				System.out.println();
 			}
 			

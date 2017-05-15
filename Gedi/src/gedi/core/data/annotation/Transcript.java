@@ -22,6 +22,7 @@ import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
@@ -147,15 +148,15 @@ public class Transcript implements BinarySerializable {
 		return transcriptRegion.intersect(new ArrayGenomicRegion(getCodingEnd(),transcriptRegion.getEnd()));
 	}
 	
-	public static ReferenceGenomicRegion<Transcript> getCds(ReferenceGenomicRegion<Transcript> rgr) {
-		return rgr.toMutable().transformRegion(r->rgr.getData().getCds(rgr.getReference(), rgr.getRegion()));
+	public <T> MutableReferenceGenomicRegion<T> getCds(ReferenceGenomicRegion<T> rgr) {
+		return rgr.toMutable().transformRegion(r->getCds(rgr.getReference(), rgr.getRegion()));
 	}
 	
-	public static ReferenceGenomicRegion<Transcript> get5Utr(ReferenceGenomicRegion<Transcript> rgr) {
-		return rgr.toMutable().transformRegion(r->rgr.getData().get5Utr(rgr.getReference(), rgr.getRegion()));
+	public <T> MutableReferenceGenomicRegion<T> get5Utr(ReferenceGenomicRegion<T> rgr) {
+		return rgr.toMutable().transformRegion(r->get5Utr(rgr.getReference(), rgr.getRegion()));
 	}
-	public static ReferenceGenomicRegion<Transcript> get3Utr(ReferenceGenomicRegion<Transcript> rgr) {
-		return rgr.toMutable().transformRegion(r->rgr.getData().get3Utr(rgr.getReference(), rgr.getRegion()));
+	public <T> MutableReferenceGenomicRegion<T> get3Utr(ReferenceGenomicRegion<T> rgr) {
+		return rgr.toMutable().transformRegion(r->get3Utr(rgr.getReference(), rgr.getRegion()));
 	}
 	
 	

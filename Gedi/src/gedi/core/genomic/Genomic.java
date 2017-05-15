@@ -20,9 +20,12 @@ package gedi.core.genomic;
 
 
 import gedi.app.Config;
+import gedi.core.data.annotation.ReferenceSequencesProvider;
 import gedi.core.data.annotation.Transcript;
 import gedi.core.data.annotation.TranscriptToGene;
+import gedi.core.data.annotation.TranscriptToMajorTranscript;
 import gedi.core.data.reads.AlignedReadsData;
+import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
@@ -34,11 +37,16 @@ import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
 import gedi.util.FileUtils;
 import gedi.util.datastructure.tree.Trie;
 import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
+import gedi.util.oml.Oml;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Set;
@@ -51,10 +59,10 @@ import java.util.function.Function;
  * @author erhard
  *
  */
-public class Genomic implements SequenceProvider {
+public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	
 	public enum AnnotationType {
-		Transcripts, UnionTranscripts, Genes
+		Transcripts, UnionTranscripts, Genes, MajorTranscripts
 	}
 
 	
@@ -65,11 +73,22 @@ public class Genomic implements SequenceProvider {
 	private HashMap<String,GenomicMappingTable> mapTabs = new HashMap<String, GenomicMappingTable>();
 	
 	private LinkedHashMap<String,String> infos = new LinkedHashMap<>();
+	private HashMap<ReferenceSequence,Genomic> referenceToOrigin;
 	
 	private NameIndex nameIndex;
 	
 	
 	public void merge(Genomic other) {
+		HashSet<ReferenceSequence> or = other.iterateReferenceSequences().set();
+		HashSet<ReferenceSequence> tr = iterateReferenceSequences().set();
+		if (!Collections.disjoint(or, tr))
+			throw new RuntimeException("Genomes are not disjoint!");
+
+		if (referenceToOrigin==null)
+			referenceToOrigin = new HashMap<>();
+		for (ReferenceSequence r : or)
+			referenceToOrigin.put(r, other.getOrigin(r));
+		
 		for (SequenceProvider p : other.sequence.getProviders())
 			this.sequence.add(p);
 	
@@ -93,6 +112,11 @@ public class Genomic implements SequenceProvider {
 		
 		if (nameIndex==null) nameIndex = other.nameIndex;
 		else if (other.nameIndex!=null) nameIndex.merge(other.nameIndex);
+	}
+	
+	public Genomic getOrigin(ReferenceSequence ref) {
+		if (referenceToOrigin==null) return this;
+		return referenceToOrigin.get(ref);
 	}
 	
 	public Trie<ReferenceGenomicRegion<?>> getNameIndex() {
@@ -120,6 +144,11 @@ public class Genomic implements SequenceProvider {
 			nameIndex.merge(ni);
 	}
 	
+	@Override
+	public ExtendedIterator<ReferenceSequence> iterateReferenceSequences() {
+		return getTranscripts().iterateReferenceSequences();
+	}
+	
 	public void add(Annotation<?> annotation) {
 		annotations.put(annotation.getId(),annotation);
 	}
@@ -138,10 +167,19 @@ public class Genomic implements SequenceProvider {
 	public CharSequence reconstructRead(ReferenceGenomicRegion<? extends AlignedReadsData> r, int distinct) {
 		return r.getData().genomeToRead(distinct,getSequence(r));
 	}
-	
+
+	@SuppressWarnings("unchecked")
+	public MemoryIntervalTreeStorage<Transcript> getMajorTranscripts() {
+		if (!annotations.containsKey(AnnotationType.MajorTranscripts.name()))
+			add(new Annotation<Transcript>(AnnotationType.MajorTranscripts.name()).set(new TranscriptToMajorTranscript().apply(getTranscripts())));
+		return (MemoryIntervalTreeStorage<Transcript>) annotations.get(AnnotationType.MajorTranscripts.name()).get();
+	}
+
 	@SuppressWarnings("unchecked")
 	public MemoryIntervalTreeStorage<Transcript> getTranscripts() {
-		return (MemoryIntervalTreeStorage<Transcript>) annotations.get(AnnotationType.Transcripts.name()).get();
+		Annotation<?> a = annotations.get(AnnotationType.Transcripts.name());
+		if (a==null) return new MemoryIntervalTreeStorage<>(Transcript.class);
+		return (MemoryIntervalTreeStorage<Transcript>) a.get();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -170,6 +208,18 @@ public class Genomic implements SequenceProvider {
 		return mappings.get(id).get();
 	}
 	
+	public Collection<String> getTables() {
+		return mapTabs.keySet();
+	}
+	
+	public Collection<String> getTableColumns(String id) {
+		return mapTabs.get(id).getColumns();
+	}
+	
+	public Collection<String> getTableColumns(String id, String from) {
+		return mapTabs.get(id).getTargetColumns(from);
+	}
+	
 	
 	public Function<String,String> getTable(String id, String from, String to) {
 		GenomicMappingTable tab = mapTabs.get(id);
@@ -178,9 +228,24 @@ public class Genomic implements SequenceProvider {
 		return tab.get(from,to);
 	}
 	
+	public Collection<String> getTranscriptTableColumns() {
+		return mapTabs.get(AnnotationType.Transcripts.name()).getColumns();
+	}
+	
+	public Collection<String> getTranscriptTableColumns(String from) {
+		return mapTabs.get(AnnotationType.Transcripts.name()).getTargetColumns(from);
+	}
+	
+	public Collection<String> getGeneTableColumns() {
+		return mapTabs.get(AnnotationType.Transcripts.name()).getColumns();
+	}
+	
+	public Collection<String> getGeneTableColumns(String from) {
+		return mapTabs.get(AnnotationType.Genes.name()).getTargetColumns(from);
+	}
 	
 	/**
-	 * Shorthand for getMapping("Transcripts.transcriptId"), i.e. gets a function to get the transcript region for a given transcript id
+	 * Shorthand for getTranscriptTable("Transcripts.transcriptId"), i.e. gets a function to get the transcript region for a given transcript id
 	 * @param id
 	 * @param value
 	 * @return
@@ -293,19 +358,10 @@ public class Genomic implements SequenceProvider {
 	}
 	
 	public static synchronized Genomic merge(Collection<Genomic> genomics) {
-		if (genomics.size()==0) return null;
-		Iterator<Genomic> it = genomics.iterator();
-		Genomic g = it.next();
-		while (it.hasNext())
-			g.merge(it.next());
-		return g;
+		return merge(EI.wrap(genomics));
 	}
 	public static synchronized Genomic merge(Genomic... genomics) {
-		if (genomics.length==0) return null;
-		Genomic g = genomics[0];
-		for (int i=1; i<genomics.length; i++)
-			g.merge(genomics[i]);
-		return g;
+		return merge(EI.wrap(genomics));
 	}
 	
 	
@@ -316,73 +372,92 @@ public class Genomic implements SequenceProvider {
 	public static synchronized Genomic get(Iterable<String> names) {
 		return get(names.iterator());
 	}
+	public static synchronized Genomic get(String... names) {
+		return get(EI.wrap(names));
+	}
 	public static synchronized Genomic get(Iterator<String> names) {
 		if (!names.hasNext()) return null;
-		Genomic g = get(names.next());
-		while (names.hasNext())
-			g.merge(get(names.next()));
-		return g;
-	}
-	public static synchronized Genomic get(String... names) {
-		if (names.length==0) return null;
-		Genomic g = get(names[0]);
-		for (int i=1; i<names.length; i++)
-			g.merge(get(names[i]));
-		return g;
-	}
-	public static synchronized Genomic get(String name) {
+		
+		String[] a = EI.wrap(names).toArray(String.class);
+		String name = EI.wrap(a).concat(",");
 		if (!cache.containsKey(name)) {
+			Genomic g = new Genomic();
+			for (int i=0; i<a.length; i++) 
+				g.merge(get(a[i],false));
+			g.id = name;
+			cache.put(name, g);
+		}
+		return cache.get(name);
+	}
+	public static synchronized Genomic merge(Iterator<Genomic> genomic) {
+		if (!genomic.hasNext()) return null;
+		Genomic g = new Genomic();
+		StringBuilder sb = new StringBuilder();
+		while (genomic.hasNext()) {
+			Genomic gen = genomic.next();
+			if (sb.length()>0) sb.append(",");
+			sb.append(gen.id);
+			g.merge(gen);
+		}
+		g.id = sb.toString();
+		cache.put(g.id, g);
+		return g;
+	}
+	
+
+	public static synchronized Genomic get(String name) {
+		return get(name,true);
+	}
+	private static synchronized Genomic get(String name, boolean caching) {
+		if (!caching || !cache.containsKey(name)) {
 			Throwable a = null,b = null;
+			Genomic g = null;
 			
 			Path path = Paths.get(name);
 			if (path!=null && path.toFile().exists()) {
-				WorkspaceItemLoader<Genomic> loader = WorkspaceItemLoaderExtensionPoint.getInstance().get(path);
-				if (loader==null) {
-					a = new RuntimeException("No loader for "+path.toFile().getName()+" available!");
-				} else {
-					
-					try {
-						Genomic g = loader.load(path);
+				try {
+					g = Oml.create(path.toString());
+					g.id = FileUtils.getNameWithoutExtension(path.toFile());
+					if (caching)
 						cache.put(name, g);
-						return g;
-					} catch (Throwable e) {
-						b=e;
-					}
+					return g;
+				} catch (Throwable e) {
+					b=e;
 				}
 			}
-			
-			Path parent = Paths.get(Config.getInstance().getConfigFolder(),"genomic");
-			if (parent.toFile().exists())
-				for (String p : parent.toFile().list()) {
-					if (p.startsWith(name+".")) {
-						path = parent.resolve(p);
-						
-						if (path==null || !path.toFile().exists()) {
-							continue;
-						}
-						WorkspaceItemLoader<Genomic> loader = WorkspaceItemLoaderExtensionPoint.getInstance().get(path);
-						if (loader==null) {
-							a = new RuntimeException("No loader for "+path.toFile().getName()+" available!");
-							continue;
-						}
-						
-						try {
-							Genomic g = loader.load(path);
-							g.id = name;
-							cache.put(name, g);
-							break;
-						} catch (Throwable e) {
-							b=e;
-							continue;
+			Path[] folders = EI.wrap(Config.getInstance().getConfig().getEntry("genomic").asArray())
+					.map(d->Paths.get(d.asString(null)))
+					.chain(EI.singleton(Paths.get(Config.getInstance().getConfigFolder(),"genomic")))
+					.toArray(Path.class);
+			outer:for (Path folder : folders)
+				if (folder.toFile().exists())
+					for (String p : folder.toFile().list()) {
+						if (p.startsWith(name+".")) {
+							path = folder.resolve(p);
+							
+							if (path==null || !path.toFile().exists()) {
+								continue;
+							}
+							
+							try {
+								g = Oml.create(path.toString());
+								g.id = name;
+								if (caching)
+									cache.put(name, g);
+								break outer;
+							} catch (Throwable e) {
+								b=e;
+								continue;
+							}
 						}
 					}
-				}
 			
-			if (!cache.containsKey(name)) {
+			if (g==null) {
 				if (b!=null) throw new RuntimeException("Could not load genomic "+name+"!",b);
 				if (a!=null) throw new RuntimeException("Could not load genomic "+name+"!",a);
 				throw new RuntimeException("Genomic name "+name+" does not exisit in config/genomic!");
 			}
+			return g;
 		}
 		return cache.get(name);
 	}

@@ -1,0 +1,17 @@
+	<ChromosomesTrack suffix="+" id="+.Chromosomes" >
+		<Height h="25" />
+		<Font name="Arial" size="20" bold="true" italic="false" />
+	</ChromosomesTrack>
+	<PositionTrack id="+.Positions" >
+		<Height h="20" />
+		<Font name="Arial" size="15" bold="false" italic="false" />
+	</PositionTrack>	
+	
+	<ChromosomesTrack suffix="-" id="-.Chromosomes" >
+		<Height h="25" />
+		<Font name="Arial" size="20" bold="true" italic="false" />
+	</ChromosomesTrack>
+	<PositionTrack id="-.Positions">
+		<Height h="20" />
+		<Font name="Arial" size="15" bold="false" italic="false" />
+	</PositionTrack>	

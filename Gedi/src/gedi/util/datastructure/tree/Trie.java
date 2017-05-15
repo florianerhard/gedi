@@ -19,6 +19,7 @@
 package gedi.util.datastructure.tree;
 
 
+import gedi.util.datastructure.tree.redblacktree.Interval;
 import gedi.util.functions.ExtendedIterator;
 
 import java.util.AbstractMap;
@@ -800,7 +801,7 @@ public class Trie<T> implements Map<String,T> {
 	
 	
 	
-	public static class AhoCorasickResult<T> {
+	public static class AhoCorasickResult<T> implements Interval {
 		int start;
 		int end;
 		T object;
@@ -827,6 +828,10 @@ public class Trie<T> implements Map<String,T> {
 		}
 		public int getLength() {
 			return end-start;
+		}
+		@Override
+		public int getStop() {
+			return end-1;
 		}
 	}
 	

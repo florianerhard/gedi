@@ -196,6 +196,11 @@ public class ClassPathCache {
 	}
 	
 	
+	public HashSet<String> getResourcesOfPath(String path) {
+		discover();
+		return packageToClasses.get(path.replace('/', '.'));
+	}
+	
 	public HashSet<String> getClassesOfPackage(String pack) {
 		discover();
 		return packageToClasses.get(pack);

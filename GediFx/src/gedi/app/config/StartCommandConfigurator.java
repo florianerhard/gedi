@@ -37,12 +37,11 @@ import gedi.app.classpath.DirectoryClassPath;
 import gedi.app.classpath.JARClassPath;
 import gedi.util.FileUtils;
 import gedi.util.RunUtils;
-import gedi.util.io.Directory;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
 import gedi.util.io.text.StreamLineReader;
-import gedi.util.io.text.jph.Jhp;
+import gedi.util.io.text.jhp.Jhp;
 import javafx.beans.property.StringProperty;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -76,11 +75,25 @@ public class StartCommandConfigurator implements Configurator<String>{
 	public VBox getAdditionalNode(Control parent) {
 		VBox re = new VBox(5);
 		
+		Button cwd = new Button("Only write executables in current working directory ("+(ClassPathCache.getInstance().getClassPathOfClass(Configurator.class) instanceof JARClassPath?"JAR":"Devel")+")");
+		cwd.setOnAction(ae->{
+			try {
+				getExecPath(".");
+				((TextField)parent).textProperty().setValue("");
+				((TextField)parent).textProperty().setValue("Testing 'gedi -n'");
+				
+				re.getChildren().clear();
+				re.getChildren().add(new Label("Before using gedi, you must add the current working directory to the path!"));
+			} catch (Exception e) {
+				new ExceptionDialog(e).showAndWait();
+			}
+		});
+		
 		Button bashrc = new Button("Extend PATH variable in .bashrc ("+(ClassPathCache.getInstance().getClassPathOfClass(Configurator.class) instanceof JARClassPath?"JAR":"Devel")+")");
 		bashrc.setOnAction(ae->{
 			try {
-				Path exec = getExecPath();
-				String add = "export PATH="+exec.toString()+":$PATH\n";
+				Path exec = getExecPath(Config.getInstance().getBinFolder());
+				String add = "export PATH="+exec.toString()+":$PATH\nsource "+exec.toString()+"/gedi_bash_completion\n";
 				
 				String lines = new LineOrientedFile(System.getProperty("user.home")+"/.bashrc").readAllText();
 				if (!lines.endsWith(add)) {
@@ -101,16 +114,26 @@ public class StartCommandConfigurator implements Configurator<String>{
 			}
 		});
 		
+		re.getChildren().add(cwd);
 		re.getChildren().add(bashrc);
 		
 		return re;
 	}
 	
-	private Path getExecPath() throws Exception {
+	private Path getExecPath(String path) throws Exception {
+		new File(path).mkdirs();
+		writeScript(path+"/gedi","/resources/templates/exec/gedi",true);
+		writeScript(path+"/gedi_ccp","/resources/templates/exec/gedi_ccp",true);
+		writeScript(path+"/gedi_bash_completion","/resources/templates/exec/gedi_bash_completion",true);
+		
+		return Paths.get(path);
+	}
+
+	private void writeScript(String path, String template, boolean executable) throws Exception {
 		ClassPath cp = ClassPathCache.getInstance().getClassPathOfClass(Configurator.class);
-		new File(Config.getInstance().getBinFolder()).mkdirs();
-		Path exec = Paths.get(Config.getInstance().getBinFolder()+"/gedi");
-		String src = new LineIterator(getClass().getResource("/resources/templates/exec_gedi").openStream()).concat("\n");
+		
+		Path exec = Paths.get(path);
+		String src = new LineIterator(getClass().getResource(template).openStream()).concat("\n");
 		Jhp jhp = new Jhp();
 		jhp.getJs().setInterpolateStrings(false);
 		
@@ -127,8 +150,8 @@ public class StartCommandConfigurator implements Configurator<String>{
 		src = jhp.apply(src);
 		
 		FileUtils.writeAllText(src, exec.toFile());
-		exec.toFile().setExecutable(true);
-		return exec.getParent();
+		if (executable)
+			exec.toFile().setExecutable(true);
 	}
 
 	@Override

@@ -26,11 +26,6 @@ import gedi.util.sequence.DnaSequence;
 import java.io.IOException;
 
 
-/**
- * If N is sequenced, a A->A mismatch is stored (if the genomic base is an A)!
- * @author erhard
- *
- */
 public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializable {
 
 	int[][] count;

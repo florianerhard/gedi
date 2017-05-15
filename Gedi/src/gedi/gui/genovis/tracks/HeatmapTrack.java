@@ -67,6 +67,10 @@ public class HeatmapTrack extends NumericValuesTrack {
 		this.spectrum = spectrum;
 	}
 	
+	public void setRed() {
+		this.spectrum = new Color[] {Color.white, Color.red};
+	}
+	
 	
 	public void setInput(int index, GenomicRegionDataMapper<?, PixelBlockToValuesMap> input){
 		if (index==0 && input instanceof BinningProvider) {

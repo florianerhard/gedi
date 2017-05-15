@@ -96,13 +96,6 @@ public interface DoubleIterator extends ExtendedIterator<Double> {
 		return s;
 	}
 	
-	default double max() {
-		double s = Double.NEGATIVE_INFINITY;
-		while(hasNext())
-			s=Math.max(s, nextDouble());
-		return s;
-	}
-	
 	default int argmin() {
 		int index = 0;
 		int minIndex = 0;
@@ -140,6 +133,13 @@ public interface DoubleIterator extends ExtendedIterator<Double> {
 		return s;
 	}
 	
+	default double max() {
+		double s = Double.NEGATIVE_INFINITY;
+		while(hasNext())
+			s=Math.max(s, nextDouble());
+		return s;
+	}
+	
 	default double saveMax(double allUnsafeValue) {
 		double s = Double.NEGATIVE_INFINITY;
 		while(hasNext())
@@ -154,6 +154,20 @@ public interface DoubleIterator extends ExtendedIterator<Double> {
 			s=MathUtils.saveMin(s, nextDouble());
 		if (Double.isInfinite(s))return allUnsafeValue;
 		return s;
+	}
+	
+	default double[] saveMinMax(double allUnsafeValueMin, double allUnsafeValueMax) {
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		while(hasNext()) {
+			double v = nextDouble();
+			min=MathUtils.saveMin(min, v);
+			max=MathUtils.saveMax(max, v);
+		}
+		return new double[] {
+				Double.isInfinite(min)?allUnsafeValueMin:min,
+				Double.isInfinite(max)?allUnsafeValueMax:max
+		};
 	}
 	
 }

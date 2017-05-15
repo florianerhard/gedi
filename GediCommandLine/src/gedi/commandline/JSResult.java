@@ -23,13 +23,16 @@ public class JSResult {
 	private Object result;
 	private Throwable exception;
 	private boolean canceled = false;
+	private String cmd;
 	
-	public JSResult(Object result,Throwable exception) {
+	public JSResult(String cmd,Object result,Throwable exception) {
+		this.cmd = cmd;
 		this.exception = exception;
 		this.result = result;
 	}
 
-	public JSResult(boolean canceled) {
+	public JSResult(String cmd, boolean canceled) {
+		this.cmd = cmd;
 		this.canceled = canceled;
 	}
 
@@ -43,6 +46,10 @@ public class JSResult {
 
 	public boolean isCanceled() {
 		return canceled;
+	}
+	
+	public String getCommand() {
+		return cmd;
 	}
 
 	@Override

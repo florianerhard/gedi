@@ -36,6 +36,7 @@ import java.io.Writer;
 import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 
@@ -142,9 +143,20 @@ public class DataFrame extends AbstractCollection<DataColumn> implements BinaryS
 	public <T> DataColumn<T> getColumn(String name) {
 		return columns.get(name);
 	}
+	public Collection<String> getColumnNames() {
+		return columns.keySet();
+	}
+	
 	public <T> DataColumn<T> getColumn(int index) {
 		String[] head = columns.keySet().toArray(new String[0]);
 		return getColumn(head[index]);
+	}
+	
+	public Object[] getRow(int r) {
+		Object[] re = new Object[columns()];
+		for (int i=0; i<re.length; i++)
+			re[i] = getColumn(i).getValue(r);
+		return re;
 	}
 	
 	public int columns() {

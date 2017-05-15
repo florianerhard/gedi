@@ -49,8 +49,9 @@ import java.util.regex.Pattern;
 
 import gedi.core.workspace.WorkspaceItemChangeEvent.ChangeType;
 import gedi.core.workspace.file.FileWorkspaceItem;
+import gedi.core.workspace.loader.WorkspaceItemLoader;
+import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
 import gedi.util.StringUtils;
-import gedi.util.io.Directory;
 import gedi.util.mutable.MutablePair;
 
 public class Workspace {
@@ -70,6 +71,13 @@ public class Workspace {
 		for (Consumer<WorkspaceEvent> l : workspaceListeners)
 			l.accept(e);
 		return current;
+	}
+	
+	public static <T> T loadItem(String path) throws IOException {
+		Path ppath = Paths.get(path);
+		WorkspaceItemLoader<T,?> loader = WorkspaceItemLoaderExtensionPoint.getInstance().get(ppath);
+		if (loader==null) throw new IOException("No loader for "+path);
+		return loader.load(ppath);
 	}
 
 	public static Workspace getCurrent() {

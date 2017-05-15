@@ -26,31 +26,35 @@ public enum GenomicRegionPosition {
 	Start{
 		@Override
 		public int position(ReferenceSequence reference, GenomicRegion region, int offset) {
-			return region.getStart()+offset;
+			if (offset<0) return region.getStart()+offset;
+			if (offset>region.getTotalLength()) return region.getEnd()+offset-region.getTotalLength();
+			return region.map(offset);
 		}
 	},
 	Stop {
 		@Override
 		public int position(ReferenceSequence reference, GenomicRegion region, int offset) {
-			return region.getStop()+offset;
+			return End.position(reference, region, offset-1);
 		}
 	},
 	End {
 		@Override
 		public int position(ReferenceSequence reference, GenomicRegion region, int offset) {
-			return region.getEnd()+offset;
+			if (offset>=0) return region.getEnd()+offset;
+			if (offset<-region.getTotalLength()) return region.getStart()+offset+region.getTotalLength();
+			return region.map(region.getTotalLength()+offset);
 		}
 	},
 	FivePrime {
 		@Override
 		public int position(ReferenceSequence reference, GenomicRegion region, int offset) {
-			return reference.getStrand()==Strand.Minus?region.getStop()-offset:region.getStart()+offset;
+			return reference.getStrand()==Strand.Minus?Stop.position(reference,region,-offset):Start.position(reference,region,offset);
 		}
 	},
 	ThreePrime {
 		@Override
 		public int position(ReferenceSequence reference, GenomicRegion region, int offset) {
-			return reference.getStrand()==Strand.Minus?region.getStart()-offset:region.getStop()+offset;
+			return reference.getStrand()==Strand.Minus?Start.position(reference,region,-offset):Stop.position(reference,region,offset);
 		}
 	}, 
 	/** 
@@ -78,9 +82,7 @@ public enum GenomicRegionPosition {
 			if (!(ref.getData() instanceof Transcript)) throw new RuntimeException("Can only be called with Transcript data!");
 			Transcript t = (Transcript) ref.getData();
 			if (!t.isCoding()) throw new RuntimeException("Not a coding trancript!");
-			if (ref.getReference().getStrand()==Strand.Minus)
-				return t.getCodingEnd()-1;
-			return t.getCodingStart();
+			return FivePrime.position(t.getCds(ref),offset);
 		}
 		
 		@Override
@@ -102,9 +104,7 @@ public enum GenomicRegionPosition {
 			if (!(ref.getData() instanceof Transcript)) throw new RuntimeException("Can only be called with Transcript data!");
 			Transcript t = (Transcript) ref.getData();
 			if (!t.isCoding()) throw new RuntimeException("Not a coding trancript!");
-			if (ref.getReference().getStrand()==Strand.Minus)
-				return t.getCodingStart()+2;
-			return t.getCodingEnd()-3;
+			return ThreePrime.position(t.getCds(ref),offset-2);
 		}
 		
 		@Override

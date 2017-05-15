@@ -25,6 +25,7 @@ import gedi.util.datastructure.charsequence.MutableCharSequence;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.mutable.MutableMonad;
 
 import java.io.File;
 import java.io.IOException;
@@ -74,12 +75,21 @@ public class JS {
 		
 		try {
 			engine.eval(new StringReader("function print(arg) { context.getWriter().write(Java.type(\"gedi.util.StringUtils\").toString(arg)); context.getWriter().flush(); }"));
-			engine.eval(new StringReader("function printf(format,arg) { context.getWriter().write(Java.type(\"java.lang.String\").format(Java.type(\"java.util.Locale\").US,arg)); context.getWriter().flush(); }"));
+			engine.eval(new StringReader("function printf(format,arg) { context.getWriter().write(Java.type(\"java.lang.String\").format(Java.type(\"java.util.Locale\").US,format,arg)); context.getWriter().flush(); }"));
 			engine.eval(new StringReader("function println(arg) { context.getWriter().write(Java.type(\"gedi.util.StringUtils\").toString(arg)+\"\\n\"); context.getWriter().flush(); }"));
 			
-			engine.eval(new StringReader("function echo(obj) { print(obj.getClass().getSimpleName()+\": \"+Java.type(\"gedi.util.StringUtils\").toString(obj)+\"\\n\");}"));
+			engine.eval(new StringReader("function echo(obj) { print(obj.getClass().getSimpleName()+\":\\n\"+Java.type(\"gedi.util.StringUtils\").toString(obj)+\"\\n\");}"));
+			engine.eval(new StringReader("function load(path) { "
+					+ "var loader = Java.type(\"gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint\").getInstance().get(Java.type(\"java.nio.file.Paths\").get(path));"
+					+ "if (loader==null) return null;"
+					+ "return loader.load(Java.type(\"java.nio.file.Paths\").get(path));"
+					+ "}"));
+			
+			
+			
 			
 			systemVariables.add("print");
+			systemVariables.add("printf");
 			systemVariables.add("println");
 			systemVariables.add("echo");
 			
@@ -92,6 +102,7 @@ public class JS {
 		}
 		
 	}
+	
 	
 	public void setInterpolateStrings(boolean interpolateStrings) {
 		this.interpolateStrings = interpolateStrings;
@@ -131,36 +142,44 @@ public class JS {
 		return addParam(parseParameter(args, false));
 	}
 	
-	public void putVariable(String name, Object var) {
+	public JS putVariable(String name, Object var) {
 		engine.getBindings(ScriptContext.ENGINE_SCOPE).put(name, var);
+		return this;
 	}
 	
-	public void putSystemVariable(String name, Object var) {
+	
+	public JS putSystemVariable(String name, Object var) {
 		engine.getBindings(ScriptContext.ENGINE_SCOPE).put(name, var);
 		systemVariables.add(name);
+		return this;
 	}
 
 	
-	public void putVariables(Map<String,Object> vars) {
+	public JS putVariables(Map<String,Object> vars) {
 		for (String n : vars.keySet())
 			engine.getBindings(ScriptContext.ENGINE_SCOPE).put(n, vars.get(n));
+		return this;
 	}
-	public void putSystemVariables(Map<String,Object> vars) {
+	public JS putSystemVariables(Map<String,Object> vars) {
 		for (String n : vars.keySet())
 			engine.getBindings(ScriptContext.ENGINE_SCOPE).put(n, vars.get(n));
 		systemVariables.addAll(vars.keySet());
+		return this;
 	}
 	
-	public void setStdout(Writer out) {
+	public JS setStdout(Writer out) {
 		engine.getContext().setWriter(out);
+		return this;
 	}
 	
-	public void setStderr(Writer err) {
+	public JS setStderr(Writer err) {
 		engine.getContext().setErrorWriter(err);
+		return this;
 	}
 	
-	public void setStdin(Reader in) {
+	public JS setStdin(Reader in) {
 		engine.getContext().setReader(in);
+		return this;
 	}
 	
 	public Writer getStdout() {
@@ -295,42 +314,23 @@ public class JS {
 	
 	public String prepareSource(String src) throws ScriptException {
 		String re = src;
-		if (interpolateStrings)
-			re = interpolateStrings(re);
+		if (interpolateStrings) {
+			MutableMonad<ScriptException> ex = new MutableMonad<ScriptException>();
+			re = StringUtils.replaceVariablesInQuotes(re,name->{
+				try {
+					return StringUtils.toString(eval(name));
+				} catch (ScriptException e) {
+					ex.Item=e;
+					return null;
+				}
+			});
+			if (ex.Item!=null) throw ex.Item;
+		}
 		re = replaceClassesPackages(re);
 		
 		return re;
 	}
 	
-	private String interpolateStrings(String re) throws ScriptException {
-		String m1 = MaskedCharSequence.maskEscaped(re, '\0', '"','\'').toString();
-		MaskedCharSequence masked = MaskedCharSequence.maskLeftToRight(m1,'\0', new char[] {'"'}, new char[] {'"'});
-		
-		Pattern var = Pattern.compile("(\\$[A-Za-z_][A-Za-z0-9_]*)|(\\$\\{[^\\}]+\\})");
-
-		Matcher m = var.matcher(re);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			m.appendReplacement(sb, "");
-			
-			String rep = m.group();
-			if (rep.startsWith("${") && rep.endsWith("}"))
-				rep = rep.substring(2, rep.length()-1);
-			else
-				rep = rep.substring(1);
-			
-			if (masked.isAllMasked(m.start(),m.end())) { 
-				Object v = eval(rep);
-				if (v!=null)
-					rep = v.toString();
-			}
-			sb.append(rep);
-		}
-		m.appendTail(sb);
-
-		return sb.toString();
-	}
-
 
 	public CompiledScript compileSource(String src) throws ScriptException {
 		return compilePreparedSource(prepareSource(src));

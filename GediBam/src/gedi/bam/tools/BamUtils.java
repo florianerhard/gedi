@@ -252,16 +252,17 @@ public class BamUtils {
 		return re;
 	}
 	
-	public static ArrayList<SAMRecord> toSamRecords(ReferenceGenomicRegion<? extends AlignedReadsData> read, SAMFileHeader header, int condition, Supplier<String> readname) {
+	public static ArrayList<SAMRecord> toSamRecords(ReferenceGenomicRegion<? extends AlignedReadsData> read, SAMFileHeader header, int condition, Supplier<String> readname, SequenceProvider seq) {
 		
 		StringBuilder cigar = new StringBuilder();
 		cigar.append(read.getRegion().getLength(0)).append("M");
 		for (int i=1; i<read.getRegion().getNumParts(); i++) 
-			cigar.append(read.getRegion().getIntronLength(i-1)).append("I").append(read.getRegion().getLength(i)).append("M");
+			cigar.append(read.getRegion().getIntronLength(i-1)).append("N").append(read.getRegion().getLength(i)).append("M");
 		
 		ArrayList<SAMRecord> re = new ArrayList<SAMRecord>();
 		for (int d=0; d<read.getData().getDistinctSequences(); d++) {
 			int c = condition>=0?read.getData().getCount(d, condition):read.getData().getTotalCountForDistinctInt(d, ReadCountMode.All);
+			int edit = read.getData().getVariationCount(d);
 			for (int i=0; i<c; i++) {
 			
 				SAMRecord rec = new SAMRecord(header);
@@ -271,6 +272,19 @@ public class BamUtils {
 				rec.setReadName(readname.get());
 				rec.setReadNegativeStrandFlag(read.getReference().getStrand().equals(Strand.Minus));
 				rec.setReferenceName(read.getReference().getName());
+				rec.setMappingQuality(255);
+				rec.setAttribute("NM", edit);
+				
+				MismatchString mm = MismatchString.from(read.getData().getVariations(d), read.getReference().getStrand(), read.getRegion().getTotalLength(),false);
+				rec.setAttribute("MD", mm.toString());
+				rec.setAttribute("NH", read.getData().getMultiplicity(d));
+
+				if (seq!=null) {
+					String reference = seq.getPlusSequence(read.getReference().getName(), read.getRegion()).toString();
+					mm = MismatchString.from(read.getData().getVariations(d), read.getReference().getStrand(), read.getRegion().getTotalLength(),true);
+					rec.setReadString(mm.reconstitute(reference));
+					rec.setBaseQualityString(StringUtils.repeat("I", rec.getReadString().length()));
+				}
 				
 				re.add(rec);
 			}

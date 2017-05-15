@@ -18,9 +18,13 @@
 
 package gedi.util.io.text;
 
+import gedi.util.FunctorUtils;
 import gedi.util.functions.ExtendedIterator;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -40,6 +44,10 @@ public class LineIterator implements ExtendedIterator<String>, AutoCloseable {
 	private long lastOffset = 0;
 
 
+	public LineIterator(File file, String... commentPrefixes) throws FileNotFoundException  {
+		this(new FileReader(file),commentPrefixes);
+	}
+	
 	public LineIterator(InputStream stream, String... commentPrefixes)  {
 		this(new InputStreamReader(stream),commentPrefixes);
 	}
@@ -146,5 +154,10 @@ public class LineIterator implements ExtendedIterator<String>, AutoCloseable {
 	@Override
 	public void remove() {}
 
+	
+	public String readAllText() {
+		return concat("\n");
+	}
 
+	
 }

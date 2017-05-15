@@ -22,12 +22,12 @@ package gedi.util.io.text.fasta;
 import gedi.util.FileUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.functions.ExtendedIterator;
-import gedi.util.io.Directory;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.fasta.index.FastaIndexFile;
 import gedi.util.mutable.MutablePair;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.HashMap;
@@ -51,7 +51,7 @@ public class FastaFile extends LineOrientedFile {
 	private FastaEntry[] entries;
 	private FastaHeaderParser headerParser = DefaultFastaHeaderParser.instance();
 	
-	public FastaFile(Directory dir, String name) {
+	public FastaFile(File dir, String name) {
 		super(dir,name);
 	}
 	

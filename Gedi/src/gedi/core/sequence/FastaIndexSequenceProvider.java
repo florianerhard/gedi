@@ -18,6 +18,7 @@
 
 package gedi.core.sequence;
 
+import gedi.core.reference.Chromosome;
 import gedi.core.region.GenomicRegion;
 import gedi.util.SequenceUtils;
 import gedi.util.StringUtils;
@@ -54,18 +55,19 @@ public class FastaIndexSequenceProvider implements SequenceProvider {
 		files.add(f);
 		for (String n : f.getEntryNames()) {
 //			System.out.println(n+"\t"+f.getEntry(n).length());
-			index.put(n, f.getEntry(n));
+			index.put(Chromosome.obtain(n).getName(), f.getEntry(n));
 		}
 	}
 	
 	private FastaIndexEntry getEntry(String name) {
+		name = Chromosome.obtain(name).getName();
 		FastaIndexEntry re = index.get(name);
-		if (re==null && name.indexOf(' ')!=-1)
-			re = index.get(name.substring(0,name.indexOf(' ')));
-		if (re==null && index.containsKey("chr"+name))
-			re = index.get("chr"+name);
-		if (re==null && index.containsKey(StringUtils.removeHeader(name, "chr")))
-			re = index.get(StringUtils.removeHeader(name, "chr"));
+//		if (re==null && name.indexOf(' ')!=-1)
+//			re = index.get(name.substring(0,name.indexOf(' ')));
+//		if (re==null && index.containsKey("chr"+name))
+//			re = index.get("chr"+name);
+//		if (re==null && index.containsKey(StringUtils.removeHeader(name, "chr")))
+//			re = index.get(StringUtils.removeHeader(name, "chr"));
 		return re;
 	}
 	

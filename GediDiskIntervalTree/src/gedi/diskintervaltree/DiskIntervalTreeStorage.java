@@ -30,7 +30,6 @@ import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.utils.OnlyMatchingGenomicIntervalCollectionPredicate;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.MappedSpliterator;
-import gedi.util.io.Directory;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
 
 import java.io.File;
@@ -49,14 +48,14 @@ import java.util.function.Supplier;
 
 public class DiskIntervalTreeStorage<D extends BinarySerializable>  implements GenomicRegionStorage<D> {
 	
-	private Directory folder;
+	private File folder;
 	private HashMap<String,DiskIntervalTree<D>> cache = new HashMap<String,DiskIntervalTree<D>>(); 
 
 	public DiskIntervalTreeStorage(String path) throws IOException {
-		this(new Directory(path));
+		this(new File(path));
 	}
 	
-	public DiskIntervalTreeStorage(Directory folder) throws IOException {
+	public DiskIntervalTreeStorage(File folder) throws IOException {
 		this.folder = folder;
 		if (!folder.exists()) folder.mkdirs();
 	}
@@ -94,7 +93,7 @@ public class DiskIntervalTreeStorage<D extends BinarySerializable>  implements G
 		return folder.hashCode();
 	}
 	
-	public Directory getFolder() {
+	public File getFolder() {
 		return folder;
 	}
 

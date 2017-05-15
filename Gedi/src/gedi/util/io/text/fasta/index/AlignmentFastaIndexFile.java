@@ -22,7 +22,6 @@ package gedi.util.io.text.fasta.index;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.tree.redblacktree.Interval;
 import gedi.util.datastructure.tree.redblacktree.IntervalTreeSet;
-import gedi.util.io.Directory;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.fasta.FastaFile;
 
@@ -45,7 +44,7 @@ public class AlignmentFastaIndexFile extends LineOrientedFile {
 		super(path);
 	}
 
-	public AlignmentFastaIndexFile(Directory dir, String name) {
+	public AlignmentFastaIndexFile(File dir, String name) {
 		super(dir, name);
 	}
 

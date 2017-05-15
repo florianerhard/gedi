@@ -26,9 +26,11 @@ import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
 import gedi.util.ArrayUtils;
+import gedi.util.datastructure.array.NumericArray;
 
 import java.util.Iterator;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 
 @GenomicRegionFeatureDescription(fromType=ReferenceGenomicRegion.class,toType=Integer.class)
@@ -123,10 +125,19 @@ public class RelativePosition extends AbstractFeature<Integer> {
 			c[i]++;
 		}
 	}
+	
+	
+	private double currentFac = 1;
+	@Override
+	public UnaryOperator<NumericArray> getCountAdapter() {
+		return na->na.applyInPlace(e->e*currentFac);
+	}
 
 	@Override
 	protected void accept_internal(Set<Integer> values) {
 	
+		currentFac = 1;
+		
 		Set<ReferenceGenomicRegion<?>> inputs = getInput(0);
 		
 		for (ReferenceGenomicRegion<?> rgr : inputs) {
@@ -139,12 +150,12 @@ public class RelativePosition extends AbstractFeature<Integer> {
 			if (!rgr.getRegion().contains(r))
 				continue;
 			
-			if (rgr.getData() instanceof Transcript && !forceFullRegion) {
+			if (!forceFullRegion) {
 				if (medianSizes==null) throw new RuntimeException("Input universe could not be iterated! Set ForceFullRegion!");
 				
 				Transcript t = ((Transcript) rgr.getData()); 
-				if (t.isCoding()) {
-
+				if (t.isCoding() && t.get5Utr(rgr.getReference(), rgr.getRegion()).getTotalLength()>0 && t.get3Utr(rgr.getReference(), rgr.getRegion()).getTotalLength()>0) {
+					
 					for (int p=0; p<3; p++) {
 						GenomicRegion part = t.getPart(rgr.getReference(), rgr.getRegion(), p);
 						if (part.contains(r)) {
@@ -158,6 +169,8 @@ public class RelativePosition extends AbstractFeature<Integer> {
 							
 							int bin = (int) (rel/binSize);
 							values.add(bin);
+							
+							currentFac = (medianSizes[p]/medianSizes[1])/(part.getTotalLength()/(double)t.getCds(rgr.getReference(), rgr.getRegion()).getTotalLength());
 						}
 					}
 				}

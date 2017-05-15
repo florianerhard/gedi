@@ -602,7 +602,9 @@ public enum ColorPalettes {
 		return re;
 	}
 	public static Color[] get(String name, int numColors) {
-		return ColorPalettes.valueOf(name).getPalette(numColors);
+		ColorPalettes pal = ColorPalettes.valueOf(name);
+		if (pal==null) return EI.repeat(numColors, Color.black).toArray(Color.class);
+		return pal.getPalette(numColors);
 	}
 	public static Color[] diverging(int index, int numColors) {
 		return ColorPalettes.valueOf(divNames [index]).getPalette(numColors);

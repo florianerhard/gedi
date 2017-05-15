@@ -24,9 +24,15 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 
+import com.sun.org.apache.bcel.internal.util.ClassPath;
+
+import gedi.app.classpath.ClassPathCache;
 import gedi.util.FileUtils;
 import gedi.util.dynamic.DynamicObject;
+import gedi.util.functions.EI;
+import gedi.util.io.text.LineIterator;
 
 public class Config {
 
@@ -129,17 +135,28 @@ public class Config {
 
 	public DynamicObject getConfig() {
 		if (config==null) {
-			File cf = new File(getConfigFolder()+"/"+DEFAULT_CONFIG_NAME);
-			if (cf.exists())
-				try {
-					config = DynamicObject.parseJson(FileUtils.readAllText(cf));
-				} catch (IOException e) {
-					throw new RuntimeException("Cannot read config!",e);
-				}
-			else
-				config = DynamicObject.getEmpty();
+			try {
+				config = DynamicObject.parseJson(new LineIterator(getClass().getResource("/resources/default.config").openStream()).readAllText());
+				File cf = new File(new File(ClassPathCache.getInstance().getClassPathOfClass(getClass()).toString()).getParentFile(),DEFAULT_CONFIG_NAME);
+				if (cf.exists())
+					config = config.cascade(DynamicObject.parseJson(FileUtils.readAllText(cf)));
+				
+				cf = new File(getConfigFolder()+"/"+DEFAULT_CONFIG_NAME);
+				if (cf.exists())
+					config = config.cascade(DynamicObject.parseJson(FileUtils.readAllText(cf)));
+				
+				
+//				FileUtils.writeAllText(config.toJson(), cf);
+			} catch (IOException e) {
+				throw new RuntimeException("Cannot read config!",e);
+			}
+			
 		}
 		return config;
+	}
+	
+	public List<String> getTemplateSearchURLs() {
+		return EI.wrap(getConfig().getEntry("templates").asArray()).map(d->d.asString()).list();
 	}
 
 
@@ -151,6 +168,9 @@ public class Config {
 			throw new RuntimeException("Could not write config!",e);
 		}
 	}
+
+
+	
 
 
 	

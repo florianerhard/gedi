@@ -27,9 +27,13 @@ import gedi.core.reference.ReferenceSequenceConversion;
 import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
+import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
 import gedi.gui.genovis.pixelMapping.PixelLocationMapping;
 import gedi.util.datastructure.tree.redblacktree.IntervalTree;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.Consumer;
@@ -50,6 +54,16 @@ public class StorageSource<D> implements GenomicRegionDataSource<IntervalTree<Ge
 	
 	public StorageSource(Strand filter) {
 		this.filter = filter;
+	}
+	
+	
+	public void addFile(String path) throws IOException {
+		Path p = Paths.get(path);
+		this.storages.add((GenomicRegionStorage<D>) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p));
+	}
+	
+	public ArrayList<GenomicRegionStorage<D>> getStorages() {
+		return storages;
 	}
 	
 	public void add(GenomicRegionStorage<D> storage) {

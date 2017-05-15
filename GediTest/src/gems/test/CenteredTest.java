@@ -60,7 +60,7 @@ public class CenteredTest {
 		read.close();
 	}
 	
-//	@Test
+	@Test
 	public void genomicRegionIntervalTreeTest() throws SQLException, IOException {
 		MemoryIntervalTreeStorage<MutableInteger> storage = new MemoryIntervalTreeStorage<MutableInteger>(MutableInteger.class);
 		ReferenceSequence ref = Chromosome.obtain("test");

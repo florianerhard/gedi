@@ -25,10 +25,12 @@ import gedi.gui.genovis.style.StyleObject;
 import gedi.riboseq.inference.orf.Orf;
 import gedi.util.ArrayUtils;
 import gedi.util.dynamic.DynamicObject;
+import gedi.util.functions.TriFunction;
 import gedi.util.gui.PixelBasepairMapper;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.util.HashMap;
 
 public class OrfRenderer extends PeptideRenderer<Orf> {
@@ -62,6 +64,10 @@ public class OrfRenderer extends PeptideRenderer<Orf> {
 		else
 			setStringer(o->o.getOrfType().toString());
 		
+		TriFunction<ReferenceSequence, GenomicRegion, Orf, Paint> oldBorder = border;
+		if (!data.passesAllFilters()) 
+			border = (ref,reg,c)->Color.red;
+		
 		GenomicRegion re = super.renderBox(g2, locationMapper, reference, strand, region, data, xOffset, y, h);
 		
 		setStringer(o->o.getOrfType().toString());
@@ -70,6 +76,8 @@ public class OrfRenderer extends PeptideRenderer<Orf> {
 			GenomicRegion codingRegion = data.getStartToStop(reference.toStrand(strand), region);
 			super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
 		}
+		
+		border = oldBorder;
 		
 		return re;
 	}

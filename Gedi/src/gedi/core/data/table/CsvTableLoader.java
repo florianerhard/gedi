@@ -21,9 +21,10 @@ package gedi.core.data.table;
 import gedi.core.workspace.loader.WorkspaceItemLoader;
 import gedi.util.io.text.tsv.formats.CsvReaderFactory;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
-public class CsvTableLoader implements WorkspaceItemLoader<Table> {
+public class CsvTableLoader implements WorkspaceItemLoader<Table,Void> {
 	
 
 	public static final String[] extensions = {"csv","tsv"};
@@ -46,6 +47,11 @@ public class CsvTableLoader implements WorkspaceItemLoader<Table> {
 	@Override
 	public Table load(Path path) {
 		return new CsvReaderFactory().createReader(path).readTable();
+	}
+	
+	@Override
+	public Void preload(Path path) throws IOException {
+		return null;
 	}
 	
 //	

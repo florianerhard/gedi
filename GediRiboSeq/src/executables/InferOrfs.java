@@ -70,6 +70,7 @@ import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -155,9 +156,11 @@ public class InferOrfs {
 		Genomic g = null;
 		RiboModel[] model = null;
 		String prefix = null;
+		int minTotalActivity = -1;
 		int minRegionCount = 5;
 		int minReadCount = 10;
 		int minRi=-1;
+		int minLength = -1;
 		int nthreads = Runtime.getRuntime().availableProcessors();
 		int chunk = 10;
 		String test = null;
@@ -165,6 +168,7 @@ public class InferOrfs {
 		boolean annot = true;
 		GenomicRegionStorage<?> keep = null;
 		boolean onlyStandardChromosomes = false;
+		boolean filterByInternal = true;
 		
 		Progress progress = new NoProgress();
 		
@@ -209,6 +213,9 @@ public class InferOrfs {
 			else if (args[i].equals("-filterByGap")) {
 				filterByGap = true;
 			}
+			else if (args[i].equals("-noFilterByInternal")) {
+				filterByInternal = false;
+			}
 			else if (args[i].equals("-onlyStandardChromosomes")) {
 				onlyStandardChromosomes = true;
 			}
@@ -223,6 +230,12 @@ public class InferOrfs {
 			}
 			else if (args[i].equals("-minread")) {
 				minReadCount = checkIntParam(args, ++i);
+			}
+			else if (args[i].equals("-mintotal")) {
+				minTotalActivity = checkIntParam(args, ++i);
+			}
+			else if (args[i].equals("-minlength")) {
+				minLength = checkIntParam(args, ++i);
 			}
 			else if (args[i].equals("-o")) {
 				prefix = checkParam(args,++i);
@@ -255,19 +268,30 @@ public class InferOrfs {
 		
 		if (minRi<0) minRi = 1;
 		
+		MemoryIntervalTreeStorage<RiboClusterInfo> clusters;
 		
-		RiboClusterBuilder clb = new RiboClusterBuilder(prefix, reads, filter, g.getTranscripts(), minRegionCount, minReadCount, progress);
-		MemoryIntervalTreeStorage<RiboClusterInfo> clusters = clb.build();
-		Genomic ug = g;
-		clusters.getReferenceSequences().removeIf(r->!ug.getSequenceNames().contains(r.getName()));
+		if (test==null) {
+			RiboClusterBuilder clb = new RiboClusterBuilder(prefix, reads, filter, g.getTranscripts(), minRegionCount, minReadCount, progress, nthreads);
+			clusters = clb.build();
+			Genomic ug = g;
+			clusters.getReferenceSequences().removeIf(r->!ug.getSequenceNames().contains(r.getName()));
+		} else {
+			clusters = new MemoryIntervalTreeStorage<>(RiboClusterInfo.class);
+			clusters.add(ImmutableReferenceGenomicRegion.parse(test));
+		}
 		
 		OutputCodonActivitiesProcessor codonOutProc = new OutputCodonActivitiesProcessor(prefix, numCond);
 		
 		OrfFinder v = new OrfFinder(g.getTranscripts(),reads, new CodonInference(model,g)
 																	.setFilter(filter)
 																	.setRegularization(model[0].getInferenceLamdba()));
+		if (minLength>=0)
+			v.setMinAaLength(minLength);
+		if (minTotalActivity>=0)
+			v.setMinOrfTotalActivity(minTotalActivity);
 		v.setMinimalReproducibilityIndex(minRi);
 		v.setFilterByGap(filterByGap);
+		v.setFilterByInternal(filterByInternal);
 		v.setAssembleAnnotationFirst(annot);
 //		LineWriter codOut = new LineOrientedFile(prefix+".codons.data").write();
 //		v.setCodonOut(codOut);
@@ -299,10 +323,18 @@ public class InferOrfs {
 		
 		LineWriter tab = new LineOrientedFile(prefix+".orfs.tsv").write();
 		Orf.writeTableHeader(tab, conditions);
+		progress.init();
+		progress.setCount((int)clusters.size());
+		Progress uprog = progress;
 		ExtendedIterator<ImmutableReferenceGenomicRegion<Orf>> oit = (test==null?clusters.ei():clusters.ei(test))//"JN555585+:107973-109008")
 			.iff(onlyStandardChromosomes, it->it.filter(rgr->rgr.getReference().isStandard()))
-			.progress(progress, (int)clusters.size(), r->r.toLocationString()+" n="+count.get())
+//			.progress(progress, (int)clusters.size(), r->r.toLocationString()+" n="+count.get())
 			.parallelized(nthreads, chunk, ei->ei
+				.sideEffect(cl->{
+					synchronized (uprog) {
+						uprog.setDescription(()->cl.toLocationString()+" n="+count.get()).incrementProgress();
+					}
+				})
 				.map(cl->v.computeChunk(count.getAndIncrement(),cl.getReference(), cl.getRegion().getStart(), cl.getRegion().getEnd(), codonOutProc))
 				.demultiplex(st->st.ei())
 				.sideEffect(r->{
@@ -350,8 +382,11 @@ public class InferOrfs {
 		
 //		CenteredDiskIntervalTreeStorage<OrfInfo> out = new CenteredDiskIntervalTreeStorage<OrfInfo>(prefix+".orfs.cit", OrfInfo.class);
 		out.fill(oit);
-		out.setMetaData(reads.getMetaData());
+		if (reads.getMetaData()!=null && reads.getMetaData().isObject())
+			out.setMetaData(reads.getMetaData());
+		log.log(Level.INFO, "Finishing viewer indices");
 		
+		progress.finish();
 		codonOutProc.finish();
 		
 //		codonOut.build();
@@ -453,6 +488,7 @@ public class InferOrfs {
 						c.getRegion().map(2),2,
 						sum, data);
 			}
+			codonOut.build();
 			for (int i=0; i<perCondCodonOut.length; i++) {
 				for (ImmutableReferenceGenomicRegion<MemoryFloatArray> c : cit.ei().loop()) {
 					double v = c.getData().getFloat(i);
@@ -468,12 +504,9 @@ public class InferOrfs {
 								v, data);
 					}
 				}
-			}
-			codonOut.build();
-			for (int i=0; i<perCondCodonOut.length; i++)
 				perCondCodonOut[i].build();
+			}
 			
-			in.close();
 			new File(in.getPath()).delete();
 		}
 		

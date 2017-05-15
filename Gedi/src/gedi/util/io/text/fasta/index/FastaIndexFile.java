@@ -20,7 +20,6 @@ package gedi.util.io.text.fasta.index;
 
 
 import gedi.util.StringUtils;
-import gedi.util.io.Directory;
 import gedi.util.io.randomaccess.ConcurrentPageFile;
 import gedi.util.io.randomaccess.ConcurrentPageFileView;
 import gedi.util.io.randomaccess.PageFile;
@@ -51,7 +50,7 @@ public class FastaIndexFile extends LineOrientedFile {
 		super(path);
 	}
 
-	public FastaIndexFile(Directory dir, String name) {
+	public FastaIndexFile(File dir, String name) {
 		super(dir, name);
 	}
 

@@ -18,14 +18,17 @@
 
 package gedi.region.bam;
 
+import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.region.GenomicRegionStorage;
+import gedi.core.region.GenomicRegionStoragePreload;
 import gedi.core.workspace.loader.WorkspaceItemLoader;
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.text.LineOrientedFile;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class BamGenomicRegionStorageLoader implements WorkspaceItemLoader<GenomicRegionStorage> {
+public class BamGenomicRegionStorageLoader implements WorkspaceItemLoader<BamGenomicRegionStorage,GenomicRegionStoragePreload> {
 
 	public static String[] extensions = {"bam","bamlist"};
 	
@@ -35,7 +38,7 @@ public class BamGenomicRegionStorageLoader implements WorkspaceItemLoader<Genomi
 	}
 
 	@Override
-	public GenomicRegionStorage load(Path path) throws IOException {
+	public BamGenomicRegionStorage load(Path path) throws IOException {
 		String p = path.toString();
 		if (p.endsWith(".bam"))
 			return new BamGenomicRegionStorage(p);
@@ -45,10 +48,20 @@ public class BamGenomicRegionStorageLoader implements WorkspaceItemLoader<Genomi
 	}
 
 	@Override
-	public Class<GenomicRegionStorage> getItemClass() {
-		return GenomicRegionStorage.class;
+	public Class<BamGenomicRegionStorage> getItemClass() {
+		return BamGenomicRegionStorage.class;
 	}
 
+	@Override
+	public GenomicRegionStoragePreload preload(Path path) throws IOException {
+		BamGenomicRegionStorage bam = load(path);
+		Class<?> cls = bam.getType();
+		AlignedReadsData rec = bam.getRandomRecord();
+		DynamicObject meta = bam.getMetaData();
+		bam.close();
+		return new GenomicRegionStoragePreload(AlignedReadsData.class, rec, meta);
+	}
+	
 	@Override
 	public boolean hasOptions() {
 		return false;

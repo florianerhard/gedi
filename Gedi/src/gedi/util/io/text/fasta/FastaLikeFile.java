@@ -20,10 +20,10 @@ package gedi.util.io.text.fasta;
 
 
 import gedi.util.FunctorUtils;
-import gedi.util.io.Directory;
 import gedi.util.io.text.LineOrientedFile;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public class FastaLikeFile<T> extends LineOrientedFile {
 	private T[] entries;
 	private Function<String[],T> parser;
 	
-	public FastaLikeFile(Directory dir, String name, Function<String[],T> parser, Class<T> cls) {
+	public FastaLikeFile(File dir, String name, Function<String[],T> parser, Class<T> cls) {
 		super(dir,name);
 		this.parser = parser;
 		this.cls = cls;

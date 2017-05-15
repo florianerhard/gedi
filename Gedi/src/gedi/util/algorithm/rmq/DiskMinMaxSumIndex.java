@@ -199,6 +199,9 @@ public class DiskMinMaxSumIndex {
 			a.deCumSum();
 		return re;
 	}
+	public boolean hasSum() {
+		return sum;
+	}
 
 	public static void createMinIndex(PageFileWriter writer, NumericArray a) throws IOException {
 

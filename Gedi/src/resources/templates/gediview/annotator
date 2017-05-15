@@ -1,0 +1,37 @@
+<?JS0
+varin("id","Annotator id",false);
+?>
+<?JS
+var id = id?id:"Editor";
+?>
+	<MemoryIntervalTreeStorage id="memstorage.<?JS id ?>" cls="NameAnnotation" />
+	<StorageSource id="+.storage.<?JS id ?>" filter="+">
+		<add st="memstorage.<?JS id ?>" />
+	</StorageSource>
+	<StorageSource id="-.storage.<?JS id ?>" filter="-">
+		<add st="memstorage.<?JS id ?>" />
+	</StorageSource>
+	
+	
+	<AnnotateRegionsTrack input="+.storage.<?JS id ?>" id="+.<?JS id ?>" st="memstorage.<?JS id ?>" strand="+" >
+		<Background c="#777777" />
+		<BoxRenderer>
+			<BoxRenderer>
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="2" />
+				<Background c="white" />
+			</BoxRenderer>
+		</BoxRenderer>
+	</AnnotateRegionsTrack>
+	<AnnotateRegionsTrack input="-.storage.<?JS id ?>" id="-.<?JS id ?>" st="memstorage.<?JS id ?>" strand="-" >
+		<Background c="#777777" />
+		<BoxRenderer>
+			<BoxRenderer>
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="2" />
+				<Background c="white" />
+			</BoxRenderer>
+		</BoxRenderer>
+	</AnnotateRegionsTrack>

@@ -19,13 +19,15 @@
 package gedi.util.io.text.tsv.formats;
 
 import gedi.core.data.annotation.NameAnnotation;
+import gedi.core.region.GenomicRegionStoragePreload;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
 import gedi.core.workspace.loader.WorkspaceItemLoader;
+import gedi.util.dynamic.DynamicObject;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class LocationsFileLoader implements WorkspaceItemLoader<MemoryIntervalTreeStorage<NameAnnotation>> {
+public class LocationsFileLoader implements WorkspaceItemLoader<MemoryIntervalTreeStorage<NameAnnotation>,GenomicRegionStoragePreload> {
 
 	public static final String[] extensions = new String[]{"locations"};
 	
@@ -43,6 +45,11 @@ public class LocationsFileLoader implements WorkspaceItemLoader<MemoryIntervalTr
 	@Override
 	public Class<MemoryIntervalTreeStorage<NameAnnotation>> getItemClass() {
 		return (Class)MemoryIntervalTreeStorage.class;
+	}
+	
+	@Override
+	public GenomicRegionStoragePreload preload(Path path) throws IOException {
+		return new GenomicRegionStoragePreload(NameAnnotation.class, new NameAnnotation(""),DynamicObject.getEmpty());
 	}
 
 	@Override

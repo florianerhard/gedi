@@ -18,8 +18,10 @@
 
 package gedi.util.datastructure.charsequence;
 
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.collections.intcollections.IntArrayList;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,6 +59,16 @@ public class MaskedCharSequence implements CharSequence {
 	
 	public CharSequence getUnmasked() {
 		return seq;
+	}
+	
+	public ArrayGenomicRegion getUnmaskedRegion() {
+		IntArrayList re = new IntArrayList();
+		if (!masked.get(0)) re.add(0);
+		for (int i=1; i<length(); i++) {
+			if (i!=0 && masked.get(i)!=masked.get(i-1)) re.add(i);
+		}
+		if (!masked.get(length()-1)) re.add(length()-1);
+		return new ArrayGenomicRegion(re);
 	}
 	
 	public char getMask() {
@@ -114,6 +126,23 @@ public class MaskedCharSequence implements CharSequence {
 		for (int i=0; i<seq.length(); i++) {
 			if (seq.charAt(i)=='\\' && ++i<seq.length() && ArrayUtils.find(escape, seq.charAt(i))>=0) {
 				masked.putQuick(i-1, true);
+				masked.putQuick(i, true);
+			}
+		}
+		
+		return new MaskedCharSequence(seq, masked, mask);
+	}
+	
+	public static MaskedCharSequence maskChars(CharSequence seq, char mask, char...chars) {
+		int l = seq.length();
+		boolean[] mchars = new boolean[265];
+		for (char c : chars)
+			mchars[c] = true;
+		
+		BitVector masked = new BitVector(l);
+		
+		for (int i=0; i<seq.length(); i++) {
+			if (mchars[seq.charAt(i)]) {
 				masked.putQuick(i, true);
 			}
 		}

@@ -20,6 +20,7 @@ package gedi.app;
 
 import gedi.app.classpath.ClassPath;
 import gedi.app.classpath.ClassPathCache;
+import gedi.app.classpath.JARClassPath;
 import gedi.util.LogUtils;
 import gedi.util.functions.EI;
 
@@ -45,7 +46,7 @@ public class Gedi {
 			Config.getInstance();
 			LogUtils.config(nolog);
 			log.info("Command: "+getStartupCommand());
-			log.info("Gedi "+version()+" startup");
+			log.info("Gedi "+version()+" ("+develOption()+") startup");
 			Runtime.getRuntime().addShutdownHook(new Thread(()->log.info("Finished: "+getStartupCommand())));
 			Locale.setDefault(Locale.US);
 			
@@ -77,6 +78,10 @@ public class Gedi {
 			}
 		}
 		return versions;
+	}
+	
+	public static String develOption() {
+		return ClassPathCache.getInstance().getClassPathOfClass(Gedi.class) instanceof JARClassPath?"JAR":"devel";
 	}
 	
 	public static String version(String app) {

@@ -439,8 +439,8 @@ public class CleavageModelEstimator {
 		String[] lines = in.lineIterator().toArray(new String[0]);
 		
 		String[] cond = EI.wrap(lines,1,lines.length).map(s->StringUtils.splitField(s, '\t', 0)).unique(true).toArray(new String[0]);
-		obsMinLength = EI.wrap(lines,1,lines.length).map(s->Integer.parseInt(StringUtils.splitField(s, '\t', 1))).collect((BinaryOperator<Integer>)Math::min);
-		obsMaxLength = EI.wrap(lines,1,lines.length).map(s->Integer.parseInt(StringUtils.splitField(s, '\t', 1))).collect((BinaryOperator<Integer>)Math::max);
+		obsMinLength = EI.wrap(lines,1,lines.length).map(s->Integer.parseInt(StringUtils.splitField(s, '\t', 1))).reduce((BinaryOperator<Integer>)Math::min);
+		obsMaxLength = EI.wrap(lines,1,lines.length).map(s->Integer.parseInt(StringUtils.splitField(s, '\t', 1))).reduce((BinaryOperator<Integer>)Math::max);
 		
 		mapping = new ContrastMapping();
 		for (int i=0; i<cond.length; i++)
@@ -630,8 +630,15 @@ public class CleavageModelEstimator {
 	}
 	
 	private void correctMaxPos() {
+		int shift;
 		int cmax = ArrayUtils.argmax(bestPl);
-		int shift = maxPos-cmax;
+		if (maxPos<0) {
+			int dmax = ArrayUtils.argmax(bestPr);
+			
+			shift = (dmax-cmax)/2;
+		} else {
+			shift = maxPos-cmax;
+		}
 		shift = (int)(Math.round(shift/3.0)*3);
 		if (shift!=0)
 			System.err.println("Correcting from "+cmax+" to "+(cmax+shift)+" (desired: "+maxPos+")");

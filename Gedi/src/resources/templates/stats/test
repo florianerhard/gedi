@@ -1,0 +1,25 @@
+<GenomicRegionFeaturePipeline>
+	<Labels l="<?JS print(EI.wrap(labels).concat(',')) ?>" />
+
+	<AnnotationFeature id="Transcript" data="false" >
+		<Transcripts g="genomic" flank="50" />
+	</AnnotationFeature>
+	
+	<RelativePosition id="Position" input="Transcript" >
+		<ReadPosition p="Center" />
+	</RelativePosition>
+
+	
+
+	<FeatureStatisticOutput file="<?JS prefix ?>pos.tsv" input="Position">
+		<Condition js="this.isUniqueInput(0)" />
+		<CountAdapter fromFeature="0" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Position</Section>
+			<Title>Position (A)</Title>
+			<Description>Shows the number of reads starting within coding transcripts. The x axis is the relative position of the read start within the three regions (5'-UTR: &lt;0; CDS: 0-100; 3'-UTR: &gt;100). Only reads where this position is unique for all Isoforms are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+</GenomicRegionFeaturePipeline>
+

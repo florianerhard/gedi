@@ -124,7 +124,7 @@ public class DeconvolveRiboSeqQuantifier extends KineticQuantifier {
 	}
 	
 	private double effectiveLength(HashSet<ReferenceGenomicRegion<?>> k) {
-		ArrayGenomicRegion intersection = EI.wrap(k).collect(new ArrayGenomicRegion(0,Integer.MAX_VALUE),(r,u)->u.intersect(r.getRegion()));
+		ArrayGenomicRegion intersection = EI.wrap(k).reduce(new ArrayGenomicRegion(0,Integer.MAX_VALUE),(r,u)->u.intersect(r.getRegion()));
 		int re = intersection.getTotalLength()/3;
 		return re;
 	}

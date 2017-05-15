@@ -1,0 +1,13 @@
+<?JS0
+varin("ids","Track ids",true);
+varin("paths","File paths",true);
+?>
+<?JS for (var i=0; i<ids.length; i++) { ?>
+	
+	<StorageSource id="+.<?JS ids[i] ?>.data" filter="+">
+		<File path="<?JS paths[i] ?>" />
+	</StorageSource>
+	<StorageSource id="-.<?JS ids[i] ?>.data" filter="-">
+		<File path="<?JS paths[i] ?>" />
+	</StorageSource>
+<?JS } ?>

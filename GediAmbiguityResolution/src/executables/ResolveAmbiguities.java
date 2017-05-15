@@ -265,16 +265,16 @@ public class ResolveAmbiguities {
 					for (int d=0; d<r.getData().getDistinctSequences(); d++) {
 						if (r.getData().getMultiplicity(d)>1) {
 							ImmutableReferenceGenomicRegion<Double>[] w = weights.get(r.getData().getId(d));
-							int remaining = 0;
-							for (ImmutableReferenceGenomicRegion<Double> p : w)
-								if (p.getData()>0) 
-									remaining++;
+//							int remaining = 0;
+//							for (ImmutableReferenceGenomicRegion<Double> p : w)
+//								if (p.getData()>0) 
+//									remaining++;
 							
 							int index = Arrays.binarySearch(w, r);
-							if (index<0) 
-								throw new RuntimeException();
-							if (w[index].getData().floatValue()>0)
-								fac.add(r.getData(), d).setMultiplicity(remaining).setWeight(w[index].getData().floatValue());
+//							if (index<0) 
+//								throw new RuntimeException();
+							if (index>=0 && w[index].getData().floatValue()>0)
+								fac.add(r.getData(), d).setMultiplicity(w.length).setWeight(w[index].getData().floatValue());
 						}
 						else
 							fac.add(r.getData(), d).setWeight(1);
@@ -302,7 +302,7 @@ public class ResolveAmbiguities {
 //			for (ReferenceGenomicRegion<ClusterInfo> c : vs) { 
 //				regs+=c.getData().getRegionCount();
 //				edges.addAll(graph.getIncidentEdges(c));
-//			}
+//			}Applying STAR
 //			System.out.printf("%d\t%d\t%d\n",cc.size(),regs,edges.size());
 //		}
 		
@@ -433,27 +433,29 @@ public class ResolveAmbiguities {
 		}
 		
 		
-		int remaining = 0;
 		double sum = 0;
 		for (int i=0; i<w.length; i++) {
 			w[i]*=medianContext[i];
 			sum+=w[i];
-			if (w[i]>0)
-				remaining++;
 		}
 		if (sum==0)
 			sum=1;
+		int remaining = 0;
 		for (int i=0; i<w.length; i++) {
 			w[i]/=sum;
+			if (w[i]>0)
+				remaining++;
 		}
 		
 		// build array
-		ImmutableReferenceGenomicRegion<Double>[] re = new ImmutableReferenceGenomicRegion[w.length];
+		ImmutableReferenceGenomicRegion<Double>[] re = new ImmutableReferenceGenomicRegion[remaining];
+		int index = 0;
 		for (int i=0; i<w.length; i++)
-			re[i] = new ImmutableReferenceGenomicRegion<Double>(a[i].getReference(), a[i].getRegion(),w[i]);
+			if (w[i]>0)
+				re[index++] = new ImmutableReferenceGenomicRegion<Double>(a[i].getReference(), a[i].getRegion(),w[i]);
 		Arrays.sort(re);
 		if (ArrayUtils.unique(re, FunctorUtils.naturalComparator())!=re.length)
-			throw new RuntimeException();
+			throw new RuntimeException(StringUtils.toString(re));
 		weightMap.accept(getId(a[0]), re);
 		
 		

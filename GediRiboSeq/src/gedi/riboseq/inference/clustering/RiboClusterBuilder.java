@@ -61,12 +61,13 @@ public class RiboClusterBuilder {
 	private String prefix;
 	private Progress progress;
 	private int closeGaps = 50;
+	private int nthreads;
 	
 	public RiboClusterBuilder(String prefix,
 			GenomicRegionStorage<AlignedReadsData> reads,
 			Predicate<ReferenceGenomicRegion<AlignedReadsData>> filter,
 			MemoryIntervalTreeStorage<Transcript> annotation,
-			int minRegionCount, int minReadCount, Progress progress) {
+			int minRegionCount, int minReadCount, Progress progress, int nthreads) {
 		this.prefix = prefix;
 		this.reads = reads;
 		this.filter = filter;
@@ -74,6 +75,7 @@ public class RiboClusterBuilder {
 		this.minRegionCount = minRegionCount;
 		this.minReadCount = minReadCount;
 		this.progress = progress;
+		this.nthreads = nthreads;
 	}
 
 
@@ -92,6 +94,7 @@ public class RiboClusterBuilder {
 		
 		GenomicRegionFeatureProgram<AlignedReadsData> program = new GenomicRegionFeatureProgram<AlignedReadsData>();
 		program.setCheckSorting(true);
+		program.setThreads(nthreads);
 		ClusterReads clustering = new ClusterReads(prefix+".clusters.csv");
 		clustering.setDataToCounts((ard,a)->{
 			if (a==null) a = NumericArray.createMemory(4, NumericArrayType.Double);
@@ -123,7 +126,6 @@ public class RiboClusterBuilder {
 		progress.finish();
 		program.end();
 		
-		
 		MemoryIntervalTreeStorage<RiboClusterInfo> re = new MemoryIntervalTreeStorage<RiboClusterInfo>(RiboClusterInfo.class);
 		re.fill(new LineOrientedFile(prefix+".clusters.csv").lineIterator()
 				.skip(1)
@@ -141,6 +143,7 @@ public class RiboClusterBuilder {
 		
 		GenomicRegionFeatureProgram<Object> merger = new GenomicRegionFeatureProgram<Object>();
 		merger.setCheckSorting(true);
+		merger.setThreads(nthreads);
 		clustering = new ClusterReads(prefix+".clusters.csv");
 		clustering.setTolerance(closeGaps);
 		clustering.setDataToCounts((d,a)->{
@@ -190,7 +193,7 @@ public class RiboClusterBuilder {
 		
 		re = re.ei()
 				.filter(rgr->rgr.getData().getRegionCount()>=minRegionCount && rgr.getData().getTotalReadCountDivided()>=minReadCount)
-				.collect(new MemoryIntervalTreeStorage<RiboClusterInfo>(RiboClusterInfo.class), (c,s)->{s.add(c);return s;});
+				.reduce(new MemoryIntervalTreeStorage<RiboClusterInfo>(RiboClusterInfo.class), (c,s)->{s.add(c);return s;});
 		
 		log.log(Level.INFO, String.format("Found %d clusters after filtering with read/region count",re.size()));
 		

@@ -26,6 +26,7 @@ import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.AlignedReadsDataFactory;
 import gedi.core.data.reads.DefaultAlignedReadsData;
 import gedi.core.reference.Chromosome;
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
@@ -108,7 +109,7 @@ public class BamTest {
 		
 		
 		Chromosome refp = Chromosome.obtain("chr1+");
-		LinkedList<GenomicRegion> set = StreamSupport.stream(ssStorage.iterateGenomicRegions(refp), false).collect(Collectors.toCollection(()->new LinkedList<>()));
+		LinkedList<ArrayGenomicRegion> set = ssStorage.ei(refp).map(r->r.getRegion().toArrayGenomicRegion()).toList();//StreamSupport.stream(ssStorage.iterateGenomicRegions(refp), false).collect(Collectors.toCollection(()->new LinkedList<>()));
 		
 		for (String p : presentPlus) {
 			assertFalse("Fewer than expected regions found: "+p,set.isEmpty());
@@ -117,7 +118,7 @@ public class BamTest {
 		assertTrue("More than the expected regions found:"+set.toString(),set.isEmpty());
 		
 		Chromosome refm = Chromosome.obtain("chr1-");
-		set = StreamSupport.stream(ssStorage.iterateGenomicRegions(refm), false).collect(Collectors.toCollection(()->new LinkedList<>()));
+		set = ssStorage.ei(refm).map(r->r.getRegion().toArrayGenomicRegion()).toList();//StreamSupport.stream(ssStorage.iterateGenomicRegions(refm), false).collect(Collectors.toCollection(()->new LinkedList<>()));
 		
 		for (String p : presentMinus){
 			assertFalse("Fewer than expected regions found: "+p,set.isEmpty());
@@ -126,7 +127,7 @@ public class BamTest {
 		assertTrue("More than the expected regions found:"+set.toString(),set.isEmpty());
 		
 		Chromosome refu = Chromosome.obtain("chr1");
-		set = StreamSupport.stream(suStorage.iterateGenomicRegions(refu), false).collect(Collectors.toCollection(()->new LinkedList<>()));
+		set = suStorage.ei(refu).map(r->r.getRegion().toArrayGenomicRegion()).toList();//StreamSupport.stream(suStorage.iterateGenomicRegions(refu), false).collect(Collectors.toCollection(()->new LinkedList<>()));
 		
 		for (String p : presentPlus){
 			assertFalse("Fewer than expected regions found: "+p,set.isEmpty());
@@ -147,9 +148,9 @@ public class BamTest {
 		
 		AlignedReadsDataFactory fac = new AlignedReadsDataFactory(ssStorage.getNumConditions());
 		
-		MemoryIntervalTreeStorage<AlignedReadsData> ssMem = new MemoryIntervalTreeStorage<AlignedReadsData>(null);
+		MemoryIntervalTreeStorage<AlignedReadsData> ssMem = new MemoryIntervalTreeStorage<AlignedReadsData>(AlignedReadsData.class);
 		ssMem.asCollection().addAll(ssStorage.asCollection());
-		MemoryIntervalTreeStorage<AlignedReadsData> suMem = new MemoryIntervalTreeStorage<AlignedReadsData>(null);
+		MemoryIntervalTreeStorage<AlignedReadsData> suMem = new MemoryIntervalTreeStorage<AlignedReadsData>(AlignedReadsData.class);
 		suMem.asCollection().addAll(suStorage.asCollection());
 
 		fac.start().newDistinctSequence().setMultiplicity(0).setCount(new int[] {1,0,0}) //f1

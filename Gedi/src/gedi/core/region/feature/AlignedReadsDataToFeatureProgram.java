@@ -53,8 +53,6 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 			GenomicRegionFeatureProgram<AlignedReadsData> program) {
 		this.program = program;
 		
-		program.setDataToCounts((ard,b)->ard.getCountsForDistinct(b, 0, readCountMode));//ard.addCount(0, b, true));
-		
 	}
 	
 
@@ -116,7 +114,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 		MutableReferenceGenomicRegion<AlignedReadsData> read = new MutableReferenceGenomicRegion<AlignedReadsData>();
 		read.set(ref, reg, new AlignedReadsDataFactory(1).start().newDistinctSequence().setMultiplicity(1).setCount(0, 1).create());
 		
-		
+		program.setDataToCounts((ard,b)->ard.getCountsForDistinct(b, 0, readCountMode));//ard.addCount(0, b, true));
 		program.begin();
 		accept(read);
 		program.end();
@@ -135,6 +133,8 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	}
 	
 	public void processStorage(GenomicRegionStorage<AlignedReadsData> storage) {
+		program.setDataToCounts((ard,b)->ard.getCountsForDistinct(b, 0, readCountMode));//ard.addCount(0, b, true));
+		
 		program.begin();
 		progress.init();
 		progress.setCount((int) storage.size());
@@ -149,6 +149,8 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	}
 	
 	public void process(Iterator<? extends ReferenceGenomicRegion<AlignedReadsData>> it, int count) {
+		program.setDataToCounts((ard,b)->ard.getCountsForDistinct(b, 0, readCountMode));//ard.addCount(0, b, true));
+		
 		program.begin();
 		progress.init();
 		if (count>0)

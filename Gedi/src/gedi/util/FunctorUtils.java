@@ -18,6 +18,7 @@
 
 package gedi.util;
 
+
 import gedi.util.datastructure.collections.FastSortingCollection;
 import gedi.util.datastructure.collections.SerializerSortingCollection;
 import gedi.util.datastructure.collections.SortingCollection;
@@ -35,6 +36,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -46,6 +48,7 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -417,8 +420,42 @@ public class FunctorUtils {
 			return re;
 		}
 		
-
 	}
+	
+	private static class PatternIterator<T> implements ExtendedIterator<T> {
+
+		private Iterator<T> parent;
+		private boolean[] pattern;
+		private int index;
+
+		public PatternIterator(Iterator<T> parent, boolean[] pattern) {
+			this.parent = parent;
+			this.pattern = pattern;
+			
+			// advance to first true
+			for (; index<pattern.length && !pattern[index] && parent.hasNext(); index++)
+				parent.next();
+			if (index==pattern.length)
+				throw new RuntimeException("Pattern empty!");
+		}
+
+		@Override
+		public boolean hasNext() {
+			return parent.hasNext();
+		}
+
+		@Override
+		public T next() {
+			T re = parent.next();
+			for (index++; index<pattern.length && !pattern[index] && parent.hasNext(); index = (index+1)%pattern.length)
+				parent.next();
+			return re;
+		}
+		
+		
+		
+	}
+
 	
 	private static class UnorderedPairIterator<T> implements ExtendedIterator<MutablePair<T, T>> {
 
@@ -846,6 +883,10 @@ public class FunctorUtils {
 			
 			C re = blockSupplier.get();
 			adder.accept(re, header);
+			if (!it.hasNext()) {
+				header=null;
+				return re;
+			}
 			while (it.hasNext()) {
 				header = it.next();
 				if (first.test(header))
@@ -1224,6 +1265,54 @@ public class FunctorUtils {
 		
 	}
 	
+	
+	public static class AlternatingIterator<T> implements ExtendedIterator<T> {
+		
+		private class CircularList {
+			CircularList next;
+			Iterator<? extends T> it;
+			public CircularList(CircularList next, Iterator<? extends T> it) {
+				this.next = next;
+				this.it = it;
+			}
+		}
+		
+		// Invariant: each it in l hasNext!
+		private CircularList l;
+		
+		public AlternatingIterator(Iterator<T> fi, Iterator<? extends T>... its) {
+			CircularList f = null;
+			for (int i=its.length-1; i>=0; i--)
+				if (its[i].hasNext()) {
+					l = new CircularList(l, its[i]);
+					if (f==null) f = l;
+				}
+			if (fi.hasNext()) {
+				l = new CircularList(l, fi);
+				if (f==null) f = l;
+			}
+			f.next = l;
+		}
+		@Override
+		public boolean hasNext() {
+			return l!=null;
+		}
+
+		@Override
+		public T next() {
+			T re = l.it.next();
+			if (!l.it.hasNext()) {
+				if (l.next==l) l = null;
+				else {
+					l.it = l.next.it;
+					l.next = l.next.next;
+				}
+			}
+			if (l!=null) l = l.next;
+			return re;
+		}
+	}
+
 	public static class HeadIterator<T> implements ExtendedIterator<T> {
 		
 		private Iterator<T> a;
@@ -1248,14 +1337,16 @@ public class FunctorUtils {
 		
 	}
 	
-	public static class ReduceIterator<T> implements ExtendedIterator<T> {
+	public static class ReduceIterator<T,R> implements ExtendedIterator<R> {
 		private PeekIterator<T> iterator;
 		private Comparator<? super T> comp;
-		private BinaryOperator<T> reducer;
-		private T next;
-		public ReduceIterator(Iterator<T> it, Comparator<? super T> comp, BinaryOperator<T> reducer) {
+		private Supplier<R> supplier;
+		private BiFunction<T,R,R> reducer;
+		private R next;
+		public ReduceIterator(Iterator<T> it, Comparator<? super T> comp, Supplier<R> supplier, BiFunction<T,R,R> reducer) {
 			this.iterator = peekIterator(it);
 			this.comp = comp;
+			this.supplier = supplier;
 			this.reducer = reducer;
 		}
 		@Override
@@ -1265,19 +1356,22 @@ public class FunctorUtils {
 		}
 
 		@Override
-		public T next() {
+		public R next() {
 			lookAhead();
-			T re = next;
+			R re = next;
 			next = null;
 			return re;
 		}
 		
 		private void lookAhead() {
 			if (next==null && iterator.hasNext()) {
-				next = iterator.next();
 				int cmp = -1;
-				while (iterator.hasNext() && (cmp=comp.compare(next, iterator.peek()))==0)
-					next = reducer.apply(next, iterator.next());
+				next = supplier.get();
+				T last;
+				next = reducer.apply(last = iterator.next(), next);
+				while (iterator.hasNext() && (cmp=comp.compare(last, iterator.peek()))==0)
+//					next = reducer.apply(next, iterator.next());
+					next = reducer.apply(last = iterator.next(), next);
 				if (cmp>0) throw new RuntimeException("Iterator must be sorted for unifying!");
 			}
 			
@@ -1729,11 +1823,11 @@ public class FunctorUtils {
 	 * @param order
 	 * @return
 	 */
-	public static <T> ParallellIterator<T> parallellIterator(Iterator<T>[] iterators, Comparator<? super T> order, Class<T> cls) {
+	public static <T> ExtendedIterator<T[]> parallellIterator(Iterator<T>[] iterators, Comparator<? super T> order, Class<T> cls) {
 		return new ParallellIterator<T>(iterators,order,cls);
 	}
 
-	public static <T> ParallellIterator<T> parallellIterator(Iterator<T> iterator1, Iterator<T> iterator2, Comparator<? super T> order, Class<T> cls) {
+	public static <T> ExtendedIterator<T[]> parallellIterator(Iterator<T> iterator1, Iterator<T> iterator2, Comparator<? super T> order, Class<T> cls) {
 		return new ParallellIterator<T>(new Iterator[]{iterator1,iterator2},order,cls);
 	}
 	
@@ -1741,7 +1835,7 @@ public class FunctorUtils {
 		return new MergeIterator<T>(iterators,comp);
 	}
 	
-	public static <T> FuseIterator<T> fuseIterator(Iterator<T>[] iterators, Class<T> cls) {
+	public static <T> FuseIterator<T> fuseIterator(Class<T> cls, Iterator<T>... iterators) {
 		return new FuseIterator<T>(iterators,cls);
 	}
 
@@ -1899,8 +1993,8 @@ public class FunctorUtils {
 	public static <T> ChainedIterator<T> chainedIterator(Iterator<T>... it) {
 		return new ChainedIterator<>(it);
 	}
-	public static <T> ExtendedIterator<T> reduceIterator(Iterator<T> it,Comparator<? super T> comp,BinaryOperator<T> reducer) {
-		return new ReduceIterator<>(it,comp,reducer);
+	public static <T,R> ExtendedIterator<R> reduceIterator(Iterator<T> it,Comparator<? super T> comp,Supplier<R> supplier, BiFunction<T, R, R> reducer) {
+		return new ReduceIterator<>(it,comp,supplier,reducer);
 	}
 
 	/**
@@ -2013,6 +2107,16 @@ public class FunctorUtils {
 	public static <F,T> Function<F, T> constantFunction(
 			T c) {
 		return (o)->c;
+	}
+
+
+	public static <T> AlternatingIterator<T> alternating(ExtendedIterator<T> a, ExtendedIterator<? extends T>... r) {
+		return new AlternatingIterator<T>(a,r);
+	}
+
+
+	public static <T> ExtendedIterator<T> patternIterator(Iterator<T> parent, boolean[] pattern) {
+		return new PatternIterator<T>(parent, pattern);
 	}
 	
 }

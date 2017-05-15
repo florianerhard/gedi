@@ -140,6 +140,22 @@ public class FactorDataColumn implements DataColumn<Factor[]> {
 	}
 	
 	@Override
+	public Object getValue(int row) {
+		return data[row];
+	}
+	
+	@Override
+	public void setValue(int row, Object val) {
+		Factor value;
+		if (val instanceof Factor && ((Factor)val).getLevels()==data[0].getLevels()) 
+			value = (Factor) val;
+		else {
+			value = data[0].get(val.toString());
+		}
+		data[row] = value;
+	}
+	
+	@Override
 	public Factor[] getRaw() {
 		return data;
 	}

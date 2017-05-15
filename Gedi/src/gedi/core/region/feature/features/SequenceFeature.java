@@ -18,6 +18,9 @@
 
 package gedi.core.region.feature.features;
 
+import gedi.core.genomic.Genomic;
+import gedi.core.region.ArrayGenomicRegion;
+import gedi.core.region.GenomicRegionPosition;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
 import gedi.core.sequence.CompositeSequenceProvider;
@@ -32,9 +35,25 @@ public class SequenceFeature extends AbstractFeature<String> {
 
 	private CompositeSequenceProvider seq = new CompositeSequenceProvider();
 	
+	private GenomicRegionPosition fromPosition = GenomicRegionPosition.FivePrime;
+	private GenomicRegionPosition toPosition = GenomicRegionPosition.ThreePrime;
+	private int fromOffset = 0;
+	private int toOffset = 0;
+	
+	
 	public SequenceFeature() {
 		minValues = maxValues = 1;
 		minInputs = maxInputs = 0;
+	}
+	
+	public void setFrom(GenomicRegionPosition position, int offset) {
+		this.fromOffset = offset;
+		this.fromPosition = position;
+	}
+	
+	public void setTo(GenomicRegionPosition position, int offset) {
+		this.toOffset = offset;
+		this.toPosition = position;
 	}
 	
 	@Override
@@ -42,16 +61,42 @@ public class SequenceFeature extends AbstractFeature<String> {
 		SequenceFeature re = new SequenceFeature();
 		re.copyProperties(this);
 		re.seq = seq;
+		re.fromOffset = fromOffset;
+		re.toOffset = toOffset;
+		re.fromPosition = fromPosition;
+		re.toPosition = toPosition;
 		return re;
 	}
 	
 	public void addFastaIndexFile(String path) throws IOException {
 		seq.add(new FastaIndexSequenceProvider(path));
 	}
+	
+
+	public void addGenomic(Genomic g) throws IOException {
+		seq.add(g);
+	}
 
 	@Override
 	protected void accept_internal(Set<String> values) {
-		values.add(seq.getSequence(referenceRegion).toString());
+		
+		if (!fromPosition.isValidInput(referenceRegion) || !toPosition.isValidInput(referenceRegion))
+			return;
+		
+		int from = fromPosition.position(referenceRegion, fromOffset);
+		int to = toPosition.position(referenceRegion, toOffset);
+		
+		if (from>to) {
+			int tmp=from;
+			from=to;
+			to=tmp;
+		}
+		
+		ArrayGenomicRegion reg = new ArrayGenomicRegion(from,to);
+		reg = reg.subtract(referenceRegion.getRegion().invert());
+		int l = seq.getLength(referenceRegion.getReference().getName());
+		if (reg.getStart()>=0 && reg.getEnd()<=l) 
+			values.add(seq.getSequence(referenceRegion.getReference(),reg).toString());
 	}
 
 	

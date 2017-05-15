@@ -41,7 +41,7 @@ public class LocationFileReader extends GenomicTsvFileReader<NameAnnotation> {
 				MutableReferenceGenomicRegion<NameAnnotation> box) {
 			
 			MutableReferenceGenomicRegion<Object> rgr = new MutableReferenceGenomicRegion<Object>().parse(fields[0]);
-			if (rgr==null) throw new RuntimeException("Cannot parse "+fields[0]);
+			if (rgr==null || rgr.getReference()==null || rgr.getRegion()==null) throw new RuntimeException("Cannot parse "+fields[0]);
 			box.setReference(rgr.getReference());
 			box.setRegion(rgr.getRegion());
 			

@@ -37,8 +37,8 @@ import gedi.util.dynamic.impl.MapDynamicObject;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
-import gedi.util.io.text.jph.Jhp;
-import gedi.util.io.text.jph.JhpParameterException;
+import gedi.util.io.text.jhp.Jhp;
+import gedi.util.io.text.jhp.JhpParameterException;
 import gedi.util.job.pipeline.PipelineRunner;
 import gedi.util.job.pipeline.PipelineRunnerExtensionPoint;
 
@@ -70,7 +70,7 @@ public class Pipeline {
 		System.out.println("Takes one or more templates (either file names or labelled names from the resources), and executes them, thereby replacing values from json-files or given by --var=val.");
 		System.err.println();
 		System.err.println("	Options:");
-		System.err.println("	-n [name]		Specify name (Default: Name of the last -j parameter)");
+		System.err.println("	-n [name]		Specify name (Default: Name of the last -j parameter, or the last template)");
 		System.err.println("	-o [file]		Specify output file (Default: $name/scripts/start.bash)");
 		System.err.println("	-wd [folder]	Specify working directory (Default: `pwd`/$name)");
 		System.err.println("	-log [folder]	Specify log folder (Default $wd/log)");
@@ -130,7 +130,6 @@ public class Pipeline {
 	
 	
 	private static void start(String[] args) throws UsageException, IOException, ScriptException {
-		String tmp = null;
 		String out = null;
 		String wd = null;
 		String name = null;
@@ -151,12 +150,9 @@ public class Pipeline {
 					Jhp jhp = new Jhp();
 					for (String t : list)
 						jhp.apply(readSrc(t), "0");
-					usage(null,"\nTemplate variables:\n\n"+jhp.getParameters().getUsage("tmp","wd","name","tokens"));
+					usage(null,"\nTemplate variables:\n\n"+jhp.getParameters().getUsage("wd","name","tokens"));
 				}
 				return;
-			}
-			else if(args[i].equals("-tmp")) {
-				tmp = checkParam(args, ++i);
 			}
 			else if (args[i].equals("-log")) {
 				logfolder = checkParam(args, ++i);
@@ -197,10 +193,11 @@ public class Pipeline {
 			throw new UsageException("No templates given!");
 		
 		if (name==null && lastJsonName!=null) name = FileUtils.getNameWithoutExtension(lastJsonName);
+		if (name==null) name = FileUtils.getNameWithoutExtension(args[args.length-1]);
 		
 		if (name==null) throw new UsageException("No name given (either -n or by using the name of the last -j parameter)");
 		
-		if (wd==null && lastJsonName!=null) wd = new File(StringUtils.removeFooter(lastJsonName, ".json")).getAbsolutePath();
+//		if (wd==null && lastJsonName!=null) wd = new File(StringUtils.removeFooter(lastJsonName, ".json")).getAbsolutePath();
 		if (wd==null) wd = new File("./"+name).getAbsolutePath();
 		
 		HashMap<String,Object> defaults = new HashMap<>();
@@ -222,7 +219,6 @@ public class Pipeline {
 			json = DynamicObject.cascade(json,param);
 		
 		HashMap<String,Object> over = new HashMap<>();
-		if (tmp!=null) 	over.put("tmp", tmp);
 		if (wd!=null) 	over.put("wd", new File(wd).getAbsolutePath());
 		if (name!=null)	over.put("name", name);
 		over.put("id", json.getEntry("name"));
@@ -257,7 +253,6 @@ public class Pipeline {
 			}
 		}
 		proc.finish();
-		
 	}
 	
 	public static class PipelineFileProcessor {

@@ -1,0 +1,381 @@
+<GenomicRegionFeaturePipeline>
+	<Labels l="<?JS print(EI.wrap(labels).concat(',')) ?>" />
+
+	<SequenceFeature id="5p Bias">
+		<Genomic g="genomic"/>
+		<From position="FivePrime" offset="-1" />
+		<To position="FivePrime" offset="1" />
+	</SequenceFeature>
+
+	<SequenceFeature id="3p Bias">
+		<Genomic g="genomic"/>
+		<From position="ThreePrime" offset="-1" />
+		<To position="ThreePrime" offset="1" />
+	</SequenceFeature>
+	
+	<MultiReadFeature id="Ambiguity" />
+	<LengthFeature id="Read length" />
+	<GenomeFeature id="Genome" g="genomic" />
+	
+	<ReadMismatchCountFeature id="MismatchCount" />
+	<ReadMismatchPositionFeature id="Mismatch Positions" />
+	<ReadMismatchTypeFeature id="Mismatch Types" />
+	<ReadMismatchGenomicFeature id="Mismatch Genomic" />
+	<ReadMismatchReadFeature id="Mismatch Read" />
+
+	<AnnotationFeature id="Transcript" data="false" >
+		<Transcripts g="genomic" flank="50" />
+	</AnnotationFeature>
+	<ContainedFeature id="ContainedTranscript" input="Transcript" />
+	<MapFeature id="GeneId" input="ContainedTranscript">
+		<Field n='data' />
+		<Field n='geneId' />
+	</MapFeature>
+	<MapFeature id="TranscriptIdFolded" input="ContainedTranscript">
+		<Field n='data' />
+		<Field n='transcriptId' />
+	</MapFeature>
+	<UnfoldFeature id="TranscriptId" input="TranscriptIdFolded" />
+	
+	<AnnotationFeature id="Major" data="false" >
+		<MajorTranscripts g="genomic" flank="50" />
+	</AnnotationFeature>
+	
+	<FeatureMapping id="Biotype" input="GeneId">
+		<Genes g="genomic" target="biotype"/>
+		<Default to="Unknown" />
+	</FeatureMapping>
+	<MultiFeatureMapping input="Biotype">
+		<Mapping from="[]" to="['Intergenic']" />
+		<Mapping from="[U]" to="[*]" />
+		<Mapping from="[N]" to="['Ambiguous']" />
+	</MultiFeatureMapping>
+
+	
+	<ConstantFeature id="Total" c="Total" >
+		<Condition inputs="GeneId" cond="[U]" />
+	</ConstantFeature>
+
+	<AbsolutePosition id="StartCodon" input="Transcript" >
+		<AnnotationPosition p="StartCodon" />
+	</AbsolutePosition>
+	<AbsolutePosition id="StopCodon" input="Transcript" >
+		<AnnotationPosition p="StopCodon" />
+	</AbsolutePosition>
+
+	<AbsolutePosition id="Start" input="Transcript" >
+		<AnnotationPosition p="FivePrime" />
+	</AbsolutePosition>
+	<AbsolutePosition id="Stop" input="Transcript" >
+		<AnnotationPosition p="ThreePrime" />
+		<ReadPosition p="ThreePrime" />
+	</AbsolutePosition>
+
+	<RelativePosition id="Position" input="Transcript" >
+		<ReadPosition p="Center" />
+	</RelativePosition>
+
+
+	<AbsolutePosition id="MajorStartCodon" input="Major" >
+		<AnnotationPosition p="StartCodon" />
+	</AbsolutePosition>
+	<AbsolutePosition id="MajorStopCodon" input="Major" >
+		<AnnotationPosition p="StopCodon" />
+	</AbsolutePosition>
+
+	<AbsolutePosition id="MajorStart" input="Major" >
+		<AnnotationPosition p="FivePrime" />
+	</AbsolutePosition>
+	<AbsolutePosition id="MajorStop" input="Major" >
+		<AnnotationPosition p="ThreePrime" />
+		<ReadPosition p="ThreePrime" />
+	</AbsolutePosition>
+
+	<RelativePosition id="MajorPosition" input="Major" >
+		<ReadPosition p="Center" />
+	</RelativePosition>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>total.tsv" input="Total">
+		<Condition inputs="Total" cond="[U]" />
+	</FeatureStatisticOutput>
+		<FeatureStatisticOutput file="<?JS prefix ?>genes.tsv" input="GeneId">
+		<Condition inputs="GeneId" cond="[U]" />
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>transcripts.tsv" input="TranscriptId">
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>genome.tsv" input="Genome">
+		<Barplot aes="fill,x,y" position="fill">
+			<RotateLabels/>
+			<Title>Genome distribution</Title>
+			<Description>The distribution of reads to input genomes for all conditions</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>biotype.tsv" input="Biotype,Genome">
+		<Barplot aes="x,fill,facet,y" position="dodge">
+			<RotateLabels/>
+			<Sort/>
+			<Title>Biotypes</Title>
+			<Description>The distribution of reads to annotated gene biotypes for each condition and per genome.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>length.tsv" input="Read length">
+		<Barplot aes="x,,y" position="stack">
+			<Section>Read length</Section>
+			<Title>Length histogram</Title>
+			<Description>The read length distribution after mapping reads.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>length_unique.tsv" input="Read length">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Barplot aes="x,,y" position="stack">
+			<Section>Read length</Section>
+			<Title>Length histogram (U)</Title>
+			<Description>The read length distribution after mapping reads. Only reads uniquely mapping are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>5pbias.tsv" input="5p Bias">
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Bias</Section>
+			<Title>5' read bias</Title>
+			<Description>Shows the number of dinucleotides composed of the nucleotide immediately upstream of the read position and the first read nucleotide.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	<FeatureStatisticOutput file="<?JS prefix ?>3pbias.tsv" input="3p Bias">
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Bias</Section>
+			<Title>3' read bias</Title>
+			<Description>Shows the number of dinucleotides composed of the last read nucleotide and the nucleotide immediately downstream of the read position.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>mismatchcount.tsv" input="MismatchCount,Ambiguity">
+		<Barplot aes="x,fill,,y" position="stack">
+			<Section>Mismatches</Section>
+			<Title>Mismatch histogram</Title>
+			<Description>Shows the number of mismatches per read, distinguishing uniquely and ambiguously mapping reads.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	<FeatureStatisticOutput file="<?JS prefix ?>mismatches.tsv" input="Mismatch Positions,Mismatch Genomic,Mismatch Read">
+		<Barplot aes="x,facet,fill,,y" position="stack">
+			<Section>Mismatches</Section>
+			<Title>Mismatch distribution</Title>
+			<Description>Shows the mismatch distribution along reads. The panels correspond to the genomic base, read bases are color coded.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	<FeatureStatisticOutput file="<?JS prefix ?>mismatches_unique.tsv" input="Mismatch Positions,Mismatch Genomic,Mismatch Read">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Barplot aes="x,facet,fill,,y" position="stack">
+			<Section>Mismatches</Section>
+			<Title>Mismatch distribution (U)</Title>
+			<Description>Shows the mismatch distribution along reads. The panels correspond to the genomic base, read bases are color coded. Only reads uniquely mapping are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>start.tsv" input="Start">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TSS</Section>
+			<Title>TSS (A)</Title>
+			<Description>Shows the number of reads starting close to an annotated transcription start site. The x axis is the distance of the read start to the transcription start site. Only reads where this distance is unique for all Isoforms are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>start_unique.tsv" input="Start">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TSS</Section>
+			<Title>TSS (A,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated transcription start site. The x axis is the distance of the read start to the transcription start site. Only reads where this distance is unique for all Isoforms and that are uniquely mapped are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.start.tsv" input="MajorStart">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TSS</Section>
+			<Title>TSS (M)</Title>
+			<Description>Shows the number of reads starting close to an annotated transcription start site. The x axis is the distance of the read start to the transcription start site. The major isoform is used as reference for each gene (the longest coding transcript).</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.start_unique.tsv" input="MajorStart">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TSS</Section>
+			<Title>TSS (M,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated transcription start site. The x axis is the distance of the read start to the transcription start site. The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>stop.tsv" input="Stop">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TTS</Section>
+			<Title>TTS (A)</Title>
+			<Description>Shows the number of reads ending close to an annotated transcription termination site. The x axis is the distance of the read end to the transcription termination site. Only reads where this distance is unique for all Isoforms are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>stop_unique.tsv" input="Stop">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TTS</Section>
+			<Title>TTS (A,U)</Title>
+			<Description>Shows the number of reads ending close to an annotated transcription termination site. The x axis is the distance of the read end to the transcription termination site. Only reads where this distance is unique for all Isoforms and that are uniquely mapped are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.stop.tsv" input="MajorStop">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TTS</Section>
+			<Title>TTS (M)</Title>
+			<Description>Shows the number of reads ending close to an annotated transcription termination site. The x axis is the distance of the read end to the transcription termination site. The major isoform is used as reference for each gene (the longest coding transcript).</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.stop_unique.tsv" input="MajorStop">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>TTS</Section>
+			<Title>TTS (M,U)</Title>
+			<Description>Shows the number of reads ending close to an annotated transcription termination site. The x axis is the distance of the read end to the transcription termination site. The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>startcodon.tsv" input="StartCodon">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Start codon</Section>
+			<Title>Start codon (A)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. Only reads where this distance is unique for all Isoforms are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>startcodon_unique.tsv" input="StartCodon">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Start codon</Section>
+			<Title>Start codon (A,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. Only reads where this distance is unique for all Isoforms and that are uniquely mapped are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.startcodon.tsv" input="MajorStartCodon">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Start codon</Section>
+			<Title>Start codon (M)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. The major isoform is used as reference for each gene (the longest coding transcript).</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+		<FeatureStatisticOutput file="<?JS prefix ?>major.startcodon_unique.tsv" input="MajorStartCodon">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Start codon</Section>
+			<Title>Start codon (M,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>stopcodon.tsv" input="StopCodon">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Stop codon</Section>
+			<Title>Stop codon (A)</Title>
+			<Description>Shows the number of reads ending close to an annotated stop codon. The x axis is the distance of the read end to the stop codon. Only reads where this distance is unique for all Isoforms are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>stopcodon_unique.tsv" input="StopCodon">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Stop codon</Section>
+			<Title>Stop codon (A,U)</Title>
+			<Description>Shows the number of reads ending close to an annotated stop codon. The x axis is the distance of the read end to the stop codon. Only reads where this distance is unique for all Isoforms and that are uniquely mapped are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.stopcodon.tsv" input="MajorStopCodon">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Stop codon</Section>
+			<Title>Stop codon (M)</Title>
+			<Description>Shows the number of reads ending close to an annotated stop codon. The x axis is the distance of the read end to the stop codon. The major isoform is used as reference for each gene (the longest coding transcript).</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.stopcodon_unique.tsv" input="MajorStopCodon">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Stop codon</Section>
+			<Title>Stop codon (M,U)</Title>
+			<Description>Shows the number of reads ending close to an annotated stop codon. The x axis is the distance of the read end to the stop codon. The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>pos.tsv" input="Position">
+		<Condition js="this.isUniqueInput(0)" />
+		<CountAdapter fromFeature="0" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Position</Section>
+			<Title>Position (A)</Title>
+			<Description>Shows the number of reads starting within coding transcripts. The x axis is the relative position of the read start within the three regions (5'-UTR: &lt;0; CDS: 0-100; 3'-UTR: &gt;100). Only reads where this position is unique for all Isoforms are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>pos_unique.tsv" input="Position">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="this.isUniqueInput(0)" />
+		<CountAdapter fromFeature="0" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Position</Section>
+			<Title>Position (A,U)</Title>
+			<Description>Shows the number of reads starting within coding transcripts. The x axis is the relative position of the read start within the three regions (5'-UTR: &lt;0; CDS: 0-100; 3'-UTR: &gt;100). Only reads where this position is unique for all Isoforms and that are uniquely mapped are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.pos.tsv" input="MajorPosition">
+		<Condition js="this.isUniqueInput(0)" />
+		<CountAdapter fromFeature="0" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Position</Section>
+			<Title>Position (M)</Title>
+			<Description>Shows the number of reads starting within coding transcripts. The x axis is the relative position of the read start within the three regions (5'-UTR: &lt;0; CDS: 0-100; 3'-UTR: &gt;100). The major isoform is used as reference for each gene (the longest coding transcript).</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>major.pos_unique.tsv" input="MajorPosition">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="this.isUniqueInput(0)" />
+		<CountAdapter fromFeature="0" />
+		<Barplot aes="x,fill,y" position="stack">
+			<Section>Position</Section>
+			<Title>Position (M,A)</Title>
+			<Description>Shows the number of reads starting within coding transcripts. The x axis is the relative position of the read start within the three regions (5'-UTR: &lt;0; CDS: 0-100; 3'-UTR: &gt;100). The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+
+
+<?JS0
+includeExtensions("/resources/templates/stats/reads");
+?>
+
+
+</GenomicRegionFeaturePipeline>
+

@@ -38,7 +38,6 @@ import gedi.app.classpath.DirectoryClassPath;
 import gedi.app.classpath.JARClassPath;
 import gedi.util.FileUtils;
 import gedi.util.RunUtils;
-import gedi.util.io.Directory;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;

@@ -1,0 +1,26 @@
+<?JS0
+varin("items","Item objects to write into this list",true);
+?>
+<?JS if (outputInfo.index==0) { ?>
+# Condition refers to conditions within cit files (always 0 in bam files); total is the total number of mapped reads for normalization; files with the same label are treated as resequencing runs, i.e. are merged to a single data source; Color can be a hex color specification (with leading #) or any of the ColorPalettes entries, Options is a json object to apply on the storage object, e.g. {"strandness": "Specific"}, here either Specific/Unspecific/Inverted");
+File	Condition	Total	Label	Track	Color	Options
+<?JS }
+
+var index;
+var lastFile = ""; 
+var track = FileUtils.getNameWithoutExtension(items[0].file);
+
+for each (var item in items) {
+	if (!item.file.equals(lastFile))
+		index = 0.0;
+
+
+?>
+<? item.file ?>	<? printf("%.0f/%d",[index,items.length]); ?>	<? item.total ?>	<? item.name ?>	<? print(track+outputInfo.index) ?>	<? item.color ?>	{}
+<?JS
+
+	lastFile = item.file;
+	index++;
+} 
+
+?>

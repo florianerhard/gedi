@@ -32,20 +32,6 @@ import java.awt.Stroke;
 @GenomicRegionDataMapping(fromType=PixelBlockToValuesMap.class)
 public class LinesTrack extends NumericValuesTrack {
 
-	public final static double DEFAULT_SINGLE_RADIUS = 2;
-	private double singleRad = DEFAULT_SINGLE_RADIUS;
-
-	public final static double DEFAULT_POINT_RADIUS = 2;
-	public final static double DEFAULT_LINE_WIDTH = 1;
-	private double pointRad = DEFAULT_POINT_RADIUS;
-
-	private boolean points = true;
-	private Stroke stroke;
-	
-	
-	public void setPoints(boolean points) {
-		this.points = points;
-	}
 	
 	
 	@Override
@@ -58,11 +44,7 @@ public class LinesTrack extends NumericValuesTrack {
 	
 	@Override
 	protected void beginPass(TrackRenderContext<PixelBlockToValuesMap> context, int row) {
-		singleRad = getStyles().get("["+row+"].singleSize").asDouble(DEFAULT_SINGLE_RADIUS);
-		
-		pointRad = getStyles().get("["+row+"].pointSize").asDouble(DEFAULT_POINT_RADIUS);
-		stroke = new BasicStroke((float)getStyles().get("["+row+"].lineWidth").asDouble(DEFAULT_LINE_WIDTH));
-		context.g2.setPaint(PaintUtils.parseColor(getStyles().get("["+row+"].color").asString("#000000")));
+		super.beginPass(context, row);
 	}
 	
 	

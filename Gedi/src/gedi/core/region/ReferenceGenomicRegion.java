@@ -118,7 +118,7 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	 * @param region
 	 * @return
 	 */
-	default boolean isDownstream(GenomicRegion region) {
+	default boolean startsDownstream(GenomicRegion region) {
 		if (getReference().getStrand()==Strand.Minus) {
 			return getRegion().getEnd()>region.getEnd();
 		}
@@ -130,12 +130,38 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	 * @param region
 	 * @return
 	 */
-	default boolean isUpstream(GenomicRegion region) {
+	default boolean startsUpstream(GenomicRegion region) {
 		if (getReference().getStrand()==Strand.Minus) {
 			return getRegion().getEnd()<region.getEnd();
 		}
 		return getRegion().getStart()>region.getStart();
 	}
+	
+	
+	/**
+	 * If the 3' end of region is downstream of the 3' end of this.
+	 * @param region
+	 * @return
+	 */
+	default boolean endsDownstream(GenomicRegion region) {
+		if (getReference().getStrand()==Strand.Minus) {
+			return getRegion().getStart()>region.getStart();
+		}
+		return getRegion().getEnd()<region.getEnd();
+	}
+	
+	/**
+	 * If the 5' end of region is upstream of the 5' end of this.
+	 * @param region
+	 * @return
+	 */
+	default boolean endsUpstream(GenomicRegion region) {
+		if (getReference().getStrand()==Strand.Minus) {
+			return getRegion().getStart()<region.getStart();
+		}
+		return getRegion().getEnd()>region.getEnd();
+	}
+	
 	
 	
 	default int hashCode2() {
@@ -175,7 +201,7 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	}
 
 	default String toString2() {
-		return getData()==null?getReference()+":"+getRegion():getReference()+":"+getRegion()+" "+StringUtils.toString(getData());
+		return getData()==null?getReference()+":"+getRegion():getReference()+":"+getRegion()+"\t"+StringUtils.toString(getData());
 	}
 	
 

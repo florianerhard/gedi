@@ -26,6 +26,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 
@@ -52,7 +53,7 @@ import java.util.logging.Logger;
  * @param <I>
  * @param <O>
  */
-public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
+public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 
 	private static final Logger log = Logger.getLogger( ParallelizedIterator.class.getName() );
 	
@@ -65,7 +66,8 @@ public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
 	
 	private LinkedBlockingQueue<ResultBlock> output = new LinkedBlockingQueue<>();
 	
-	private Function<ExtendedIterator<I>,ExtendedIterator<O>> process;
+//	private Function<ExtendedIterator<I>,ExtendedIterator<O>> process;
+	private BiFunction<ExtendedIterator<I>,S,ExtendedIterator<O>> process;
 	private Thread controller;
 	private Thread drainThread;
 	private Object drainLock = new Object();
@@ -79,6 +81,7 @@ public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
 	private AtomicInteger outputWork = new AtomicInteger();
 	private AtomicInteger outputContr = new AtomicInteger();
 	
+	private Object[] states;
 	
 	
 	public ParallelizedIterator(ExtendedIterator<I> in, BiFunction<O,O,String> checker, Function<ExtendedIterator<I>,ExtendedIterator<O>> sub) {
@@ -89,13 +92,18 @@ public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
 		this(in,Runtime.getRuntime().availableProcessors(),1024, null, sub);
 	}
 	public ParallelizedIterator(ExtendedIterator<I> in, int threads, int blocksize, BiFunction<O,O,String> checker, Function<ExtendedIterator<I>,ExtendedIterator<O>> sub) {
+		this(in, threads, blocksize, checker, ()->null, (it,s)->sub.apply(it));
+	}
+	public ParallelizedIterator(ExtendedIterator<I> in, int threads, int blocksize, BiFunction<O,O,String> checker, Supplier<S> stateMaker, BiFunction<ExtendedIterator<I>,S,ExtendedIterator<O>> sub) {
 		this.blockSize = blocksize;
 		this.process = sub;
+		this.states = new Object[threads];
 		
 		runners = (Worker[]) Array.newInstance(Worker.class, threads);
 		log.fine("Starting "+runners.length+" workers");
 		for (int i=0; i<runners.length; i++)  {
-			runners[i] = new Worker(i);
+			runners[i] = new Worker(i,stateMaker.get());
+			states[i]=runners[i].state;
 			runners[i].start();
 		}
 		while(freeRunner.size()!=threads)
@@ -105,7 +113,8 @@ public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
 		if (checker!=null) {
 			this.checker = checker;
 			checkQueue = new LinkedList<O>();
-			in = in.sideEffect(i->sub.apply(EI.wrap(i)).toCollection(checkQueue));
+			S state = stateMaker.get();
+			in = in.sideEffect(i->sub.apply(EI.wrap(i),state).toCollection(checkQueue));
 		}
 		
 		ExtendedIterator<I> fin = in;
@@ -123,6 +132,13 @@ public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
 		
 	}
 
+	public int getNthreads() {
+		return states.length;
+	}
+	
+	public S getState(int index) {
+		return (S) states[index];
+	}
 	
 	private long resultIndex = 0;
 	int nindex = 0;
@@ -288,9 +304,11 @@ public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
 		private ArrayList<I> tasks = new ArrayList<I>();
 		private ArrayList<O> output = new ArrayList<O>();
 		private boolean shut = false;
+		private S state;
 		
-		public Worker(int n) {
+		public Worker(int n, S state) {
 			super("RunnerThread"+n);
+			this.state = state;
 			setDaemon(true);
 		}
 		
@@ -312,7 +330,7 @@ public class ParallelizedIterator<I,O> implements ExtendedIterator<O>{
 						
 						inputWork.addAndGet(tasks.size());
 						
-						ExtendedIterator<O> it = process.apply(EI.wrap(tasks));
+						ExtendedIterator<O> it = process.apply(EI.wrap(tasks),state);
 						it.toCollection(output);
 						tasks.clear();
 						

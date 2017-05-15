@@ -190,7 +190,7 @@ public class ReadClusterBuilder {
 		
 		re = re.ei()
 				.filter(rgr->rgr.getData().getRegionCount()>=minRegionCount && rgr.getData().getTotalReadCountDivided()>=minReadCount)
-				.collect(new MemoryIntervalTreeStorage<ClusterInfo>(ClusterInfo.class), (c,s)->{s.add(c);return s;});
+				.reduce(new MemoryIntervalTreeStorage<ClusterInfo>(ClusterInfo.class), (c,s)->{s.add(c);return s;});
 		
 		log.log(Level.INFO, String.format("Found %d clusters after filtering with read/region count",re.size()));
 		

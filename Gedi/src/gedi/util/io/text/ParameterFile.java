@@ -19,8 +19,8 @@
 package gedi.util.io.text;
 
 import gedi.util.StringUtils;
-import gedi.util.io.Directory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -36,7 +36,7 @@ public class ParameterFile extends LineOrientedFile {
 		loadIntoMemory(sep);
 	}
 	
-	public ParameterFile(Directory dir, String name,char sep) throws IOException {
+	public ParameterFile(File dir, String name,char sep) throws IOException {
 		super(dir, name);
 		loadIntoMemory(sep);
 	}

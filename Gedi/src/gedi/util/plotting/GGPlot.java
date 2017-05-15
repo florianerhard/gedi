@@ -71,8 +71,26 @@ public class GGPlot {
 	public void pdf(String filename) throws RserveException, IOException {
 		R r = prepareR();
 		r.startPDF(filename);
-		r.eval("print("+toString()+")");
+		try {
+			r.eval("print("+toString()+")");
+		} catch (RserveException e) {
+			System.err.println(toString());
+			throw e;
+		}
 		r.finishPDF();
+//		finishR(r);
+	}
+	
+	public void png(String filename) throws RserveException, IOException {
+		R r = prepareR();
+		r.startPNG(filename);
+		try {
+			r.eval("print("+toString()+")");
+		} catch (RserveException e) {
+			System.err.println(toString());
+			throw e;
+		}
+		r.finishPNG();
 //		finishR(r);
 	}
 	
@@ -412,6 +430,12 @@ public class GGPlot {
 			this.name = name;
 			this.value = value;
 		}
+	}
+
+	public GGPlot rotateLabelsX() {
+		GGPlot re = copy();
+		re.cmd.append("+theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))");
+		return re;
 	}
 	
 	

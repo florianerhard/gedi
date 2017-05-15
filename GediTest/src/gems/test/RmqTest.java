@@ -56,7 +56,7 @@ public class RmqTest {
 	}
 	
 
-//	@Test
+	@Test
 	public void anotherSmallTest() throws IOException {
 		int[] a = new int[34];
 		for (int i=0; i<a.length; i++) {

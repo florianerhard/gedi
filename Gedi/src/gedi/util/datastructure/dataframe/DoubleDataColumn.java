@@ -155,6 +155,21 @@ public class DoubleDataColumn implements DataColumn<DoubleArray> {
 	}
 	
 	@Override
+	public Object getValue(int row) {
+		return data.getDouble(row);
+	}
+	
+	@Override
+	public void setValue(int row, Object val) {
+		double value;
+		if (val instanceof Number) 
+			value = ((Number)val).doubleValue();
+		else
+			value = 0;
+		data.setDouble(row, value);
+	}
+	
+	@Override
 	public void setIntValue(int row, int val) {
 		data.setInt(row, val);
 	}

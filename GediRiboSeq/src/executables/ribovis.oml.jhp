@@ -56,6 +56,23 @@
 		<add file="reads<?JS print(new Integer(e)) ?>" />
 	</StorageSource>
 
+	<PatternMatrix min="20" max="40" id="+.<?JS print(experimentNames[e]) ?>.matrix5p" input="+.<?JS print(experimentNames[e]) ?>.reads" strand="+">
+		<ReadPosition pos="FivePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+	<PatternMatrix min="20" max="40" id="-.<?JS print(experimentNames[e]) ?>.matrix5p" input="-.<?JS print(experimentNames[e]) ?>.reads" strand="-">
+		<ReadPosition pos="FivePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+	<PatternMatrix min="20" max="40" id="+.<?JS print(experimentNames[e]) ?>.matrix3p" input="+.<?JS print(experimentNames[e]) ?>.reads" strand="+">
+		<ReadPosition pos="ThreePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+	<PatternMatrix min="20" max="40" id="-.<?JS print(experimentNames[e]) ?>.matrix3p" input="-.<?JS print(experimentNames[e]) ?>.reads" strand="-">
+		<ReadPosition pos="ThreePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+
 	<MemoryIntervalTreeStorage id="<?JS print(experimentNames[e]) ?>.orfdetailstorage" cls="Orf" />
 	<StorageSource id="+.<?JS print(experimentNames[e]) ?>.orfdetails" filter="+">
 		<add st="<?JS print(experimentNames[e]) ?>.orfdetailstorage" />
@@ -71,6 +88,15 @@
 	<OrfEstimatedCodons id="+.<?JS print(experimentNames[e]) ?>.estimatedactivity" input="+.<?JS print(experimentNames[e]) ?>.orfdetails" strand="+" />
 	<OrfEstimatedCodons id="-.<?JS print(experimentNames[e]) ?>.estimatedactivity" input="-.<?JS print(experimentNames[e]) ?>.orfdetails" strand="-" />
 	
+<!--	<NnlsInferCodon id="+.<?JS print(experimentNames[e]) ?>.nnls" input="+.<?JS print(experimentNames[e]) ?>.reads" model="<?JS print(models[e]) ?>" strand="+" >
+		<Merge m="true"/>
+	</NnlsInferCodon>
+
+	<NnlsInferCodon id="-.<?JS print(experimentNames[e]) ?>.nnls" input="-.<?JS print(experimentNames[e]) ?>.reads" model="<?JS print(models[e]) ?>" strand="-" >
+		<Merge m="true"/>
+	</NnlsInferCodon>
+-->
+
 	<NumericSource id="+.<?JS print(experimentNames[e]) ?>.cod" strand="+">
 		<Rmq file="<?JS print(mergedrmq[e]) ?>" agg="Max"/>
 	</NumericSource>
@@ -144,6 +170,26 @@
 
 
 	<?JS for (var e=0; e<experimentNames.length; e++) { ?>
+
+	<HeatmapTrack id="+.<?JS print(experimentNames[e]) ?>.Heatmap.5p" input="+.<?JS print(experimentNames[e]) ?>.matrix5p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+	<HeatmapTrack id="+.<?JS print(experimentNames[e]) ?>.Heatmap.3p" input="+.<?JS print(experimentNames[e]) ?>.matrix3p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+<!--
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.nnls" class="codon" id="+.<?JS print(experimentNames[e]) ?>.NNLS" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+-->
 
 	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.cod" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Codons" >
 		<LogScale base="10" />
@@ -288,6 +334,27 @@
 		<FixedMin min="0"/>
 		<Points p="false" />
 	</LinesTrack>
+
+	<HeatmapTrack id="-.<?JS print(experimentNames[e]) ?>.Heatmap.5p" input="-.<?JS print(experimentNames[e]) ?>.matrix5p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+	<HeatmapTrack id="-.<?JS print(experimentNames[e]) ?>.Heatmap.3p" input="-.<?JS print(experimentNames[e]) ?>.matrix3p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+<!--
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.nnls" class="codon" id="-.<?JS print(experimentNames[e]) ?>.NNLS" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+-->
+
 	<ScaleLimitLinker id="-.<?JS print(experimentNames[e]) ?>.linker" />
 	<?JS  for (var i=0; i<names[e].length; i++) { ?>
 	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.cod.<?JS print(names[e][i]); ?>" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Codons.<?JS print(names[e][i]); ?>" >

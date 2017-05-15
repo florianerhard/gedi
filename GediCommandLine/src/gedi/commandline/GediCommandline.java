@@ -29,6 +29,7 @@ import gedi.util.userInteraction.progress.ConsoleProgress;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -140,7 +141,8 @@ public class GediCommandline {
 								if (!cmd.exec(context, space<line.length()?line.substring(space+1).trim():""))
 									break;
 							} catch (Exception e) {
-								context.js.getStderr().write(e.getMessage()+"\n");
+								e.printStackTrace(new PrintWriter(context.js.getStderr()));
+//								context.js.getStderr().write(e.getMessage()+"\n");
 							}
 					} else if (StringUtils.trim(line).length()>0){
 						
@@ -164,7 +166,7 @@ public class GediCommandline {
 									re = context.jsThread.execute("echo(result);");
 									if (re.getException()!=null) throw re.getException();
 								}
-								
+								context.lastResult = re;
 								context.reader.setPrompt(prompt);
 								context.prevBuffer.delete(0, context.prevBuffer.length());
 								
@@ -195,8 +197,8 @@ public class GediCommandline {
 				do {
 					readl = context.reader.readLine("Save (h)istory, (s)ession, (b)oth, (n)one, or (c)ancel exit? ");
 				}
-				while (readl.length()!=1 || -1==ArrayUtils.find(exitChars, readl.charAt(0)));
-				read = exitChars[ArrayUtils.find(exitChars, readl.charAt(0))];
+				while (readl!=null && (readl.length()!=1 || -1==ArrayUtils.find(exitChars, readl.charAt(0))));
+				read = readl==null?'n':exitChars[ArrayUtils.find(exitChars, readl.charAt(0))];
 			}
 			context.reader.setHistoryEnabled(true);
 			context.reader.flush();

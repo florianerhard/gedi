@@ -138,7 +138,7 @@ public class ContrastMapping {
 		return mapping.length;
 	}
 
-	private void build() {
+	public void build() {
 		
 		int maxIndex = -1;
 		for (Integer i : map.keySet())

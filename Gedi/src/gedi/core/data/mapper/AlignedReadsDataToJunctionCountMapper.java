@@ -56,16 +56,13 @@ public class AlignedReadsDataToJunctionCountMapper implements GenomicRegionDataM
 					if (e.getKey() instanceof MissingInformationIntronInformation && ((MissingInformationIntronInformation)e.getKey()).isMissingInformationIntron(i)){}
 					else {
 						ArrayGenomicRegion reg = new ArrayGenomicRegion(e.getKey().getEnd(i),e.getKey().getStart(i+1));
-						
 						NumericArray a = re.computeIfAbsent(reg, k->NumericArray.createMemory(numCond, NumericArrayType.Double));
 						AlignedReadsData val = e.getValue();
 						val.addTotalCountsForConditions(a, readCountMode);
-						
 					}
 				}
 			}
 		});
-		
 		
 		return re;
 	}

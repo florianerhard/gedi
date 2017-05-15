@@ -82,6 +82,7 @@ public class EstimateRiboModel {
 		System.err.println(" -o <prefix>\t\t\tPrefix for output files");
 		System.err.println(" -maxpos <position>\t\t\tPosition of maximal upstream probability (default: estimate from annotated start codons)");
 		System.err.println(" -g <genome1 genome2 ...>\t\t\tGenome names");
+		System.err.println(" -per \t\t\tAlso estimate per condition models");
 		System.err.println(" -maxiter <number>\t\t\tMaximal number of iterations per EM repeat (default: 1000)");
 		System.err.println(" -repeats <number>\t\t\tMaximal number of EM repeats (default: 1000000)");
 		System.err.println(" -nthreads <number>\t\t\tNumber of threads to run the EM algorithm (default: Number of available processors)");
@@ -134,6 +135,7 @@ public class EstimateRiboModel {
 		int maxiter = 1000;
 		int repeats = 100000;
 		int nthreads = Runtime.getRuntime().availableProcessors();
+		boolean per = false;
 		
 		Progress progress = new NoProgress();
 		
@@ -146,6 +148,9 @@ public class EstimateRiboModel {
 			}
 			else if (args[i].equals("-p")) {
 				progress=new ConsoleProgress(System.err);
+			}
+			else if (args[i].equals("-per")) {
+				per=true;
 			}
 			else if (args[i].equals("-nthreads")) {
 				nthreads=checkIntParam(args, ++i);
@@ -162,6 +167,9 @@ public class EstimateRiboModel {
 			}
 			else if (args[i].equals("-maxpos")) {
 				maxpos = new int[] {checkIntParam(args,++i)};
+			}
+			else if (args[i].equals("-center")) {
+				maxpos = new int[]{-1};
 			}
 			else if (args[i].equals("-repeats")) {
 				repeats = checkIntParam(args,++i);
@@ -217,10 +225,10 @@ public class EstimateRiboModel {
 			double[] sum = null;
 			double[][] mat = new double[df.columns()-1][];
 			for (int c=1; c<df.columns(); c++) {
-				mat[c-1] = ArrayUtils.restrict(df.getDoubleColumn(c).getRaw().toDoubleArray(),ind->pos[ind]<0);
+				mat[c-1] = ArrayUtils.restrict(df.getDoubleColumn(c).getRaw().toDoubleArray(),ind->pos[ind]<=-10);
 				sum = ArrayUtils.add(sum, mat[c-1]);
 			}
-			int[] posr = ArrayUtils.restrict(pos,ind->pos[ind]<0);
+			int[] posr = ArrayUtils.restrict(pos,ind->pos[ind]<=-10);
 
 			maxpos = new int[mat.length+1];
 			for (int c=0; c<mat.length; c++) {
@@ -240,43 +248,45 @@ public class EstimateRiboModel {
 		em.setRepeats(repeats);
 		em.setProgress(progress);
 		
-		if (new LineOrientedFile(prefix+".conditions.estimateData").exists()) {
-			log.info("Reading estimate data from file "+prefix+".conditions.estimateData");
-			em.readEstimateData(new LineOrientedFile(prefix+".conditions.estimateData"));
-		}
-		else {
-			log.info("Collecting estimate data from file "+prefix+".conditions.estimateData");
-			em.collectEstimateData(new LineOrientedFile(prefix+".conditions.summary"));
-			em.writeEstimateData(new LineOrientedFile(prefix+".conditions.estimateData"));
-		}
-		
-		log.info("Inferring per condition models");
-		PageFileWriter model = new PageFileWriter(prefix+".conditions.model");
-		int cond = reads.getRandomRecord().getNumConditions();
-		RiboModel[] models = new RiboModel[cond];
-		double[] total = em.getTotal();
-		double totalll = 0;
-		for (i=0; i<cond; i++) {
-			String name = reads.getMetaData()!=null?reads.getMetaData().getEntry("conditions").getEntry(i).getEntry("name").asString():null;
-			if (name==null || name.length()==0) name = i+"";
+		if (per) {
+			if (new LineOrientedFile(prefix+".conditions.estimateData").exists()) {
+				log.info("Reading estimate data from file "+prefix+".conditions.estimateData");
+				em.readEstimateData(new LineOrientedFile(prefix+".conditions.estimateData"));
+			}
+			else {
+				log.info("Collecting estimate data from file "+prefix+".conditions.estimateData");
+				em.collectEstimateData(new LineOrientedFile(prefix+".conditions.summary"));
+				em.writeEstimateData(new LineOrientedFile(prefix+".conditions.estimateData"));
+			}
 			
-			int mp = maxpos.length==1?maxpos[0]:maxpos[i];
-			em.setMaxPos(mp);
-			log.info("Using maxpos="+mp);
-			log.info("Estimate parameters for "+prefix+"."+name);
-			double ll = em.estimateBoth(i,nthreads);
-			log.info(String.format("LL=%.6g",ll));
-			em.plotProbabilities(prefix+"."+name,prefix+"."+name+".png");
-			models[i] = em.getModel();
-			new LineOrientedFile(prefix+"."+name+".model.csv").writeAllText(models[i].toTable());
-			models[i].serialize(model);
-			totalll +=ll;
+			log.info("Inferring per condition models");
+			PageFileWriter model = new PageFileWriter(prefix+".conditions.model");
+			int cond = reads.getRandomRecord().getNumConditions();
+			RiboModel[] models = new RiboModel[cond];
+			double[] total = em.getTotal();
+			double totalll = 0;
+			for (i=0; i<cond; i++) {
+				String name = reads.getMetaData()!=null?reads.getMetaData().getEntry("conditions").getEntry(i).getEntry("name").asString():null;
+				if (name==null || name.length()==0) name = i+"";
+				
+				int mp = maxpos.length==1?maxpos[0]:maxpos[i];
+				em.setMaxPos(mp);
+				log.info("Using maxpos="+mp);
+				log.info("Estimate parameters for "+prefix+"."+name);
+				double ll = em.estimateBoth(i,nthreads);
+				log.info(String.format("LL=%.6g",ll));
+				em.plotProbabilities(prefix+"."+name,prefix+"."+name+".png");
+				models[i] = em.getModel();
+				new LineOrientedFile(prefix+"."+name+".model.csv").writeAllText(models[i].toTable());
+				models[i].serialize(model);
+				totalll +=ll;
+			}
+			model.close();
+			log.info(String.format("Total LL=%.6g",totalll));
 		}
-		model.close();
-		log.info(String.format("Total LL=%.6g",totalll));
 		
 		log.info("Inferring merged model");
-		model = new PageFileWriter(prefix+".merged.model");
+		PageFileWriter model = new PageFileWriter(prefix+".merged.model");
 		em.setMerge(true);
 		String name = "merged";
 			

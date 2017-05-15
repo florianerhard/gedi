@@ -1,0 +1,156 @@
+
+	<ReadLeadingMismatchesFeature id="Untemplated" />
+
+	<SequenceFeature id="5p Bias shifted">
+		<Genomic g="genomic"/>
+		<From position="FivePrime" offset="0" />
+		<To position="FivePrime" offset="2" />
+	</SequenceFeature>
+	
+	<AbsolutePosition id="Frame" input="Transcript" >
+		<Frame />
+	</AbsolutePosition>
+	<AbsolutePosition id="MajorFrame" input="Major" >
+		<Frame />
+	</AbsolutePosition>
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>5pbiasadd.tsv" input="5p Bias,Untemplated">
+		<Barplot aes="x,facet,fill,y" position="stack">
+			<Section>Bias</Section>
+			<Title>5' read bias (untemplated addition aware)</Title>
+			<Description>Shows the number of dinucleotides composed of the nucleotide immediately upstream of the read position and the first read nucleotide.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>5pbiasaddshift.tsv" input="5p Bias shifted,Untemplated">
+		<Barplot aes="x,facet,fill,y" position="stack">
+			<Section>Bias</Section>
+			<Title>5' read bias (shifted, untemplated addition aware)</Title>
+			<Description>Shows the number of dinucleotides composed of the nucleotide immediately upstream of the read position and the first read nucleotide.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.lengthmm.stat" input="Read length,Untemplated">
+		<Barplot aes="x,dfill,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Length histogram</Title>
+			<Description>The read length distribution after mapping reads. Reads with and without untemplated additions are distinguished.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.lengthcdsmm.stat" input="Read length,Untemplated">
+		<Condition inputs="Position" cond="[+]" />
+		<Barplot aes="x,dfill,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Length histogram (CDS)</Title>
+			<Description>The read length distribution after mapping reads. Reads with and without untemplated additions are distinguished and only reads mapping to transcripts are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.startcodon.tsv" input="StartCodon,Read length,Untemplated">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Start codon (A)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. Only reads where this distance is unique for all Isoforms are considered. Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.startcodon_unique.tsv" input="StartCodon,Read length,Untemplated">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Start codon (A,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. Only reads where this distance is unique for all Isoforms and that are uniquely mapped are considered. Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.major.startcodon.tsv" input="MajorStartCodon,Read length,Untemplated">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Start codon (M)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. The major isoform is used as reference for each gene (the longest coding transcript). Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+		<FeatureStatisticOutput file="<?JS prefix ?>riboseq.major.startcodon_unique.tsv" input="MajorStartCodon,Read length,Untemplated">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Start codon (M,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated start codon. The x axis is the distance of the read start to the start codon. The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered. Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.stopcodon.tsv" input="StopCodon,Read length,Untemplated">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Stop codon (A)</Title>
+			<Description>Shows the number of reads starting close to an annotated stop codon. The x axis is the distance of the read start to the stop codon. Only reads where this distance is unique for all Isoforms are considered. Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.stopcodon_unique.tsv" input="StopCodon,Read length,Untemplated">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Stop codon (A,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated stop codon. The x axis is the distance of the read start to the stop codon. Only reads where this distance is unique for all Isoforms and that are uniquely mapped are considered. Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>riboseq.major.stopcodon.tsv" input="MajorStopCodon,Read length,Untemplated">
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Stop codon (M)</Title>
+			<Description>Shows the number of reads starting close to an annotated stop codon. The x axis is the distance of the read start to the stop codon. The major isoform is used as reference for each gene (the longest coding transcript). Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+		<FeatureStatisticOutput file="<?JS prefix ?>riboseq.major.stopcodon_unique.tsv" input="MajorStopCodon,Read length,Untemplated">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition js="Math.abs(this.getUniqueInput(0,51))&lt;=50 &amp;&amp; this.getUniqueInput(1,0)&lt;=30 &amp;&amp; this.getUniqueInput(1,0)&gt;=28" />
+		<Barplot aes="x,dfill,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
+			<Title>Stop codon (M,U)</Title>
+			<Description>Shows the number of reads starting close to an annotated stop codon. The x axis is the distance of the read start to the stop codon. The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered. Only reads lengths between 28 and 30 are considered and untemplated additions are respected.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>frame.tsv" input="Frame,Read length,Untemplated">
+		<Condition inputs="Frame" cond="[U]" />
+		<Barplot aes="dfill,x,facet,,y" position="dodge">
+			<Section>Ribo-seq</Section>
+			<Title>Frame (A)</Title>
+			<Description>Shows the frame distribution per read length of reads overlapping a CDS. The frame is the read start position in the CDS modulo 3. Only reads where the frame is unique for all Isoforms are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>frame_unique.tsv" input="Frame,Read length,Untemplated">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition inputs="Frame" cond="[U]" />
+		<Barplot aes="dfill,x,facet,,y" position="dodge">
+			<Section>Ribo-seq</Section>
+			<Title>Frame (A,U)</Title>
+			<Description>Shows the frame distribution per read length of reads overlapping a CDS. The frame is the read start position in the CDS modulo 3. Only reads where the frame is unique for all Isoforms and only uniquely mapped reads are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>majorframe.tsv" input="MajorFrame,Read length,Untemplated">
+		<Condition inputs="MajorFrame" cond="[U]" />
+		<Barplot aes="dfill,x,facet,,y" position="dodge">
+			<Section>Ribo-seq</Section>
+			<Title>Frame (M)</Title>
+			<Description>Shows the frame distribution per read length of reads overlapping a CDS. The frame is the read start position in the CDS modulo 3. The major isoform is used as reference for each gene (the longest coding transcript) is considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>majorframe_unique.tsv" input="MajorFrame,Read length,Untemplated">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Condition inputs="MajorFrame" cond="[U]" />
+		<Barplot aes="dfill,x,facet,,y" position="dodge">
+			<Section>Ribo-seq</Section>
+			<Title>Frame (M,U)</Title>
+			<Description>Shows the frame distribution per read length of reads overlapping a CDS. The frame is the read start position in the CDS modulo 3. The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/junit-benchmarks-0.7.2.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Gedi"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediBam"/>
@@ -11,7 +11,6 @@
 	<classpathentry kind="src" path="/GediCenteredDiskIntervalTreeStorage"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediAtacSeq"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediLFC"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/GediOml"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediOmlRemote"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediRemote"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/FxDocking"/>

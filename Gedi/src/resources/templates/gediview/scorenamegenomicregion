@@ -1,0 +1,83 @@
+<?JS0
+varin("id","Track id",true);
+varin("paths","File paths",true);
+varin("background","Background color of track",false);
+varin("colors","Colors for scores",false);
+varin("palette","Palette to derive colors for scores",false);
+varin("numColors","Number of colors to derive colors for scores",false);
+varin("min","Minimal score for color assignment (default 0)",false);
+varin("max","Maximal score for color assignment (default 1000)",false);
+varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
+?>
+<?JS
+var id = id?id:"Editor";
+var background = background?background:"#ffffff";
+var colors = colors?colors:ColorPalettes.Blues.getPalette(2);
+var palette;
+var numColors;
+if (palette && numColors) {
+	if (typeof palette === 'string' || myVar instanceof String)
+		palette = ColorPalettes.valueOf(palette);
+	colors = palette.getPalette(numColors);
+} 
+if (Color.class.isInstance(colors[0]))
+	colors = EI.wrap(colors).map(function(c) PaintUtils.encodeColor(c)).concat(",");
+	
+var min;
+var max;
+var mbppp = mbppp?mbppp:Infinity;
+?>
+	<StorageSource id="+.<?JS id ?>.data" filter="+">
+		<?JS for each (var path in paths) { ?>
+		<File path="<?JS path ?>" />
+		<?JS } ?>
+	</StorageSource>
+	<StorageSource id="-.<?JS id ?>.data" filter="-">
+		<?JS for each (var path in paths) { ?>
+		<File path="<?JS path ?>" />
+		<?JS } ?>
+	</StorageSource>
+	
+	<PackRegionTrack input="+.<?JS id ?>.data" id="+.<?JS id ?>"  >
+		<Hspace space="0" />
+		<Vspace space="6" />
+		<Background c="<?JS background ?>" />
+		<BoxRenderer>
+			<ScoreRenderer>
+<?JS if (min && max) {?>	<Linear min="<? min ?>" max="<? max ?>" />
+<?JS } else { ?>			<Linear src="+.<?JS id ?>.data" /> <?JS } ?>
+				<Colors colors="<? colors ?>" />
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="1" />
+			</ScoreRenderer>
+		</BoxRenderer>
+		<Strand s="+" />
+		<ToolTip />
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS mbppp ?>"/>
+	</PackRegionTrack>
+	<PackRegionTrack input="-.<?JS id ?>.data" id="-.<?JS id ?>"  >
+		<Hspace space="0" />
+		<Vspace space="6" />
+		<Background c="<?JS background ?>" />
+		<BoxRenderer>
+			<ScoreRenderer>
+<?JS if (min && max) {?>	<Linear min="<? min ?>" max="<? max ?>" />
+<?JS } else { ?>			<Linear src="-.<?JS id ?>.data" /> <?JS } ?>
+				<Colors colors="<? colors ?>" />
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="1" />
+			</ScoreRenderer>
+		</BoxRenderer>
+		<Strand s="-" />
+		<ToolTip />
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS mbppp ?>"/>
+	</PackRegionTrack>
+	
+	
+	
+	
+	

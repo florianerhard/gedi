@@ -26,6 +26,7 @@ import java.util.function.UnaryOperator;
 
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.reference.ReferenceSequence;
+import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionPosition;
 import gedi.core.region.MutableReferenceGenomicRegion;
@@ -54,14 +55,17 @@ public class PatternMatrix<D> implements GenomicRegionDataMapper<IntervalTree<Ge
 	
 	private GenomicRegionPosition position = GenomicRegionPosition.FivePrime;
 	private int offset = 0;
+	private Strand strand;
 	
 	
-	public PatternMatrix(int min, int max) {
+	public PatternMatrix(int min, int max, Strand strand) {
 		binning = new FixedSizeBinning(min, max+1, max-min+1);
+		this.strand = strand;
 	}
 	
-	public PatternMatrix(int min, int max, int bins) {
+	public PatternMatrix(int min, int max, int bins, Strand strand) {
 		binning = new FixedSizeBinning(min, max+1, bins);
+		this.strand = strand;
 	}
 	
 	public void setValueFunction(ToDoubleFunction<D> valueFunction) {
@@ -103,7 +107,7 @@ public class PatternMatrix<D> implements GenomicRegionDataMapper<IntervalTree<Ge
 		Iterator<Entry<GenomicRegion, D>> it = data.entrySet().iterator();
 		while (it.hasNext()) {
 			Entry<GenomicRegion, D> n = it.next();
-			int p = position.position(reference, n.getKey(), offset);
+			int p = position.position(reference.toStrand(strand), n.getKey(), offset);
 			int len = n.getKey().getTotalLength();
 			double value = valueFunction.applyAsDouble(n.getValue());
 			if (region.contains(p)) {

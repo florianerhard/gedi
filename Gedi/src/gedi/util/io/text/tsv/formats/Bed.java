@@ -112,7 +112,7 @@ public class Bed extends MemoryIntervalTreeStorage<ScoreNameAnnotation> {
 	
 	public static <T> ExtendedIterator<ImmutableReferenceGenomicRegion<T>> iterateEntries(String file, Function<String[],T> data) throws IOException {
 		IntArrayList coo = new IntArrayList();
-		return new LineOrientedFile(file).lineIterator().map(l->{
+		return new LineOrientedFile(file).lineIterator().skip(l->l.startsWith("#")).map(l->{
 			String[] f = StringUtils.split(l, '\t', new String[12]);
 			
 			Chromosome ref = Chromosome.obtain(f[0],f[5]);

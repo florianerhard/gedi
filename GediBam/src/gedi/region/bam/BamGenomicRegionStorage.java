@@ -27,6 +27,7 @@ import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.sequence.SequenceProvider;
 import gedi.util.ArrayUtils;
@@ -63,6 +64,7 @@ import java.util.LinkedList;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -313,35 +315,43 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 		return strandness[file];
 	}
 
+	
+	private HashMap<ReferenceSequence,Integer> refs=null;
+	private ReentrantLock refLock = new ReentrantLock();
 	@Override
 	public Set<ReferenceSequence> getReferenceSequences() {
-		boolean spec = false;
-		boolean unspec = false;
-		for (int i=0; i<files.length; i++)
-			if (isStrandSpecific(i))
-				spec = true;
-			else
-				unspec = true;
-		
-		HashSet<ReferenceSequence> re = new HashSet<ReferenceSequence>();
-		for (SamReader s : files)
-			for (SAMSequenceRecord seq : s.getFileHeader().getSequenceDictionary().getSequences()) {
-				if (spec) {
-					re.add(Chromosome.obtain(seq.getSequenceName(),Strand.Plus));
-					re.add(Chromosome.obtain(seq.getSequenceName(),Strand.Minus));
-				} 
-				if (unspec)
-					re.add(Chromosome.obtain(seq.getSequenceName(),Strand.Independent));
+		if (refs==null) {
+			refLock.lock();
+			if (refs==null) {
+				boolean spec = false;
+				boolean unspec = false;
+				for (int i=0; i<files.length; i++)
+					if (isStrandSpecific(i))
+						spec = true;
+					else
+						unspec = true;
+				
+				refs = new HashMap<>();
+				for (SamReader s : files)
+					for (SAMSequenceRecord seq : s.getFileHeader().getSequenceDictionary().getSequences()) {
+						if (spec) {
+							refs.put(Chromosome.obtain(seq.getSequenceName(),Strand.Plus),seq.getSequenceLength());
+							refs.put(Chromosome.obtain(seq.getSequenceName(),Strand.Minus),seq.getSequenceLength());
+						} 
+						if (unspec)
+							refs.put(Chromosome.obtain(seq.getSequenceName(),Strand.Independent),seq.getSequenceLength());
+					}		
 			}
-		return re;
+			refLock.unlock();
+		}
+		
+		return refs.keySet();
 	}
 
-	private SAMSequenceRecord getSequenceInfo(ReferenceSequence ref) {
-		for (SamReader s : files) {
-			SAMSequenceRecord re = s.getFileHeader().getSequence(ref.getName());
-			if (re!=null) return re;
-		}
-		return null;
+	private int getSequenceLength(ReferenceSequence ref) {
+		getReferenceSequences();
+		Integer re = refs.get(ref);
+		return re==null?0:re;
 	}
 
 
@@ -375,11 +385,14 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 			return new ConditionMappedAlignedReadsData(re2,mapping);
 		}
 			
+		
 
 //		if (region instanceof ConditionMappedAlignedReadsData && ((ConditionMappedAlignedReadsData)region).getParent() instanceof FactoryGenomicRegion)
 //			return ((FactoryGenomicRegion)((ConditionMappedAlignedReadsData)region).getParent()).create();
-			
-		throw new UnsupportedOperationException();
+
+		ImmutableReferenceGenomicRegion<AlignedReadsData> re = ei(new ImmutableReferenceGenomicRegion<>(ref, region)).filter(r->region.equals(r.getRegion())).getUniqueResult(true, false);
+		return re==null?null:re.getData();
+		
 
 //		SAMRecord[][] re = getRecords(ref, region);
 //		if (re==null) return null;
@@ -881,7 +894,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 
 
 		public BufferingGenomicRegionSpliterator(ReferenceSequence ref) {
-			this(ref,0,getSequenceInfo(ref).getSequenceLength());
+			this(ref,0,getSequenceLength(ref));
 		}
 
 		public BufferingGenomicRegionSpliterator(ReferenceSequence ref, int start, int end) {
@@ -904,6 +917,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 					String name = ref.getName();
 					if (files[i].getFileHeader().getSequenceIndex(name)==-1 && files[i].getFileHeader().getSequenceIndex(StringUtils.removeHeader(name,"chr"))!=-1)
 						name = StringUtils.removeHeader(name,"chr");
+					if (files[i].getFileHeader().getSequenceIndex(name)==-1 && files[i].getFileHeader().getSequenceIndex("chr"+name)!=-1)
+						name = "chr"+name;
 					
 					raw[i] = files[i].query(name, start, end, false);
 					

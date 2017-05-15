@@ -32,6 +32,8 @@ import gedi.util.userInteraction.progress.ConsoleProgress;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -69,6 +71,16 @@ public class MergeCIT {
 		}
 		
 		EI.wrap(args).map(File::new).throwArg(File::exists,"File %s does not exist!");
+		
+		if (args.length==1) {
+			if (new File(out).equals(new File(args[0])))
+				System.exit(0);
+			if (clear)
+				new File(out).renameTo(new File(args[0]));
+			else
+				Files.copy(Paths.get(out), Paths.get(args[0]));
+			System.exit(0);
+		}
 		
 		CenteredDiskIntervalTreeStorage<AlignedReadsData>[] storages = (CenteredDiskIntervalTreeStorage[]) 
 				EI.wrap(args)

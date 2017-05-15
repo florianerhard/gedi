@@ -80,7 +80,7 @@ public class NterminalExtensionAnalysis {
 	}
 
 	public void process(ReferenceGenomicRegion<Transcript> reg) throws IOException {
-		ReferenceGenomicRegion<Transcript> cds = Transcript.getCds(reg);
+		ReferenceGenomicRegion<Transcript> cds = reg.getData().getCds(reg);
 		
 		ImmutableReferenceGenomicRegion<Orf> o1 = orfs1.ei(cds).filter(o->o.contains(cds)).sort((a,b)->Double.compare(b.getData().getActivityFraction(), a.getData().getActivityFraction())).first();
 		ImmutableReferenceGenomicRegion<Orf> o2 = orfs2.ei(cds).filter(o->o.contains(cds)).sort((a,b)->Double.compare(b.getData().getActivityFraction(), a.getData().getActivityFraction())).first();

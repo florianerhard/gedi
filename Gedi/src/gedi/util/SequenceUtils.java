@@ -18,7 +18,9 @@
 
 package gedi.util;
 
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
+import gedi.util.datastructure.charsequence.MaskedCharSequence;
 import gedi.util.datastructure.tree.Trie;
 import gedi.util.io.text.fasta.index.FastaIndexFile.FastaIndexEntry;
 import gedi.util.sequence.WithFlankingSequence;
@@ -39,10 +41,10 @@ public class SequenceUtils {
 		Dna,Rna
 	}
 
-	public static final char[] rna_nucleotides = {'A','C','G','U','N'};
-	public static final char[] nucleotides = {'A','C','G','T','N'};
-	public static final char[] compl_nucleotides = {'T','G','C','A','N'};
-	public static final char[] compl_rna_nucleotides = {'U','G','C','A','N'};
+	public static final char[] rna_nucleotides = {'A','C','G','U','N','-'};
+	public static final char[] nucleotides = {'A','C','G','T','N','-'};
+	public static final char[] compl_nucleotides = {'T','G','C','A','N','-'};
+	public static final char[] compl_rna_nucleotides = {'U','G','C','A','N','-'};
 	public static final int[] inv_nucleotides = new int[256];
 	public static final char[][] dna_iupac = new char[256][];
 	public static final HashMap<String, String> code = new HashMap<String, String>();
@@ -127,6 +129,7 @@ public class SequenceUtils {
 		inv_nucleotides['G'] = inv_nucleotides['g'] = 2;
 		inv_nucleotides['T'] = inv_nucleotides['t'] = 3;
 		inv_nucleotides['N'] = inv_nucleotides['n'] = 4;
+		inv_nucleotides['-'] = inv_nucleotides['-'] = 5;
 
 		inv_nucleotides['U'] = inv_nucleotides['u'] = 3;
 
@@ -382,4 +385,9 @@ public class SequenceUtils {
 			sb.append(StringUtils.saveSubstring(seq, coord.getStart(i), coord.getEnd(i),r));
 		return sb.toString();
 	}
+	
+	public static ArrayGenomicRegion getAlignedRegion(String aliLine) {
+		return MaskedCharSequence.maskChars(aliLine,'-','-').getUnmaskedRegion();
+	}
+	
 }

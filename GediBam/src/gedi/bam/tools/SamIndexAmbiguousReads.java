@@ -28,6 +28,7 @@ import gedi.util.io.randomaccess.arrays.AmbiguityGenomicRegionArray;
 import gedi.util.io.randomaccess.arrays.GenomicRegionArray;
 import gedi.util.io.randomaccess.diskarray.DiskArray;
 import gedi.util.io.randomaccess.diskarray.VariableSizeDiskArrayBuilder;
+import gedi.util.io.randomaccess.serialization.BinarySerializableSerializer;
 import gedi.util.mutable.MutableInteger;
 import gedi.util.sequence.MismatchString;
 

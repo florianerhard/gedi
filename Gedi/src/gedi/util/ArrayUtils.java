@@ -5082,6 +5082,7 @@ public class ArrayUtils {
 		return unique(a,0,a.length);
 	}
 	public static int unique(String[] a, int fromIndex, int toIndex) {
+		if (toIndex<=fromIndex) return 0;
 		int index = fromIndex;
 		for (int i=index+1; i<toIndex; i++) {
 			if (!a[i].equals(a[index]))
@@ -5100,6 +5101,7 @@ public class ArrayUtils {
 	 * @return
 	 */
 	public static <T> int unique(T[] a, int fromIndex, int toIndex) {
+		if (toIndex<=fromIndex) return 0;
 		int index = fromIndex;
 		for (int i=index+1; i<toIndex; i++) {
 			if (!a[i].equals(a[index]))
@@ -5109,6 +5111,7 @@ public class ArrayUtils {
 		return index+1;
 	}
 	public static <T> int unique(T[] a, int fromIndex, int toIndex, BiPredicate<T, T> equals) {
+		if (toIndex<=fromIndex) return 0;
 		int index = fromIndex;
 		for (int i=index+1; i<toIndex; i++) {
 			if (!equals.test(a[i],a[index]))
@@ -5119,6 +5122,7 @@ public class ArrayUtils {
 	}
 
 	public static <T> int unique(T[] a, Comparator<T> comp) {
+		if (a.length==0) return 0;
 		int index = 0;
 		for (int i=1; i<a.length; i++) {
 			if (comp.compare(a[i],a[index])!=0)

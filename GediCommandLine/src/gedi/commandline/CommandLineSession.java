@@ -20,6 +20,8 @@ package gedi.commandline;
 
 import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
+import gedi.util.io.text.LineOrientedFile;
+import gedi.util.io.text.LineWriter;
 import gedi.util.nashorn.JS;
 import gedi.util.orm.OrmSerializer;
 import gedi.util.r.RProcess;
@@ -44,7 +46,10 @@ public class CommandLineSession {
 	public FileHistory history;
 	public Progress progress;
 	public boolean blockTermHandler;
+	public JSResult lastResult;
 
+	public LineWriter script;
+	
 	public void save() throws IOException {
 		save(SESSION_FILE);
 	}
@@ -86,6 +91,19 @@ public class CommandLineSession {
 
 		writer.close();
 		
+	}
+	
+	public void lastCommandToScript() throws IOException {
+		if (script==null) script = new LineOrientedFile("ncl.script").append();
+		if (lastResult!=null) {
+			script.writeLine(lastResult.getCommand());
+			script.flush();
+		}
+	}
+	
+	public void setScriptFile(String path) throws IOException {
+		if (script!=null) script.close();
+		script = new LineOrientedFile(path).append();
 	}
 
 	public void load() throws IOException {

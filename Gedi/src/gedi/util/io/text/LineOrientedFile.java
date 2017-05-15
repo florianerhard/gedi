@@ -23,7 +23,6 @@ package gedi.util.io.text;
 import gedi.util.FunctorUtils;
 import gedi.util.FunctorUtils.MergeIterator;
 import gedi.util.ReflectionUtils;
-import gedi.util.io.Directory;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -64,7 +63,7 @@ public class LineOrientedFile extends File {
 	private Boolean bzipped2;
 	protected boolean autoFlush = false;
 	
-	public LineOrientedFile(Directory dir, String name) {
+	public LineOrientedFile(File dir, String name) {
 		super(dir,name);
 		if (isPipe()) {
 			gzipped = false;

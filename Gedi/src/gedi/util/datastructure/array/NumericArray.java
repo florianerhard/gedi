@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.AbstractList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.DoubleUnaryOperator;
 
 public interface NumericArray extends BinarySerializable {
@@ -211,14 +212,49 @@ public interface NumericArray extends BinarySerializable {
 
 	String format(int index);
 	String formatDecimals(int index, int decimals);
-
+	default String format(int index, String format) {
+		return String.format(Locale.US,format,get(index));
+	}
+	default String formatArray(String sep) {
+		StringBuilder sb = new StringBuilder();
+		for (int i=0; i<length(); i++) {
+			if (i>0)
+				sb.append(sep);
+			sb.append(format(i));
+		}
+		return sb.toString();
+	}
+	default String formatArray(int decimals, String sep) {
+		StringBuilder sb = new StringBuilder();
+		for (int i=0; i<length(); i++) {
+			if (i>0)
+				sb.append(sep);
+			sb.append(formatDecimals(i,decimals));
+		}
+		return sb.toString();
+	}
+	default String formatArray(String format, String sep) {
+		StringBuilder sb = new StringBuilder();
+		for (int i=0; i<length(); i++) {
+			if (i>0)
+				sb.append(sep);
+			sb.append(format(i,format));
+		}
+		return sb.toString();
+	}
+	
 	default double evaluate(NumericArrayFunction fun) {
 		return fun.applyAsDouble(this);
 	}
+	
+	default double sum() {
+		return evaluate(NumericArrayFunction.Sum);
+	}
 
-	default void applyInPlace(DoubleUnaryOperator op) {
+	default NumericArray applyInPlace(DoubleUnaryOperator op) {
 		for (int i=0; i<length(); i++)
 			setDouble(i, op.applyAsDouble(getDouble(i)));
+		return this;
 	}
 
 	/**
@@ -463,6 +499,25 @@ public interface NumericArray extends BinarySerializable {
 		return array;
 	}
 
+	public static NumericArray wrap(byte a) {
+		return new MemoryByteArray(new byte[] {a});
+	}
+	public static NumericArray wrap(short a) {
+		return new MemoryShortArray(new short[] {a});
+	}
+	public static NumericArray wrap(int a) {
+		return new MemoryIntegerArray(new int[] {a});
+	}
+	public static NumericArray wrap(long a) {
+		return new MemoryLongArray(new long[] {a});
+	}
+	public static NumericArray wrap(float a) {
+		return new MemoryFloatArray(new float[] {a});
+	}
+	public static NumericArray wrap(double a) {
+		return new MemoryDoubleArray(new double[] {a});
+	}
+	
 	public static NumericArray wrap(byte[] a) {
 		return new MemoryByteArray(a);
 	}

@@ -112,6 +112,10 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		
 	}
 	
+	public boolean hasSum() {
+		return rmqs.values().iterator().next()[0].hasSum();
+	}
+	
 	@Override
 	public int getLength(String name) {
 		Chromosome reference = Chromosome.obtain(name);
@@ -179,6 +183,11 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		}
 	}
 
+	public PositionNumericIterator iterateValues(ReferenceSequence reference) {
+		IntegerArray a = positions.get(reference);
+		int l = a.getInt(a.length()-1)+1;
+		return iterateValues(reference, new ArrayGenomicRegion(0,l));
+	}
 	@Override
 	public PositionNumericIterator iterateValues(ReferenceSequence reference,
 			GenomicRegion region) {

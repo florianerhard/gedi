@@ -19,9 +19,6 @@
 package gedi.plot;
 
 import gedi.app.Gedi;
-
-import gedi.cascadingProperty.CpsList;
-import gedi.cascadingProperty.CpsReader;
 import gedi.plot.aesthetics.Aesthetic;
 import gedi.plot.aesthetics.DoubleAesthetic;
 import gedi.plot.aesthetics.paint.PaintAesthetic;
@@ -60,6 +57,8 @@ import gedi.util.dynamic.DynamicObject;
 import gedi.util.gui.ColorPalettes;
 import gedi.util.io.text.tsv.formats.Csv;
 import gedi.util.nashorn.JS;
+import gedi.util.oml.cps.CpsList;
+import gedi.util.oml.cps.CpsReader;
 
 import java.awt.Color;
 import java.awt.Dimension;

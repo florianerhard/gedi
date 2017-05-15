@@ -269,7 +269,7 @@ public class Hsv1KineticAnalysis<D> {
 												.map(m->new MutableTriple<Integer,String,GenomicRegion>(
 														index.N++,
 														getName(m),
-														EI.wrap(m.keySet()).collect(new ArrayGenomicRegion(), (a,b)->a.union(b))
+														EI.wrap(m.keySet()).reduce(new ArrayGenomicRegion(), (a,b)->a.union(b))
 														))
 												.loop()){
 				
@@ -363,7 +363,7 @@ public class Hsv1KineticAnalysis<D> {
 		GenomicRegion region = mrnas.ei(rgr).map(r->r.getRegion())
 			.chain(orfs.ei(rgr).map(r->r.getRegion()))
 			.chain(EI.wrap(regions.values()).demultiplex(m->EI.wrap(m).map(rr->rr.getRegion())))
-			.collect((a,b)->a.union(b)).removeIntrons();
+			.reduce((a,b)->a.union(b)).removeIntrons();
 		
 		
 		viewer.setLocation(rgr.getReference(),region.extendAll((int)(region.getTotalLength()*0.1), (int)(region.getTotalLength()*0.1)),false);

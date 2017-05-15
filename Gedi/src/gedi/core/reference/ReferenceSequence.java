@@ -39,6 +39,16 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 		return name;
 	}
 	
+	default boolean isPlus() {
+		return Strand.Plus.equals(getStrand());
+	}
+	default boolean isMinus() {
+		return Strand.Minus.equals(getStrand());
+	}
+	default boolean isIndependent() {
+		return Strand.Independent.equals(getStrand());
+	}
+	
 	ReferenceSequence toChrStrippedReference();
 	
 	default ReferenceSequence toStrandIndependent() {
@@ -107,6 +117,9 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 		return null;
 	}
 	default boolean isStandard() {
+		if (getName().startsWith("NC_")) return true;
+		if (getName().startsWith("JN")) return true;
+		
 		int digits = 0;
 		int max = 0;
 		for (int i=0; i<getName().length(); i++) {

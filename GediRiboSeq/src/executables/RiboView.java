@@ -19,7 +19,6 @@
 package executables;
 
 import gedi.app.Gedi;
-import gedi.cascadingProperty.CpsReader;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
@@ -33,9 +32,6 @@ import gedi.gui.genovis.SetLocationField;
 import gedi.gui.genovis.SwingGenoVisViewer;
 import gedi.gui.genovis.TrackSelectionTreeButton;
 import gedi.gui.genovis.VisualizationTrack;
-import gedi.oml.OmlNodeExecutor;
-import gedi.oml.OmlReader;
-import gedi.oml.petrinet.Pipeline;
 import gedi.riboseq.inference.orf.Orf;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
@@ -43,9 +39,13 @@ import gedi.util.StringUtils;
 import gedi.util.datastructure.dataframe.DataFrame;
 import gedi.util.functions.EI;
 import gedi.util.io.text.LineIterator;
-import gedi.util.io.text.jph.Jhp;
+import gedi.util.io.text.jhp.Jhp;
 import gedi.util.io.text.tsv.formats.Csv;
 import gedi.util.nashorn.JS;
+import gedi.util.oml.OmlNodeExecutor;
+import gedi.util.oml.OmlReader;
+import gedi.util.oml.cps.CpsReader;
+import gedi.util.oml.petrinet.Pipeline;
 
 import java.awt.BorderLayout;
 import java.io.File;
@@ -225,8 +225,13 @@ public class RiboView {
 				for (String orfFile : EI.wrap(new File(f).list()).filter(p->p.endsWith(".merged.orfs.cit")).loop()) {
 					String pref = new File(new File(f),orfFile.substring(0,orfFile.length()-".orfs.cit".length())).getPath();
 					String total = pref.substring(0, pref.length()-".merged".length())+".stattotal.stat";
-					if (!new File(total).exists() && autoFolders.contains(new File(total).getParentFile().getName()))
+					if (!new File(total).exists() && autoFolders.contains(new File(total).getParentFile().getName())) {
 						total = new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/stats/"+new File(total).getName().replace("stattotal", "total");
+						if (!new File(total).exists())
+							total = new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/report/"+new File(total).getName().replace("total.stat", "total.tsv");
+						if (!new File(total).exists())
+							total = EI.files(new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/report/").filter(fi->fi.getPath().endsWith("total.tsv")).map(fi->fi.getAbsolutePath()).first();
+					}
 					prefCreate.add(pref);
 					totalCreate.add(total);
 					log.log(Level.INFO, "Adding "+pref);
@@ -241,7 +246,6 @@ public class RiboView {
 				if (new File(f,"tracks").isDirectory()) {
 					for (File track : new File(f,"tracks").listFiles()) {
 						tracksCreate.add(track.getAbsolutePath());
-						log.log(Level.INFO, "Adding track "+track);
 					}
 				}
 			}
@@ -273,7 +277,7 @@ public class RiboView {
 		
 		
 		for (int e=0; e<prefix.length; e++) {
-			experimentNames[e] = FileUtils.getNameWithoutExtension(prefix[e]);
+			experimentNames[e] = FileUtils.getFullNameWithoutExtension(prefix[e]);
 			models[e] = prefix[e]+".model";
 			
 			DataFrame df = Csv.toDataFrame(totalCountFile[e],true,0,null);
@@ -315,9 +319,9 @@ public class RiboView {
 		for (int e=0; e< tracks.length; e++) {
 			Path p = Paths.get(tracks[e]);
 			try {
+				log.log(Level.INFO, "Adding track "+tracks[e]);
 				GenomicRegionStorage st = ((GenomicRegionStorage) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p));
 				context.put("tracks"+e, st);
-				
 			} catch (Exception ex) {
 				throw new RuntimeException("Cannot load "+p,ex);
 			}			

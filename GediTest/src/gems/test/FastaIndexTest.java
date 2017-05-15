@@ -25,6 +25,7 @@ import gedi.core.reference.Chromosome;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
+import gedi.util.functions.EI;
 import gedi.util.math.stat.RandomNumbers;
 
 import java.io.IOException;
@@ -41,12 +42,14 @@ public class FastaIndexTest {
 	@Test
 	public void genomeSequenceTest() throws IOException, ClassNotFoundException {
 		Gedi.startup();
-		Genomic g = Genomic.get("h.ens75");
+		Genomic g = Genomic.get("h.gencode19");
 		RandomNumbers rnd = new RandomNumbers();
 		int L = 10000;
 		int R = 10000;
 		
 		String[] r = g.getSequenceNames().toArray(new String[0]);
+		r = EI.wrap(r).filter(c->Chromosome.obtain(c).isStandard()).toArray(String.class);
+		
 		
 		ReferenceGenomicRegion[] refs = new ReferenceGenomicRegion[R];
 		String[] seq = new String[refs.length];

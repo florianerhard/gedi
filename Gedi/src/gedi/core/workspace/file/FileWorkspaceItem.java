@@ -31,12 +31,11 @@ import gedi.core.workspace.WorkspaceItem;
 import gedi.core.workspace.WorkspaceItemChangeEvent;
 import gedi.core.workspace.loader.WorkspaceItemLoader;
 import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
-import gedi.util.io.Directory;
 
 public class FileWorkspaceItem implements WorkspaceItem {
 	
 	private Path path;
-	private WorkspaceItemLoader<?> loader;
+	private WorkspaceItemLoader<?,?> loader;
 	
 	public FileWorkspaceItem(Path path) {
 		this.path = path;

@@ -51,7 +51,7 @@ do
 	   mkdir -p $1
 	   ;;
        -e) e=executables.;;
-       -*) add=$add $1;; 
+       -*) add="$add $1";; 
    esac
    shift;
 done

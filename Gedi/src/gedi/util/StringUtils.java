@@ -18,10 +18,14 @@
 
 package gedi.util;
 
+import gedi.core.reference.Chromosome;
 import gedi.core.reference.Strand;
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
+import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.math.stat.RandomNumbers;
 import gedi.util.sequence.Alphabet;
@@ -39,8 +43,11 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.script.ScriptException;
 
 import cern.colt.bitvector.BitVector;
 
@@ -1110,8 +1117,8 @@ public class StringUtils {
 		return re;
 	}
 	
-	public static String toString(Object o) {
-		if (o==null) return "null";
+	public static String toString(Object o, String nullValue) {
+		if (o==null) return nullValue;
 		try {
 			if (o.getClass().getDeclaredMethod("toString")!=null)
 				return o.toString();
@@ -1124,7 +1131,7 @@ public class StringUtils {
 			sb.append("[");
 			for (int i=0; i<l; i++) {
 				if (i>0) sb.append(",");
-				sb.append(toString(Array.get(o, i)));
+				sb.append(toString(Array.get(o, i),nullValue));
 			}
 			sb.append("]");
 			return sb.toString();
@@ -1134,13 +1141,17 @@ public class StringUtils {
 			sb.append("[");
 			for (Object e : ((Iterable)o)) {
 				if (sb.length()>1) sb.append(",");
-				sb.append(toString(e));
+				sb.append(toString(e,nullValue));
 			}
 			sb.append("]");
 			return sb.toString();
 		}
 		
 		return String.valueOf(o);
+	}
+	
+	public static String toString(Object o) {
+		return toString(o,"null");
 	}
 	
 	public static String toString(CharSequence chars) {
@@ -1443,17 +1454,6 @@ public class StringUtils {
 		return a;
 	}
 
-	private static Pattern placeholder = Pattern.compile("\\$\\{([^\\$\\{\\}]+)\\}");
-	public static String replacePlaceholders(String s, Function<String, String> mapper) {
-		Matcher m = placeholder.matcher(s);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			m.appendReplacement(sb, GeneralUtils.orDefault(mapper.apply(m.group(1)),""));
-		}
-		m.appendTail(sb);
-		return sb.toString();
-	}
-
 	public static String saveSubstring(String s, int start, int end,
 			char c) {
 		StringBuilder sb = new StringBuilder();
@@ -1487,19 +1487,48 @@ public class StringUtils {
 
 	public static int compare(String a, String b) {
 		if (a==null && b==null) return 0;
-		if (a==null) return -b.compareTo(a);
+		if (a==null) return -1;
+		if (b==null) return 1;
 		return a.compareTo(b);
 	}
+	
+	public static String display(GenomicRegion...regions) {
+		return display(EI.wrap(regions));
+	}
+	
+	public static String display(Iterator<GenomicRegion> regions) {
+		StringBuilder sb = new StringBuilder();
+		int maxl = 0;
+		while (regions.hasNext()) {
+			GenomicRegion n = regions.next();
+			String line = packAscii(new ImmutableReferenceGenomicRegion<>(Chromosome.UNMAPPED, new ArrayGenomicRegion(0,n.getEnd()+1)), EI.singleton(n));
+			sb.append(line);
+			maxl = Math.max(maxl, line.length());
+		}
+		return getRuler(0, maxl, 10)+"\n"+sb.toString();
+	}
 
+	public static String getRuler(int start, int length, int ticDistance) {
+		if (((start+length)+"").length()+2>=ticDistance) throw new RuntimeException("Tic labels do not fit!");
+		StringBuilder sb = new StringBuilder();
+		
+		for (int l=start; l<length; l+=ticDistance) {
+			sb.append("|").append(l);
+			for (int i=0; i<ticDistance-(l+"").length()-1; i++)
+				sb.append(" ");
+		}
+		
+		return sb.toString();
+	}
 	
 	public static <D> String packAscii(ReferenceGenomicRegion<?> parent,
 			Iterator<GenomicRegion> regions) {
-		return packAscii(parent, regions, '#', ':', '<', '>', '/', '\\', d->"");
+		return packAscii(parent, regions, '#', '-', '<', '>', '/', '\\', d->"");
 	}
 	
 	public static <D> String packAscii(ReferenceGenomicRegion<?> parent,
 			Iterator<GenomicRegion> regions, Function<GenomicRegion,String> stringer) {
-		return packAscii(parent, regions, '#', ':', '<', '>', '/', '\\', stringer);
+		return packAscii(parent, regions, '#', '-', '<', '>', '/', '\\', stringer);
 	}
 	
 	/**
@@ -1638,6 +1667,73 @@ public class StringUtils {
         }
          
         return sb.toString();
+	}
+
+	private static Pattern varPattern = Pattern.compile("(\\$[A-Za-z_][A-Za-z0-9_]*)|(\\$\\{[^\\}]+\\})");
+	
+	/**
+	 * Replaces all occurrences of ${var} by the value given by varToVal (or don't if it returns null) 
+	 * @param s
+	 * @param varToVal
+	 * @return
+	 */
+	public static String replaceVariables(String s, UnaryOperator<String> varToVal) {
+		Matcher m = varPattern.matcher(s);
+		StringBuffer sb = new StringBuffer();
+		while (m.find()) {
+			m.appendReplacement(sb, "");
+			
+			String rep = m.group();
+			if (rep.startsWith("${") && rep.endsWith("}"))
+				rep = rep.substring(2, rep.length()-1);
+			else
+				rep = rep.substring(1);
+			
+			String v = varToVal.apply(rep);
+			if (v!=null)
+				rep = v;
+			else rep = "${"+rep+"}";
+			
+			sb.append(rep);
+		}
+		m.appendTail(sb);
+
+		return sb.toString();
+	}
+	
+	/**
+	 * Replaces all occurrences of ${var} by the value given by varToVal (or don't if it returns null) 
+	 * @param s
+	 * @param varToVal
+	 * @return
+	 */
+	public static String replaceVariablesInQuotes(String s, UnaryOperator<String> varToVal) {
+		String m1 = MaskedCharSequence.maskEscaped(s, '\0', '"','\'').toString();
+		MaskedCharSequence masked = MaskedCharSequence.maskLeftToRight(m1,'\0', new char[] {'"'}, new char[] {'"'});
+		
+		
+		Matcher m = varPattern.matcher(s);
+		StringBuffer sb = new StringBuffer();
+		while (m.find()) {
+			m.appendReplacement(sb, "");
+			
+			String rep = m.group();
+			if (rep.startsWith("${") && rep.endsWith("}"))
+				rep = rep.substring(2, rep.length()-1);
+			else
+				rep = rep.substring(1);
+			
+			if (masked.isAllMasked(m.start(),m.end())) { 
+				String v = varToVal.apply(rep);
+				if (v!=null)
+					rep = v;
+				else rep = "${"+rep+"}";
+			}
+			sb.append(rep);
+		}
+		m.appendTail(sb);
+
+		return sb.toString();
 	}
 	
 

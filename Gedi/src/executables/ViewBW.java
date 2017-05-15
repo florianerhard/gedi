@@ -49,8 +49,7 @@ public class ViewBW {
 		}
 		
 		BBFileReader wig = new BBFileReader(args[0]);
-		
-		
+				
 		if (args.length==1) {
 			for (String ref : wig.getChromosomeNames()) {
 				System.out.println(">"+ref);

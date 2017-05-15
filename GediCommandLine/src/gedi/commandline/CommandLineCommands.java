@@ -341,6 +341,31 @@ public enum CommandLineCommands {
 		}
 	},
 	
+	script {
+		@Override
+		public boolean exec(CommandLineSession context, String param) throws Exception {
+			context.setScriptFile(StringUtils.trim(param,'\'','"'));
+			return true;
+		}
+		
+		@Override
+		public String usage() {
+			return "Sets the script file to write all commands to (after .s)";
+		}
+	},
+	s {
+		@Override
+		public boolean exec(CommandLineSession context, String param) throws Exception {
+			context.lastCommandToScript();
+			return true;
+		}
+		
+		@Override
+		public String usage() {
+			return "Writes the last command to the script file";
+		}
+	},
+	
 	save {
 		@Override
 		public boolean exec(CommandLineSession context, String param)

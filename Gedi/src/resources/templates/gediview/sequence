@@ -1,0 +1,29 @@
+<?JS0
+varin("id","genomic id",false);
+varin("seqmbppp","Maximum bp per pixel to show sequences (Default: 1)",false);
+varin("hideaa","Do not show amino acid tracks (Default: true)",false);
+varin("aaclass","Class (i.e. coloring) for amino acid tracks (Default: aminotrypto)",false);
+?>
+<?JS
+var id = id?id:"genomic";
+var seqmbppp = seqmbppp?seqmbppp:1;
+var hideaa = hideaa?hideaa:true;
+var aaclass = aaclass?aaclass:"aminotrypto";
+?>
+	<SequenceSource id="<?JS id ?>.sequence">
+		<Genomic file="<?JS id ?>" />
+	</SequenceSource>
+	
+	<AminoAcidsTrack input="<?JS id ?>.sequence" class="<?JS aaclass ?>" id="+.Sequence (aa)">
+		<Hidden h="<?JS hideaa ?>"/>
+	</AminoAcidsTrack>
+	<SequenceTrack input="<?JS id ?>.sequence" id="+.Sequence (dna)">
+		<MaxBasePairsPerPixel v="<?JS seqmbppp ?>"/>
+	</SequenceTrack>
+
+	<AminoAcidsTrack input="<?JS id ?>.sequence" class="<?JS aaclass ?>" complement="true" id="-.Sequence (aa)">
+		<Hidden h="<?JS hideaa ?>"/>
+	</AminoAcidsTrack>
+	<SequenceTrack input="<?JS id ?>.sequence" complement="true" id="-.Sequence (dna)">
+		<MaxBasePairsPerPixel v="<?JS seqmbppp ?>"/>
+	</SequenceTrack>

@@ -66,6 +66,21 @@ public class IntegerDataColumn implements DataColumn<IntegerArray> {
 	}
 
 	@Override
+	public Object getValue(int row) {
+		return data.getInt(row);
+	}
+	
+	@Override
+	public void setValue(int row, Object val) {
+		int value;
+		if (val instanceof Number) 
+			value = ((Number)val).intValue();
+		else
+			value = 0;
+		data.setInt(row, value);
+	}
+	
+	@Override
 	public void copyValueTo(int fromIndex, DataColumn to, int toIndex) {
 		to.setIntValue(toIndex, getIntValue(fromIndex));
 	}

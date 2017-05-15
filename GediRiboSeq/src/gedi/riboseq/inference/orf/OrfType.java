@@ -207,4 +207,14 @@ public enum OrfType {
 		return this==CDS || this==Extended || this==Truncated || this==Isoform;
 	}
 	
+	public static OrfType annotate(Iterable<ImmutableReferenceGenomicRegion<Transcript>> tr, ImmutableReferenceGenomicRegion<Orf> orf) {
+		for (OrfType type : OrfType.values()) {
+			for (ImmutableReferenceGenomicRegion<Transcript> t : tr) {
+				if (type.is(orf, t)) {
+					return type;
+				}
+			}
+		}
+		return OrfType.oORF;
+	}
 }

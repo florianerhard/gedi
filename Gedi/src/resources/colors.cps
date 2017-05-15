@@ -149,9 +149,9 @@
 
 .codon {
 	"styles": [
-		{"name": "Frame0", "color": "#ffa940", "lineWidth": 2},
-		{"name": "Frame1", "color": "#6269CE", "lineWidth": 2},
-		{"name": "Frame2", "color": "#228653", "lineWidth": 2}
+		{"name": "Frame0", "color": "#ffa940", "lineWidth": 1},
+		{"name": "Frame1", "color": "#6269CE", "lineWidth": 1},
+		{"name": "Frame2", "color": "#228653", "lineWidth": 1}
 	]
 }
 

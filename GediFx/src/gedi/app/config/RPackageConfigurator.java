@@ -18,22 +18,9 @@
 
 package gedi.app.config;
 
-import java.awt.Desktop;
-import java.io.File;
-import java.io.IOException;
-import java.util.regex.Pattern;
-
-import org.controlsfx.dialog.ExceptionDialog;
-import org.controlsfx.validation.ValidationSupport;
-
 import gedi.app.Config;
-import gedi.util.FileUtils;
 import gedi.util.RunUtils;
-import gedi.util.io.text.LineIterator;
-import gedi.util.r.RConnect;
-import javafx.beans.property.StringProperty;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
 import javafx.scene.control.Control;
 import javafx.scene.control.TextField;
 
@@ -90,7 +77,7 @@ public abstract class RPackageConfigurator implements Configurator<String>{
 	
 	@Override
 	public String validate(String value) {
-		return isConfigured()?null:"R package "+pack+" not installed!. Call: sudo Rscript -e 'install.packages('"+pack+"')!";
+		return isConfigured()?null:"R package "+pack+" not installed!. Call: sudo Rscript -e 'install.packages(\""+pack+"\") !";
 	}
 
 

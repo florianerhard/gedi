@@ -20,11 +20,13 @@ package gedi.core.genomic;
 
 import gedi.util.datastructure.dataframe.DataColumn;
 import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.functions.EI;
 import gedi.util.io.text.tsv.formats.CsvReader;
 import gedi.util.io.text.tsv.formats.CsvReaderFactory;
 import gedi.util.mutable.MutablePair;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.function.Function;
@@ -36,6 +38,7 @@ public class GenomicMappingTable {
 	
 	private ArrayList<Supplier<DataFrame>> tablers = new ArrayList<>();
 		
+	// column to set of tables this column is in
 	private HashMap<String,HashSet<DataFrame>> tables;
 	private HashMap<MutablePair<String,String>,HashMap<String,String>> cache = new HashMap<>();
 	
@@ -57,7 +60,20 @@ public class GenomicMappingTable {
 		return id;
 	}
 
+	public Collection<String> getColumns() {
+		if (tables==null) createTable();
+		return tables.keySet();
+	}
 	
+	public Collection<String> getTargetColumns(String from) {
+		if (tables==null) createTable();
+		HashSet<String> re = new HashSet<>();
+		
+		for (DataFrame fs : tables.get(from))
+			re.addAll(fs.getColumnNames());
+		
+		return tables.keySet();
+	}
 	
 	public Function<String,String> get(String from, String to) {
 		MutablePair<String, String> key = new MutablePair<String, String>(from,to);

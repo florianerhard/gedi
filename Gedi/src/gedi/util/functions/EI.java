@@ -24,13 +24,19 @@ import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.collections.intcollections.IntIterator;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.mutable.MutableTuple;
 
+import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -124,9 +130,10 @@ public interface EI {
 	
 	@SafeVarargs
 	public static <T> ExtendedIterator<T> wrap(T... a) {
+		if (a.length==0) return empty();
+		if (a.length==1) return singleton(a[0]);
 		return FunctorUtils.arrayIterator(a);
 	}
-	
 	
 	public static ExtendedIterator<Byte> wrap(byte[] a) {
 		return (ExtendedIterator)NumericArray.wrap(a).iterator();
@@ -257,6 +264,10 @@ public interface EI {
 		};
 	}
 	
+	public static <T> ExtendedIterator<T[]> parallel(Class<T> cls, Comparator<? super T> comp, Iterator<T>... it) {
+		return FunctorUtils.parallellIterator(it, comp, cls);
+	}
+	
 	public static <T> ExtendedIterator<T> merge(Comparator<? super T> comp, Iterator<T>... it) {
 		return FunctorUtils.mergeIterator(it, comp);
 	}
@@ -264,23 +275,49 @@ public interface EI {
 		return FunctorUtils.substringIterator(str, s);
 	}
 	public static LineIterator lines(String path, String commentPrefixes) throws IOException {
-		return new LineOrientedFile().lineIterator(commentPrefixes);
+		return new LineOrientedFile(path).lineIterator(commentPrefixes);
 	}
 	
 	public static LineIterator lines(String path) throws IOException {
 		return new LineOrientedFile(path).lineIterator();
 	}
+	public static ExtendedIterator<String> fileNames(String path) throws IOException {
+		return EI.wrap(new File(path).list());
+	}
+	public static ExtendedIterator<File> files(String path) throws IOException {
+		return EI.wrap(new File(path).listFiles());
+	}
+	
+	static ExtendedIterator em = new ExtendedIterator() {
+		@Override
+		public Object next() {
+			return null;
+		}
+		@Override
+		public boolean hasNext() {
+			return false;
+		}
+	};
+	
 	public static <T> ExtendedIterator<T> empty() {
-		return new ExtendedIterator<T>() {
-			@Override
-			public T next() {
-				return null;
-			}
-			@Override
-			public boolean hasNext() {
-				return false;
-			}
-		};
+		return em;
+	}
+
+
+	public static <E,R> ExtendedIterator<R> combine(Collection<Iterable<E>> list, Function<E[], R> combiner, Class<E> cls) {
+		E[] r = (E[]) Array.newInstance(cls, list.size());
+		
+		ExtendedIterator<E[]> pre = EI.singleton(r);
+		int index = 0;
+		for (Iterable<E> itr : list) {
+			int uindex = index++;
+			pre = EI.wrap(pre).unfold(a->EI.wrap(itr).map(e->{
+				a[uindex] = e;
+				return a;
+			}));
+		}
+		
+		return pre.map(combiner);
 	}
 	
 }

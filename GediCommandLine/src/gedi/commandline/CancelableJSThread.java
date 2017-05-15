@@ -89,7 +89,7 @@ public class CancelableJSThread {
 		try {
 			Object o = res.get();
 			res = null;
-			return new JSResult(o,callable.e);
+			return new JSResult(cmd,o,callable.e);
 		} catch (InterruptedException | ExecutionException | CancellationException e) {
 			try {
 				if (timeout<0)
@@ -105,7 +105,7 @@ public class CancelableJSThread {
 					System.err.println("Warning, forced thread to stop, problems may occurr due to deadlocks or resource leaks!");
 			}
 			res = null;
-			return new JSResult(true);
+			return new JSResult(cmd,true);
 		}
 	}
 	

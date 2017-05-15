@@ -1,0 +1,9 @@
+<?JS0
+varin("genomic","Id or ids of genomes",true);
+varin("id","Genomic id",false);
+?>
+<?JS
+var id = id?id:"genomic";
+?>
+	<Genomic.get id="<?JS id ?>" names="<?JS genomic ?>" />
+	

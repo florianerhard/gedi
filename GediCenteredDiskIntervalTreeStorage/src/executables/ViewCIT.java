@@ -20,10 +20,14 @@ package executables;
 
 import gedi.app.Gedi;
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;
+import gedi.core.data.annotation.ScoreAnnotation;
 import gedi.core.data.annotation.ScoreNameAnnotation;
+import gedi.core.data.annotation.Transcript;
 import gedi.core.reference.ReferenceSequence;
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
+import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.util.ArrayUtils;
 import gedi.util.ParseUtils;
 import gedi.util.StringUtils;
@@ -97,6 +101,7 @@ public class ViewCIT {
 		String query = null;
 		String nameExpr = null;
 		String scoreExpr = null;
+		String filterExpr = null;
 		CitOutputMode mode = null;
 		
 		boolean list = false;
@@ -126,6 +131,9 @@ public class ViewCIT {
 			else if (args[i].equals("-score")) {
 				scoreExpr=checkParam(args, ++i);
 			}
+			else if (args[i].equals("-filter")) {
+				filterExpr=checkParam(args, ++i);
+			}
 			else if (args[i].equals("-o")) {
 				output = new LineOrientedFile(checkParam(args, ++i));
 			}
@@ -140,6 +148,8 @@ public class ViewCIT {
 			usage("File "+args[i]+" does not exist!");
 			System.exit(1);
 		}
+		
+		TriFunction<T, ReferenceSequence, GenomicRegion, Boolean> filter = filterExpr!=null?new JSTriFunction<T, ReferenceSequence, GenomicRegion, Boolean>(false,"function(d,ref,reg) "+filterExpr):null;
 		
 		CenteredDiskIntervalTreeStorage<T> storage = new CenteredDiskIntervalTreeStorage<T>(args[i]);
 		
@@ -168,7 +178,8 @@ public class ViewCIT {
 		ExtendedIterator<ImmutableReferenceGenomicRegion<T>> it = storage.ei(query);
 		if (!(progress instanceof NoProgress))
 			it = it.progress(progress, (int) storage.size(), r->r.toMutable().transformRegion(reg->reg.removeIntrons()).toLocationString());
-		
+		if (filter!=null)
+			it = it.filter(rgr->filter.apply(rgr.getData(), rgr.getReference(), rgr.getRegion()));
 		
 		Consumer<ImmutableReferenceGenomicRegion<T>> sink = null;
 		
@@ -203,6 +214,7 @@ public class ViewCIT {
 			Gedi.startup(true);
 			TriFunction<T, ReferenceSequence, GenomicRegion, Double> scorer = scoreExpr!=null?new JSTriFunction<T, ReferenceSequence, GenomicRegion, Double>(false,"function(d,ref,reg) "+scoreExpr):(d,ref,reg)->0.0;
 			TriFunction<T, ReferenceSequence, GenomicRegion, String> namer = nameExpr!=null?new JSTriFunction<T, ReferenceSequence, GenomicRegion, String>(false,"function(d,ref,reg) "+nameExpr):(d,ref,reg)->".";
+			String unameExpr = nameExpr;
 			
 			sink = rgr->{
 				try {
@@ -210,7 +222,122 @@ public class ViewCIT {
 					ScoreNameAnnotation sc = new ScoreNameAnnotation(
 							StringUtils.toString(n),
 							scorer.apply(rgr.getData(), rgr.getReference(), rgr.getRegion()));
-					wr.writeLine(new BedEntry(new ImmutableReferenceGenomicRegion<ScoreNameAnnotation>(rgr.getReference(), rgr.getRegion(), sc)).toString());
+					BedEntry be = new BedEntry(new ImmutableReferenceGenomicRegion<ScoreNameAnnotation>(rgr.getReference(), rgr.getRegion(), sc));
+					if (rgr.getData() instanceof Transcript) {
+						Transcript t = (Transcript) rgr.getData();
+						if (t.isCoding()) {
+							be.setThickStart(t.getCodingStart());
+							be.setThickEnd(t.getCodingEnd());
+						}
+						if (unameExpr==null)
+							be.setName(t.getTranscriptId());
+					}
+					wr.writeLine(be.toString());
+				} catch (Exception e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
+			};
+			
+		}
+		else if (mode==CitOutputMode.BedGraph) {
+
+			Gedi.startup(true);
+			TriFunction<T, ReferenceSequence, GenomicRegion, Double> scorer = scoreExpr!=null?new JSTriFunction<T, ReferenceSequence, GenomicRegion, Double>(false,"function(d,ref,reg) "+scoreExpr):(d,ref,reg)->0.0;
+			sink = rgr->{
+				try {
+					ScoreAnnotation sc = new ScoreAnnotation(
+							scorer.apply(rgr.getData(), rgr.getReference(), rgr.getRegion()));
+					for (int p=0; p<rgr.getRegion().getNumParts(); p++)
+						wr.writef("%s\t%d\t%d\t%.1f\n",rgr.getReference().getName(),rgr.getRegion().getStart(p),rgr.getRegion().getEnd(p),sc.getScore());
+				} catch (Exception e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
+			};
+			
+		}
+		else if (mode==CitOutputMode.Gtf) {
+
+			Gedi.startup(true);
+			sink = rgr->{
+				try {
+					if (!(rgr.getData() instanceof Transcript)) throw new RuntimeException("Gtf output only possible for Transcripts!");
+					
+					Transcript trans = (Transcript) rgr.getData();
+					
+					wr.writef("%s\tgedi\ttranscript\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\"; gene_biotype \"protein_coding\";\n",
+							rgr.getReference().getName(),
+							rgr.getRegion().getStart()+1,
+							rgr.getRegion().getEnd(),
+							rgr.getReference().getStrand().toString(),
+							((Transcript)rgr.getData()).getGeneId(),
+							((Transcript)rgr.getData()).getTranscriptId()
+							);
+					for (int p=0; p<rgr.getRegion().getNumParts(); p++) 
+						wr.writef("%s\tgedi\texon\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\"; gene_biotype \"protein_coding\";\n",
+								rgr.getReference().getName(),
+								rgr.getRegion().getStart(p)+1,
+								rgr.getRegion().getEnd(p),
+								rgr.getReference().getStrand().toString(),
+								trans.getGeneId(),
+								trans.getTranscriptId()
+								);
+					
+					if (trans.isCoding()) {
+						MutableReferenceGenomicRegion<T> cds = trans.getCds(rgr);
+						for (int p=0; p<rgr.getRegion().getNumParts(); p++) 
+							wr.writef("%s\tgedi\tCDS\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\"; gene_biotype \"protein_coding\";\n",
+									cds.getReference().getName(),
+									cds.getRegion().getStart(p)+1,
+									cds.getRegion().getEnd(p),
+									cds.getReference().getStrand().toString(),
+									trans.getGeneId(),
+									trans.getTranscriptId()
+									);
+						GenomicRegion start = cds.map(new ArrayGenomicRegion(0,3));
+						GenomicRegion stop = cds.map(new ArrayGenomicRegion(cds.getRegion().getTotalLength()-3,cds.getRegion().getTotalLength()));
+						wr.writef("%s\tgedi\tstart_codon\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\"; gene_biotype \"protein_coding\";\n",
+								cds.getReference().getName(),
+								start.getStart()+1,
+								start.getEnd(),
+								cds.getReference().getStrand().toString(),
+								trans.getGeneId(),
+								trans.getTranscriptId()
+								);
+						wr.writef("%s\tgedi\tstop_codon\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\"; gene_biotype \"protein_coding\";\n",
+								cds.getReference().getName(),
+								stop.getStart()+1,
+								stop.getEnd(),
+								cds.getReference().getStrand().toString(),
+								trans.getGeneId(),
+								trans.getTranscriptId()
+								);
+					}
+					
+					
+					
+				} catch (Exception e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
+			};
+			
+		}
+		else if (mode==CitOutputMode.Genepred) {
+
+			sink = rgr->{
+				try {
+					Transcript t = (Transcript) rgr.getData();
+					
+					if (t.isCoding())
+						wr.writef2("%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\n",
+								t.getGeneId(),t.getTranscriptId(),rgr.getReference().getName(),rgr.getReference().getStrand(),
+								rgr.getRegion().getStart(),rgr.getRegion().getEnd(),
+								t.getCodingStart(),t.getCodingEnd(), rgr.getRegion().getNumParts(),
+								StringUtils.concat(",", rgr.getRegion().getStarts()),
+								StringUtils.concat(",", rgr.getRegion().getEnds())
+								);
 				} catch (Exception e) {
 					e.printStackTrace();
 					System.exit(1);
@@ -255,9 +382,10 @@ public class ViewCIT {
 		System.err.println(" -l \t\tOnly list the number of elements per reference");
 		System.err.println(" -q <location>\t\tOnly output elements overlapping the given query (i.e. whole reference or genomic region)");
 		System.err.println(" -o <file>\t\tSpecify output file (Default: stdout)");
-		System.err.println(" -m <mode>\t\toutput mode: Bed/Location/Cit (Default: location)");
+		System.err.println(" -m <mode>\t\toutput mode: Bed/Location/Cit/Genepred/Gtf (Default: location)");
 		System.err.println(" -name <js>\t\tjavascript function body to generate name (variable d is current data, ref the reference, reg the region)");
 		System.err.println(" -score <js>\t\tjavascript function body to generate score (variable d is current data, ref the reference, reg the region)");
+		System.err.println(" -filter <js>\\t\tjavascript function body returning true for entries to use  (variable d is current data, ref the reference, reg the region)");
 		System.err.println();
 		System.err.println(" -p\t\t\tShow progress");
 		System.err.println(" -h\t\t\tShow this message");
@@ -268,7 +396,7 @@ public class ViewCIT {
 	
 	
 	private enum CitOutputMode {
-		Location,Bed,Indexed,Cit
+		Location,Bed,Indexed,Cit,Genepred,Gtf,BedGraph
 	}
 	
 }

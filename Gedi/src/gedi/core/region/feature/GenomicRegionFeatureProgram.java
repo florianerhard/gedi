@@ -23,6 +23,8 @@ import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
+import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.userInteraction.results.ResultProducer;
 
@@ -77,7 +79,7 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 	public int getThreads() {
 		return threads;
 	}
-	
+
 	/**
 	 * 0 is single-threaded
 	 * @param threads
@@ -118,12 +120,29 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 		return data.get(index);
 	}
 	
+	/**
+	 * Gets either the parental feature object, or the thread specific, if called from a Runner thread.
+	 * @param index
+	 * @return
+	 */
 	public <T> GenomicRegionFeature<T> getFeature(int index) {
+		if (Thread.currentThread() instanceof Runner) {
+			Runner r = (Runner) Thread.currentThread();
+			return (GenomicRegionFeature<T>)r.features.get(index);
+		}
 		return (GenomicRegionFeature<T>) features.get(index);
 	}
 	
+	public ExtendedIterator<GenomicRegionFeature<?>> getFeatures() {
+		return EI.seq(0,getNumFeatures()).map(i->getFeature(i));
+	}
+	
+	public int getNumFeatures() {
+		return features.size();
+	}
+	
 	public <T> GenomicRegionFeature<T> getFeature(String id) {
-		return (GenomicRegionFeature<T>) features.get(idMap.get(id));
+		return getFeature(idMap.get(id));
 	}
 	
 	public void setDataToCounts(
@@ -339,6 +358,10 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 				}
 				Thread.yield();
 			} while (alives>0);
+			
+			for (int i=0; i<runners.length; i++) 
+				if (runners[i].exception!=null) throw new RuntimeException("Exception occurred during processing!",runners[i].exception);
+			
 			
 			running = false;
 			produceResults();

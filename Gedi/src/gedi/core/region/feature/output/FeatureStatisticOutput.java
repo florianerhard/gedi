@@ -21,26 +21,39 @@ package gedi.core.region.feature.output;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
 import gedi.core.region.feature.features.AbstractFeature;
+import gedi.core.region.feature.special.UnfoldGenomicRegionStatistics;
+import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
+import gedi.util.datastructure.collections.intcollections.IntArrayList;
+import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.io.text.tsv.formats.CsvReaderFactory;
 import gedi.util.mutable.MutableTuple;
 import gedi.util.nashorn.JSToDoubleFunction;
 import gedi.util.userInteraction.results.ResultProducer;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.function.ToDoubleFunction;
+import java.util.function.UnaryOperator;
 
 import javax.script.ScriptException;
 
@@ -51,6 +64,8 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 
 	private String multiSeparator = ",";
 	private BiFunction<Object,NumericArray,NumericArray> dataToCounts;
+	private int countAdapterIndex = -1;
+	private UnaryOperator<NumericArray> countAdapter;
 	private double minimalFraction = 0;
 	private int decimals=2;
 	private ArrayList<Barplot> plots = new ArrayList<Barplot>(); 
@@ -62,6 +77,22 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 	public FeatureStatisticOutput(String file) {
 		minValues = maxValues = 0;
 		setFile(file);
+	}
+	
+	@Override
+	protected void copyProperties(AbstractFeature<Void> from) {
+		super.copyProperties(from);
+		FeatureStatisticOutput f = (FeatureStatisticOutput) from;
+		this.countAdapter = f.countAdapter;
+		this.countAdapterIndex = f.countAdapterIndex;
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public void begin() {
+		super.begin();
+		if (countAdapterIndex>=0)
+			this.countAdapter = program.getFeature(getInputName(countAdapterIndex)).getCountAdapter();
 	}
 	
 	/**
@@ -90,6 +121,7 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 	}
 	
 	public void add(Barplot plot) {
+		plot.setName(getId());
 		plots.add(plot);
 	}
 	
@@ -118,10 +150,23 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 		return decimals;
 	}
 	
+	public int getNumTuples() {
+		return counter.keySet().size();
+	}
 	
 	public void setDataToCounts(
 			BiFunction<Object, NumericArray, NumericArray> dataToCounts) {
 		this.dataToCounts = dataToCounts;
+	}
+	
+	public void setCountAdapter(UnaryOperator<NumericArray> countAdapter) {
+		this.countAdapter = countAdapter;
+		this.countAdapterIndex = -1;
+	}
+	
+	public void setCountAdapter(int fromFeature) {
+		this.countAdapterIndex = fromFeature;
+		this.countAdapter = null;
 	}
 	
 	@Override
@@ -139,24 +184,91 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 	}
 
 	
+	private boolean mustUnfold(MutableTuple key) {
+		for (int i=0; i<key.size(); i++) {
+			Set<?> e = key.get(i);
+			if (e.size()==1 && e.iterator().next() instanceof UnfoldGenomicRegionStatistics)
+				return true;
+		}
+		return false;
+	}
+	
+	private ExtendedIterator<MutableTuple> unfold(MutableTuple key) {
+		IntArrayList ind = new IntArrayList();
+		ArrayList<Iterator<Object>> unf = new ArrayList<>();
+		for (int i=0; i<key.size(); i++) {
+			Set<?> e = key.get(i);
+			Iterator<?> it = e.iterator();
+			int n = 0;
+			if (it.hasNext()) {
+				Object o = it.next();
+				if (o instanceof UnfoldGenomicRegionStatistics) {
+					UnfoldGenomicRegionStatistics unfolder = (UnfoldGenomicRegionStatistics)o;
+					unf.add(unfolder.iterator());
+					ind.add(i);
+					if (it.hasNext() || n!=0)
+						throw new RuntimeException("If a feature wants to return an UnfoldGenomicRegionStatistics, it must be the only result value!");
+				}
+				n++;
+			}
+		}
+		if (unf.isEmpty()) return EI.singleton(key);
+		
+		MutableTuple re = key.clone();
+		for (int i:ind.toIntArray())
+			re.set(i, new HashSet());
+
+		return EI.wrap(unf.get(0)).map(e0->{
+			
+			Set s = re.get(ind.getInt(0));
+			s.clear();
+			s.add(e0);
+			
+			for (int i=1; i<ind.size(); i++) {
+				s = re.get(ind.getInt(i));
+				s.clear();
+				if (!unf.get(i).hasNext())
+					throw new RuntimeException("All UnfoldGenomicRegionStatistics must return the same number of entries!");
+				s.add(unf.get(i).next());
+			}
+			return re;
+		}).endAction(()->{
+			for (int i=1; i<ind.size(); i++) 
+				if (unf.get(i).hasNext())
+					throw new RuntimeException("All UnfoldGenomicRegionStatistics must return the same number of entries!");
+		});
+	}
+	
+	
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void accept_internal(Set<Void> values) {
 		buffer = dataToCounts==null?program.dataToCounts(referenceRegion.getData(), buffer):dataToCounts.apply(referenceRegion.getData(), buffer);
-
-		NumericArray mi = counter.get(key);
-		if (mi==null) 
-			counter.put(newKey(key),mi = NumericArray.createMemory(buffer.length(), buffer.getType()));
-		if (total==null) total = NumericArray.createMemory(buffer.length(), buffer.getType());
-		mi.add(buffer);
+		if (countAdapter!=null)
+			buffer = countAdapter.apply(buffer);
+		
+		if (mustUnfold(key)) {
+			unfold(key).forEachRemaining(this::doCount);
+		}
+		else 
+			doCount(key);
+		
 //		if (getId().equals("stats/5p15.pos_unique.stat") && getInput(0).contains(85)) {
 //			System.out.println(NumericArrayFunction.Sum.applyAsDouble(mi)+"\t"+ getId()+"\t"+key+"\t"+mi+"\t"+referenceRegion);
 //		}
+		if (total==null) total = NumericArray.createMemory(buffer.length(), buffer.getType());
 		total.add(buffer);
 		buffer.clear();
 	}
 	
+	private void doCount(MutableTuple key) {
+		NumericArray mi = counter.get(key);
+		if (mi==null) 
+			counter.put(newKey(key),mi = NumericArray.createMemory(buffer.length(), buffer.getType()));
+		mi.add(buffer);		
+	}
+
 	public boolean dependsOnData() {
 		return true;
 	}
@@ -216,6 +328,13 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 		produceResult(!program.isRunning());
 	}
 	
+	public ArrayList<Barplot> getPlots() {
+		return plots;
+	}
+	
+	public DataFrame getResults() {
+		return new CsvReaderFactory().createReader(getId()).readDataFrame();
+	}
 	
 	public void produceResult(boolean isFinal) {
 		if (counter.size()==0) return;
@@ -231,7 +350,7 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 					out.writef(i==0?"%s":"\t%s",inputNames[i]);
 			}
 			
-			int l = counter.values().iterator().next().length();
+			int l = total.length();
 			if (program.getLabels()!=null && program.getLabels().length==l)
 				for (int i=0; i<program.getLabels().length; i++) 
 					out.writef("\t%s",program.getLabels()[i]);
@@ -309,7 +428,7 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 			}
 			
 			out.finishWriting();
-			
+
 			String[] inputs = new String[aggregateFun==null?getInputLength():aggregateInputs.length];
 			if (aggregateFun!=null) {
 				for (int i=0; i<aggregateInputs.length; i++)

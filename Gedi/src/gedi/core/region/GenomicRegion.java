@@ -21,6 +21,7 @@ package gedi.core.region;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.datastructure.tree.redblacktree.Interval;
+import gedi.util.functions.ExtendedIterator;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -483,22 +484,22 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 		IntArrayList re = new IntArrayList(len);
 		int t = 0;
 		int c = 0;
-		int s = -1;
+		int s = Integer.MIN_VALUE;
 		while (t<len && c<colen) {
 			int is = Math.max(getBoundary(t),co.getBoundary(c));
 			int ie = Math.min(getBoundary(t+1),co.getBoundary(c+1));
 			if (is<ie) {
-				if (s==-1 && getBoundary(t)<co.getBoundary(c)) s= getBoundary(t);
-				if (s>=0) {
+				if (s==Integer.MIN_VALUE && getBoundary(t)<co.getBoundary(c)) s= getBoundary(t);
+				if (s!=Integer.MIN_VALUE) {
 					re.add(s); re.add(is);
 				}
 				s = ie;
 				if (getBoundary(t+1)<co.getBoundary(c+1)) 
-					s=-1;
+					s=Integer.MIN_VALUE;
 			} else if (getBoundary(t+1)<co.getBoundary(c+1)) {
-				re.add(s==-1?getBoundary(t):s);
+				re.add(s==Integer.MIN_VALUE?getBoundary(t):s);
 				re.add(getBoundary(t+1));
-				s = -1;
+				s = Integer.MIN_VALUE;
 			}
 
 			if (getBoundary(t+1)<co.getBoundary(c+1))
@@ -507,9 +508,9 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 				c+=2;
 		}
 		for (; t<len; t+=2) {
-			re.add(s==-1?getBoundary(t):s);
+			re.add(s==Integer.MIN_VALUE?getBoundary(t):s);
 			re.add(getBoundary(t+1));
-			s=-1;
+			s=Integer.MIN_VALUE;
 		}
 		return new ArrayGenomicRegion(re);
 	}
@@ -827,8 +828,8 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 	}
 
 	
-	default Iterator<GenomicRegionPart> iterator() {
-		return new Iterator<GenomicRegionPart>() {
+	default ExtendedIterator<GenomicRegionPart> iterator() {
+		return new ExtendedIterator<GenomicRegionPart>() {
 			int index = 0;
 			@Override
 			public boolean hasNext() {

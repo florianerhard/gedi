@@ -39,6 +39,7 @@ import gedi.util.datastructure.graph.SimpleDirectedGraph;
 import gedi.util.datastructure.graph.SimpleDirectedGraph.AdjacencyNode;
 import gedi.util.io.randomaccess.diskarray.VariableSizeDiskArray;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.io.text.LineWriter;
 import gedi.util.orm.Orm;
 import gedi.util.sequence.CountDnaSequence;
 import gedi.util.sequence.DnaSequence;
@@ -80,29 +81,29 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 
 	private BiConsumer<DefaultAlignedReadsData, Object> countSetter = Orm.getFieldSetter(DefaultAlignedReadsData.class, "count");
 	
-	public SamMismatchCorrectionBarcodeAnnotator(String bcFile, String...patterns) throws IOException {
-		this(bcFile,18,patterns);
-	}
-	
-	public SamMismatchCorrectionBarcodeAnnotator(String bcFile, int minLength, String...patterns) throws IOException {
-		bc = new VariableSizeDiskArray<CountDnaSequence>(bcFile,()->new CountDnaSequence("", 0));
-		
-		this.minLength = minLength;
-		
-		Pattern[] pats = new Pattern[patterns.length];
-		for (int i=0; i<patterns.length; i++)
-			pats[i] = Pattern.compile(patterns[i]);
-		cumNumCond = new int[] {pats.length};
-		
-		conditioner = arr->{
-			for (int p=0; p<patterns.length; p++) {
-				if (pats[p].matcher(arr).find()) {
-					return p;
-				}
-			}
-			return -1;
-		};
-	}
+//	public SamMismatchCorrectionBarcodeAnnotator(String bcFile, String...patterns) throws IOException {
+//		this(bcFile,18,patterns);
+//	}
+//	
+//	public SamMismatchCorrectionBarcodeAnnotator(String bcFile, int minLength, String...patterns) throws IOException {
+//		bc = new VariableSizeDiskArray<CountDnaSequence>(bcFile,()->new CountDnaSequence("", 0));
+//		
+//		this.minLength = minLength;
+//		
+//		Pattern[] pats = new Pattern[patterns.length];
+//		for (int i=0; i<patterns.length; i++)
+//			pats[i] = Pattern.compile(patterns[i]);
+//		cumNumCond = new int[] {pats.length};
+//		
+//		conditioner = arr->{
+//			for (int p=0; p<patterns.length; p++) {
+//				if (pats[p].matcher(arr).find()) {
+//					return p;
+//				}
+//			}
+//			return -1;
+//		};
+//	}
 	
 	
 	public SamMismatchCorrectionBarcodeAnnotator(String bcFile, int offset, String conditionFile) throws IOException {
@@ -113,6 +114,25 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 		
 		this.minLength = minLength;
 		String[] barcodes = new LineOrientedFile(conditionFile).lineIterator().skip(1).map(s->StringUtils.splitField(s, '\t', 0)).toArray(new String[0]);
+		
+		HashMap<String, Integer> index = ArrayUtils.createIndexMap(barcodes);
+		int end = offset+barcodes[0].length();
+		cumNumCond = new int[] {barcodes.length};
+		
+		conditioner = arr->{
+			Integer r = index.get(arr.subSequence(offset, end).toString());
+			if (r==null) return -1;
+			return r;
+		};
+	}
+	
+	public SamMismatchCorrectionBarcodeAnnotator(String bcFile, int offset, String[] barcodes) throws IOException {
+		this(bcFile,15,offset,barcodes);
+	}
+	public SamMismatchCorrectionBarcodeAnnotator(String bcFile, int minLength, int offset, String[] barcodes) throws IOException {
+		bc = new VariableSizeDiskArray<CountDnaSequence>(bcFile,()->new CountDnaSequence("", 0));
+		
+		this.minLength = minLength;
 		
 		HashMap<String, Integer> index = ArrayUtils.createIndexMap(barcodes);
 		int end = offset+barcodes[0].length();
@@ -194,14 +214,14 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 				}
 				else if (arr.length>0) {
 					MismatchGraphBuilder<BarcodedMismatchSequence> gb = new MismatchGraphBuilder<BarcodedMismatchSequence>(arr);
+					SimpleDirectedGraph<BarcodedMismatchSequence> g;
 					try {
-						gb.build();
+						g = gb.build();
 					} catch (StringIndexOutOfBoundsException e) {
 						for (SAMRecord r : sa)
 							System.out.println(BamUtils.getRecordsGenomicRegion(r)+"\t"+r.getSAMString());
 						throw new RuntimeException("Cannot build mismatch graph!",e);
 					}
-					SimpleDirectedGraph<BarcodedMismatchSequence> g = gb.build();
 					
 //					keep.not();
 //					Arrays.sort(arr,(a,b)->Integer.compare(a.getCount(), b.getCount()));
@@ -305,6 +325,16 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 	}
 
 
+	// count: original reads, original reads with simple collapsed barcodes, corrected reads, corrected reads matching one of the barcodes
+	double[] total = new double[4];
+	private LineWriter totalOut;
+	public void setTotalOut(LineWriter totalOut) throws IOException {
+		this.totalOut = totalOut;
+		totalOut.writeLine("Original\tCollapsed barcode\tCorrected\tCorrected condition");
+	}
+	public LineWriter getTotalOut() {
+		return totalOut;
+	}
 	public ReferenceGenomicRegion<AlignedReadsData> transform(ReferenceGenomicRegion<AlignedReadsData> r) {
 		try {
 			AlignedReadsData data = r.getData();
@@ -316,10 +346,6 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 			DoubleArrayList expected = new DoubleArrayList();
 			
 			for (int d=0; d<data.getDistinctSequences(); d++) {
-//				if (data.getId(d)==10923808)
-//					System.out.println(r);
-				
-				varlists[d] = Arrays.asList(data.getVariations(d));
 				CountDnaSequence[] bcs = bc.getCollection(data.getId(d),new ArrayList<CountDnaSequence>()).toArray(new CountDnaSequence[0]);
 				
 				if (bcs.length==1 && data.getDistinctSequences()==1) {
@@ -376,20 +402,25 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 				CountDnaSequence barcode = barcodeList.get(i);
 				
 				boolean keepit=expected.getDouble(i)<barcode.getCount();
+				int d = distinctList.getInt(i);
 				
 				int p = conditioner.applyAsInt(barcode);
 				if (p!=-1) {
 					found = true;
-					int d = distinctList.getInt(i);
+					
 					count[0][d][p]++;
 					if (keepit)
 						count[1][d][p]++;
 					count[2][d][p]+=barcode.getCount();
 				}
 				
+				double m = Math.max(1, r.getData().getMultiplicity(d));
+				total[0]+=barcode.getCount()/m;
+				total[1]+=1/m;
+				if (keepit) total[2]+=1/m;
+				if (keepit && p!=-1) total[3]+=1/m;
 			}
 
-			
 			if (!found) {
 				return null;
 			}
@@ -436,7 +467,13 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 		}
 	}
 	
-
+	public void finish() throws IOException {
+		if (totalOut!=null) {
+			totalOut.writef("%.0f\t%.0f\t%.0f\t%.0f\n",total[0],total[1],total[2],total[3]);
+			totalOut.close();
+		}
+	}
+	
 	private static class BarcodedMismatchSequence implements CharSequence {
 
 		private CountDnaSequence barcode;

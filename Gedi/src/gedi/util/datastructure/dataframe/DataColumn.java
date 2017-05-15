@@ -18,10 +18,14 @@
 
 package gedi.util.datastructure.dataframe;
 
+import gedi.util.FunctorUtils.PeekIterator;
 import gedi.util.ReflectionUtils;
+import gedi.util.StringUtils;
 import gedi.util.datastructure.collections.bitcollections.BitList;
 import gedi.util.datastructure.collections.doublecollections.DoubleCollection;
+import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.collections.intcollections.IntCollection;
+import gedi.util.datastructure.collections.intcollections.IntIterator;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
@@ -39,11 +43,13 @@ public interface DataColumn<A> extends BinarySerializable {
 	int getIntValue(int row);
 	double getDoubleValue(int row);
 	Factor getFactorValue(int row);
+	Object getValue(int row);
 	
 	void setBooleanValue(int row, boolean val);
 	void setIntValue(int row, int val);
 	void setDoubleValue(int row, double val);
 	void setFactorValue(int row, Factor val);
+	void setValue(int row, Object val);
 	
 	void copyValueTo(int fromIndex, DataColumn to, int toIndex);
 	
@@ -96,6 +102,44 @@ public interface DataColumn<A> extends BinarySerializable {
 			return (DataColumn<T>) new FactorDataColumn(name, list.toArray(new Factor[0]));
 		}
 		throw new RuntimeException("Cannot put a "+first.getClass().getName()+" into a data frame!");
+		
+	}
+	
+	public static <T> DataColumn<T> fromCollection(String name, ExtendedIterator<T> list) {
+		if (list==null) throw new IllegalArgumentException("No list given!");
+		
+		if (list instanceof IntIterator)
+			return (DataColumn<T>) new IntegerDataColumn(name, ((IntIterator)list).toIntArray());
+		if (list instanceof DoubleIterator)
+			return (DataColumn<T>) new DoubleDataColumn(name,((DoubleIterator)list).toDoubleArray());
+		
+		PeekIterator<T> peek = list.peeking();
+		T first = peek.peek();
+		
+		
+		if (first instanceof Factor) {
+			return (DataColumn<T>) new FactorDataColumn(name, ((PeekIterator<Factor>)peek).toArray(Factor.class));
+		}
+		if (first instanceof String) {
+			String[] names = ((PeekIterator<String>)peek).toArray(String.class);
+			return (DataColumn<T>) new FactorDataColumn(name, Factor.fromStrings(names));
+		}
+		
+		throw new RuntimeException("Cannot put a "+first.getClass().getName()+" into a data frame!");
+		
+	}
+	
+	public static <T> DataColumn<T> fromCollectionAsFactor(String name, ExtendedIterator<T> list) {
+		if (list==null) throw new IllegalArgumentException("No list given!");
+		
+		PeekIterator<T> peek = list.peeking();
+		T first = peek.peek();
+		
+		if (first instanceof Factor) {
+			return (DataColumn<T>) new FactorDataColumn(name, ((PeekIterator<Factor>)peek).toArray(Factor.class));
+		}
+		String[] names = peek.map(t->StringUtils.toString(t)).toArray(String.class);
+		return (DataColumn<T>) new FactorDataColumn(name, Factor.fromStrings(names));
 		
 	}
 	

@@ -109,8 +109,8 @@ public class ReferenceLog2FoldchangeQuantifier extends KineticQuantifier {
 			
 			Integer CDS = EI.along(regions)
 				.filter(i->regions[i].getData().getName().contains("CDS"))
-				.filter(i->regions[regionIndex].isDownstream(regions[i].getRegion()))
-				.collect((a,b)->regions[a].isDownstream(regions[b].getRegion())?a:b);
+				.filter(i->regions[regionIndex].endsDownstream(regions[i].getRegion()))
+				.reduce((a,b)->regions[a].endsDownstream(regions[b].getRegion())?a:b);
 			if (CDS==null) return -1;
 			return CDS;
 		}

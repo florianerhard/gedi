@@ -18,9 +18,13 @@
 
 package gedi.util.io.text.genbank;
 
+import gedi.core.data.annotation.Gff3Element;
+import gedi.core.reference.Strand;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Set;
@@ -28,7 +32,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class GenbankFeature {
+public class GenbankFeature implements Comparable<GenbankFeature> {
 
 	private GenbankFile file;
 	private String featureName;
@@ -37,6 +41,17 @@ public class GenbankFeature {
 	private HashMap<String,ArrayList<GenbankFeaturePosition>> posMap;
 	private String[] mapLines;
 
+	public GenbankFeature(ReferenceGenomicRegion<Gff3Element> r) {
+		this.file = null;
+		this.mapLines = null;
+		this.featureName = r.getData().getFeature();
+		String descr = (1+r.getData().getStart())+".."+r.getData().getEnd();
+		this.position = r.getReference().getStrand().equals(Strand.Minus)?new ComplementFeaturePosition(this, "complement("+descr+")"):new SpanFeaturePosition(this, descr);
+		this.stringMap = new HashMap<String,ArrayList<String>>();
+		this.posMap = new HashMap<String,ArrayList<GenbankFeaturePosition>>();
+		for (String s : r.getData().getAttributeNames()) 
+			stringMap.put(s,new ArrayList<String>(Arrays.asList(r.getData().getAttribute(s).toString())));
+	}
 	public GenbankFeature(GenbankFile file, String featureName,
 			String position, String[] mapLines) {
 		this.file = file;
@@ -164,7 +179,18 @@ public class GenbankFeature {
 	}
 	
 	public String getGenbankEntry() {
+		if (mapLines==null)
+			throw new RuntimeException("Cannot generate genbank entry when gff3 was given!");
 		return StringUtils.concat("\n", mapLines);
+	}
+	@Override
+	public int compareTo(GenbankFeature o) {
+		int re = position.getStrand().compareTo(o.position.getStrand());
+		if (re==0)
+			re = position.toGenomicRegion().compareTo(o.position.toGenomicRegion());
+		if (re==0)
+			re = featureName.compareTo(featureName);
+		return re;
 	}
 	
 }

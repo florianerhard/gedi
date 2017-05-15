@@ -21,6 +21,10 @@ package gedi.util.math.stat.counting;
 import gedi.util.ArrayUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.dataframe.DataColumn;
+import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.datastructure.dataframe.DataFrameBuilder;
+import gedi.util.datastructure.dataframe.IntegerDataColumn;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 
@@ -39,16 +43,19 @@ public class Counter<T>  {
 	
 	private int dim;
 	private String[] dimNames = null;
+	private String elementName;
 	
 	public Counter() {
-		this(1);
+		this("Element",1);
 	}
-	public Counter(int dim) {
+	public Counter(String elementName, int dim) {
 		this.dim = dim;
+		this.elementName = elementName;
 		this.total = new int[dim];
 	}
-	public Counter(String... dimNames) {
+	public Counter(String elementName, String... dimNames) {
 		this.dimNames = dimNames;
+		this.elementName = elementName;
 		this.dim = dimNames.length;
 		this.total = new int[dim];
 	}
@@ -82,6 +89,7 @@ public class Counter<T>  {
 	}
 	
 	public String getName(int d) {
+		if (dimNames==null && dim==1) return "Count";
 		return dimNames==null?"Count "+d:dimNames[d];
 	}
 	/**
@@ -220,7 +228,7 @@ public class Counter<T>  {
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("Element");
+		sb.append(elementName);
 		for (int i=0; i<dim; i++)
 			sb.append("\t").append(getName(i));
 		sb.append("\n");
@@ -242,6 +250,19 @@ public class Counter<T>  {
 		if (sorted!=null)
 			it = it.sort(sorted);
 		return it.map(item->new ItemCount<T>(item,map.get(item)));
+	}
+	
+	public DataFrame toDataFrame() {
+		DataFrame re = new DataFrame();
+		re.add(DataColumn.fromCollectionAsFactor(elementName, EI.wrap(map.keySet()).map(a->StringUtils.toString(a))));
+		for (int i=0; i<dim; i++) {
+			int ui = i;
+			re.add(DataColumn.fromCollection(getName(i), EI.wrap(map.keySet()).mapToInt(a->map.get(a)[ui])));
+		}
+		return re;
+	}
+	public String getElementName() {
+		return elementName;
 	}
 	
 	

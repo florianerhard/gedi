@@ -38,7 +38,7 @@ public class AttributesRenderer extends BoxRenderer<Object> {
 			String t = getType(a);
 			if (t==null) return "";
 			String s = features.getEntry(t).getEntry("label").asString();
-			return StringUtils.replacePlaceholders(s,p->{
+			return StringUtils.replaceVariables(s,p->{
 				Object r = a instanceof AttributesProvider?((AttributesProvider)a).getAttribute(p):null;
 				return r==null?p:r.toString();
 			});

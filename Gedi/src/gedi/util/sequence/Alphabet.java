@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import cern.colt.bitvector.BitVector;
+import gedi.util.functions.ExtendedIterator;
 
 public class Alphabet {
 	
@@ -33,11 +34,11 @@ public class Alphabet {
 	}
 
 	
-	public Iterator<char[]> iterateWords(int length) {
+	public ExtendedIterator<char[]> iterateWords(int length) {
 		return new WordIterator(length);
 	}
 	
-	public Iterator<char[]> iterateWords(char[] buf) {
+	public ExtendedIterator<char[]> iterateWords(char[] buf) {
 		return new WordIterator(buf);
 	}
 	
@@ -115,6 +116,15 @@ public class Alphabet {
 		return re;
 	}
 	
+	public Character[] toCharacterArray() {
+		Character[] re = new Character[contains.cardinality()];
+		int index = 0;
+		for (int i=0; i<contains.size(); i++) 
+			if (contains.getQuick(i))
+				re[index++] = (char)i;
+		return re;
+	}
+	
 	public int size() {
 		return contains.cardinality();
 	}
@@ -134,7 +144,7 @@ public class Alphabet {
 		return sb.toString();
 	}
 	
-	private class WordIterator implements Iterator<char[]> {
+	private class WordIterator implements ExtendedIterator<char[]> {
 		int length;
 		char[] buf;
 		char[] valid;

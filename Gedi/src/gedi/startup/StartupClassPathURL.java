@@ -21,6 +21,7 @@ package gedi.startup;
 import gedi.app.Startup;
 import gedi.app.classpath.ClassPath;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -46,7 +47,7 @@ public class StartupClassPathURL implements Startup {
 				protected URLConnection openConnection(URL u) throws IOException {
 					final URL resourceUrl = getClass().getResource(u.getPath());
 					if (resourceUrl==null)
-						throw new IOException("Not found in classpath: "+u.getPath());
+						throw new FileNotFoundException("Not found in classpath: "+u.getPath());
 			        return resourceUrl.openConnection();
 				}
 			});

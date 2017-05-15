@@ -22,6 +22,7 @@ import gedi.app.extension.GlobalInfoProvider;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.GenomicRegionStorage;
 import gedi.util.FunctorUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
@@ -70,6 +71,8 @@ import java.util.LinkedHashMap;
  * <p>12/9/15: Each distinct sequence may have an integer id. If read from BinaryFile, having or not having an id is decided based on an attribte in the reader's context.
  * The returned id is -1 otherwise.
  * </p>
+ * 
+ * If N is sequenced, a A->A mismatch is stored (if the genomic base is an A)!
  * 
  * @author erhard
  *
@@ -925,6 +928,21 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		for (int i=0; i<getDistinctSequences(); i++)
 			if (!isAmbigousMapping(i)) return true;
 		return false;
+	}
+
+	public static String[] getConditionNames(GenomicRegionStorage<AlignedReadsData> reads) {
+		int numCond = reads.getRandomRecord().getNumConditions();
+		String[] conditions = new String[numCond];
+		if (reads.getMetaData().isNull()) {
+			for (int c=0; c<conditions.length; c++)
+				conditions[c] = c+"";
+		} else {
+			for (int c=0; c<conditions.length; c++) {
+				conditions[c] = reads.getMetaData().getEntry("conditions").getEntry(c).getEntry("name").asString();
+				if ("null".equals(conditions[c])) conditions[c] = c+"";
+			}
+		}
+		return conditions;
 	}
 	
 	

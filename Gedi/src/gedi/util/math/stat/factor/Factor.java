@@ -27,7 +27,9 @@ import gedi.util.io.randomaccess.BinaryWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -124,11 +126,39 @@ public class Factor implements Comparable<Factor> {
 	 * @return
 	 */
 	public static Factor create(String... names) {
-		return create(names,t->t);
+		return create(names,null,t->t);
 	}
 	
+	/**
+	 * Creates a factor for the given names
+	 * @param names
+	 * @return
+	 */
+	public static Factor create(Comparator<String> sorting, String... names) {
+		return create(names,sorting,t->t);
+	}
+	
+	/**
+	 * Creates a factor for the given names
+	 * @param names
+	 * @return
+	 */
+	public static Factor createSorted(String... names) {
+		return create(names,(a,b)->a.compareTo(b),t->t);
+	}
+	
+	
 	public static Factor create(String[] names, UnaryOperator<Factor> fun) {
+		return create(names,null,fun);
+	}
+	public static Factor create(String[] names, Comparator<String> sorting, UnaryOperator<Factor> fun) {
 		HashMap<String,Integer> nameToIndex = ArrayUtils.createIndexMap(names);
+		if (sorting!=null) {
+			String[] k = nameToIndex.keySet().toArray(new String[0]);
+			Arrays.sort(k,sorting);
+			for (int i=0; i<k.length; i++)
+				nameToIndex.put(k[i], i);
+		}
 		Factor[] a = new Factor[names.length];
 		Factor proto = new Factor();
 		proto.names = names;
@@ -155,6 +185,16 @@ public class Factor implements Comparable<Factor> {
 	public static List<Factor> fromStrings(Collection<String> list) {
 		Factor proto = create(new LinkedHashSet<>(list).toArray(new String[0]));
 		return EI.wrap(list).map(proto::get).toCollection(new ArrayList<>());
+	}
+	
+	public static Factor[] fromStrings(String[] list) {
+		Factor proto = create(list);
+		return EI.wrap(list).map(proto::get).toArray(Factor.class);
+	}
+	
+	public static Factor[] fromStringsSorted(String[] list) {
+		Factor proto = createSorted(list);
+		return EI.wrap(list).map(proto::get).toArray(Factor.class);
 	}
 
 	

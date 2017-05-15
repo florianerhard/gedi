@@ -87,6 +87,8 @@ public class GenbankFeatureIterator implements ExtendedIterator<GenbankFeature> 
 			
 			if (featureNames.isEmpty() || featureNames.contains(name))
 				nextFeature = new GenbankFeature(file,name,posBuilder.toString(),mapSlice);
+			if (nextFeature!=null && nextFeature.getPosition()==null)
+				nextFeature=null;
 		}
 	}
 

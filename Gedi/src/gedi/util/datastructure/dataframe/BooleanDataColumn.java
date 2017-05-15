@@ -75,6 +75,21 @@ public class BooleanDataColumn implements DataColumn<BitVector> {
 	}
 	
 	@Override
+	public Object getValue(int row) {
+		return data.getQuick(row);
+	}
+	
+	@Override
+	public void setValue(int row, Object val) {
+		boolean value;
+		if (val instanceof Number) 
+			value = ((Number)val).doubleValue()!=0;
+		else
+			value = val!=null;
+		data.putQuick(row, value);
+	}
+	
+	@Override
 	public boolean isBoolean() {
 		return true;
 	}

@@ -20,8 +20,10 @@ package gedi.core.region.feature;
 
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.feature.output.FeatureStatisticOutput;
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
 import gedi.util.functions.EI;
 import gedi.util.mutable.MutableMonad;
@@ -36,9 +38,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 import javax.script.ScriptException;
 
@@ -256,7 +260,28 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 	<T> void addFunction(Function<O,T> function);
 	
 	void applyCommands(Set o);
-	default void addResultProducers(ArrayList<ResultProducer> re) {};
+	default void addResultProducers(ArrayList<ResultProducer> re) {}
+
+
+	/**
+	 * Some features may make it necessary to adapt individual counts for statistics (e.g. when data are binned in a transcript dependent way).
+	 * This can be achieved by supplying this feature to {@link FeatureStatisticOutput#setCountAdapter(GenomicRegionFeature)}
+	 * @return
+	 */
+	default UnaryOperator<NumericArray> getCountAdapter(){
+		return null;
+	}
+
+
+	/**
+	 * Some features may make it necessary to adapt the final counts for statistics (mismatch position statistics with different read length, make it relative counts)
+	 * This can be achieved by supplying this feature to {@link FeatureStatisticOutput#setPostCountAdapter(GenomicRegionFeature)}
+	 * @return
+	 */
+	default UnaryOperator<NumericArray> getPostCountAdapter() {
+		return null;
+	}
+	
 	
 	
 	

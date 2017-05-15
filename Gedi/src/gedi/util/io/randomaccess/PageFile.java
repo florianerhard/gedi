@@ -114,6 +114,16 @@ public class PageFile implements BinaryReader, LineReader, AutoCloseable {
 		this.unmap = unmap;
 	}
 	
+	public void unmap() {
+		for (int i=0; i<buffers.length; i++) {
+			if (buffers[i]!=null) {
+				WeakReference<MappedByteBuffer> r = new WeakReference<MappedByteBuffer>((MappedByteBuffer) buffers[i]);
+				buffers[i] = null;
+				FileUtils.unmap(r);
+			}
+		}
+	}
+	
 	public String getPath() {
 		return path;
 	}
@@ -472,8 +482,8 @@ public class PageFile implements BinaryReader, LineReader, AutoCloseable {
 					WeakReference<MappedByteBuffer> r = new WeakReference<MappedByteBuffer>((MappedByteBuffer) buffers[bufferIndex]);
 					buffers[bufferIndex] = null;
 					FileUtils.unmap(r);
-				} else {
-					buffers[bufferIndex] = null;
+//				} else {
+//					buffers[bufferIndex] = null;
 				}
 			}
 			

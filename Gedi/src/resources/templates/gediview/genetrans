@@ -1,0 +1,89 @@
+<?JS0
+varin("id","genomic id",false);
+varin("genesmbppp","Maximum bp per pixel to show genes (Default: Infinite)",false);
+varin("transmbppp","Maximum bp per pixel to show genes (Default: 10000)",false);
+?>
+<?JS
+var id = id?id:"genomic";
+var genesmbppp = genesmbppp?genesmbppp:"Infinity";
+var transmbppp = transmbppp?transmbppp:"10000";
+?>
+	<StorageSource id="+.<?JS id ?>.genesid" filter="+">
+		<Genes st="<?JS id ?>" />
+	</StorageSource>
+	<StorageSource id="-.<?JS id ?>.genesid" filter="-">
+		<Genes st="<?JS id ?>" />
+	</StorageSource>
+
+	<StorageSource id="+.<?JS id ?>.trans" filter="+">
+		<Transcripts st="<?JS id ?>" />
+	</StorageSource>
+	<StorageSource id="-.<?JS id ?>.trans" filter="-">
+		<Transcripts st="<?JS id ?>" />
+	</StorageSource>
+	
+	<ToGeneMapper id="+.<?JS id ?>.uniontrans" input="+.<?JS id ?>.trans" />
+	<ToGeneMapper id="-.<?JS id ?>.uniontrans" input="-.<?JS id ?>.trans" />
+
+	<GenomicStorageFilter g="<?JS id ?>" id="+.<?JS id ?>.genes" input="+.<?JS id ?>.genesid" >
+		<GeneTable field="symbol" />
+	</GenomicStorageFilter>
+	<GenomicStorageFilter g="<?JS id ?>" id="-.<?JS id ?>.genes" input="-.<?JS id ?>.genesid" >
+		<GeneTable field="symbol" />
+	</GenomicStorageFilter>
+
+	<PackRegionTrack input="+.<?JS id ?>.genes" id="+.Gene region" >
+		<Hspace space="0" />
+		<Background c="#777777" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS genesmbppp ?>"/>
+	</PackRegionTrack>
+	<PackRegionTrack input="+.<?JS id ?>.uniontrans" id="+.Genes" >
+		<Hspace space="0" />
+		<Background c="#AAAAAA" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS transmbppp ?>"/>
+	</PackRegionTrack>
+	<PackRegionTrack input="+.<?JS id ?>.trans" id="+.Transcripts" >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS transmbppp ?>"/>
+	</PackRegionTrack>
+	
+	<PackRegionTrack input="-.<?JS id ?>.genes" id="-.Gene region" >
+		<Hspace space="0" />
+		<Background c="#777777" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS genesmbppp ?>"/>
+	</PackRegionTrack>
+	<PackRegionTrack input="-.<?JS id ?>.uniontrans" id="-.Genes" >
+		<Hspace space="0" />
+		<Background c="#AAAAAA" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS transmbppp ?>"/>
+	</PackRegionTrack>
+	<PackRegionTrack input="-.<?JS id ?>.trans" id="-.Transcripts" >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS transmbppp ?>"/>
+	</PackRegionTrack>

@@ -21,12 +21,14 @@ package executables;
 import gedi.app.Config;
 import gedi.app.Gedi;
 import gedi.app.extension.ExtensionContext;
+import gedi.core.data.annotation.Gff3Element;
 import gedi.core.data.annotation.NameAttributeMapAnnotation;
 import gedi.core.data.annotation.Transcript;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.ArrayGenomicRegion;
+import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.GenomicRegionStorageCapabilities;
 import gedi.core.region.GenomicRegionStorageExtensionPoint;
@@ -38,6 +40,8 @@ import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.tree.Trie;
+import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
 import gedi.util.io.text.StreamLineWriter;
@@ -47,7 +51,9 @@ import gedi.util.io.text.fasta.FastaFile;
 import gedi.util.io.text.fasta.index.FastaIndexFile;
 import gedi.util.io.text.genbank.GenbankFeature;
 import gedi.util.io.text.genbank.GenbankFile;
+import gedi.util.io.text.tsv.formats.Gff3FileReader;
 import gedi.util.io.text.tsv.formats.GtfFileReader;
+import gedi.util.mutable.MutablePair;
 import gedi.util.orm.Orm;
 import gedi.util.userInteraction.progress.ConsoleProgress;
 import gedi.util.userInteraction.progress.NoProgress;
@@ -57,9 +63,13 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -114,11 +124,15 @@ public class IndexGenome {
 		String name = null;
 		String output = null;
 		String folder = null;
+		String gff = null;
 		String genbank = null;
 		String genbankLabel = "label";
+		String[] genbankFeatures = new String[0];
+		String genbankName = null;
 		boolean ignoreMulti = false;
 		boolean transcriptome = true;
 		boolean bowtie = true;
+		boolean star = true;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -140,14 +154,26 @@ public class IndexGenome {
 			else if (args[i].equals("-gb")) {
 				genbank=checkParam(args, ++i);
 			}
+			else if (args[i].equals("-gff")) {
+				gff=checkParam(args, ++i);
+			}
 			else if (args[i].equals("-gblabel")) {
 				genbankLabel=checkParam(args, ++i);
+			}
+			else if (args[i].equals("-gbname")) {
+				genbankName=checkParam(args, ++i);
+			}
+			else if (args[i].equals("-gbfeatures")) {
+				genbankFeatures = StringUtils.split(checkParam(args, ++i), ',');
 			}
 			else if (args[i].equals("-f")) {
 				folder=checkParam(args, ++i);
 			}
 			else if (args[i].equals("-nobowtie")) {
 				bowtie=false;
+			}
+			else if (args[i].equals("-nostar")) {
+				star=false;
 			}
 			else if (args[i].equals("-ignoreMulti")) {
 				ignoreMulti=true;
@@ -175,81 +201,202 @@ public class IndexGenome {
 		String triepath;
 		String annoStorageClass;
 		
-		if (genbank!=null) {
-			GenbankFile file = new GenbankFile(genbank);
+		if (genbank!=null || gff!=null) {
+
+			String path = null;
+			String acc = null;
+			Supplier<String> seqSupp = null;
+			// containing name and protein id
+			HashMap<String, HashMap<String, ImmutableReferenceGenomicRegion<String[]>>> featureMap = new HashMap<>();
+	
+			String elabel = genbankLabel;
+			String ename = genbankName==null?genbankLabel:genbankName;
+			String[] features = EI.wrap(genbankFeatures).chain(EI.wrap("mRNA","CDS","gene")).set().toArray(new String[0]);
 			
-			if (name==null) name = FileUtils.getNameWithoutExtension(genbank);
 			
-			prefix = folder==null?genbank:new File(folder,FileUtils.getNameWithoutExtension(genbank)).toString();
+			if (genbank!=null) {
+				path = genbank;
+				GenbankFile file = new GenbankFile(genbank);
+				acc = file.getAccession();
+				seqSupp = ()->{
+					try {
+						return file.getSource();
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+				};
+				GenomicRegionStorage<NameAttributeMapAnnotation> full = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(String.class, genbank+".full").add(Class.class, NameAttributeMapAnnotation.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
+				ReferenceSequence ref = Chromosome.obtain(acc,Strand.Plus);
+				if (!new File(path+".full.cit").exists()) {
+					progress.init().setDescription("Indexing full annotation file in "+path);
+					full.fill(file.featureIterator().map(f->
+						new ImmutableReferenceGenomicRegion<NameAttributeMapAnnotation>(
+								ref.toStrand(f.getPosition().getStrand()),
+								f.getPosition().toGenomicRegion(),
+								new NameAttributeMapAnnotation(f.getFeatureName(), f.toSimpleMap()))
+					));
+					progress.finish();
+				}
+				
+				
+				for (GenbankFeature f : file.featureIterator(features).loop()) {
+					ImmutableReferenceGenomicRegion<String[]> r = new ImmutableReferenceGenomicRegion<>(
+							ref.toStrand(f.getPosition().getStrand()),
+							f.getPosition().toGenomicRegion(), new String[] {f.getStringValue(ename),f.getStringValue("protein_id")});
+					HashMap<String, ImmutableReferenceGenomicRegion<String[]>> map = featureMap.computeIfAbsent(f.getStringValue(elabel), x->new HashMap<>());
+					if (map.containsKey(f.getFeatureName()))
+						throw new RuntimeException(f.getStringValue(elabel)+" contains more than one "+f.getFeatureName());
+					map.put(f.getFeatureName(), r);
+				}
+				
+			} else {
+				path = gff;
+				acc = new LineOrientedFile(gff).lineIterator("#").map(s->StringUtils.splitField(s, '\t', 0)).unique(true).getUniqueResult("Multiple references defined in GFF", "GFF empty");
+				HashMap<String,HashMap<String, String>> parentMap = new HashMap<>();
+				ReferenceSequence ref = Chromosome.obtain(acc,Strand.Plus);
+				
+				HashSet<String> featureSet = new HashSet<>(Arrays.asList(features));
+				
+				for (String[] fields : new LineOrientedFile(gff).lineIterator("#").map(s->StringUtils.split(s, '\t')).loop()) {
+					if (!featureSet.contains(fields[2]))
+						continue;
+					
+					HashMap<String, String> amap = EI.split(fields[8], ';').index(s->StringUtils.splitField(s, '=', 0), s->StringUtils.splitField(s, '=', 1));
+					String gedipos = fields[6]+":"+fields[3]+"-"+fields[4];
+					amap.put("gedipos", gedipos);
+					String fn = fields[2];
+					
+					Function<String,String> attr = k->{
+						HashMap<String, String> mmap = amap;
+						while (mmap!=null) {
+							if (mmap.containsKey(k))
+								return mmap.get(k);	
+							if (mmap.containsKey("Parent"))
+								mmap = parentMap.get(mmap.get("Parent"));
+							else {
+								HashMap<String, String> nmap = parentMap.get(mmap.get("gedipos"));
+								if (nmap==mmap) {
+									if (k.equals("gene"))
+										return mmap.get("Name");
+									return null;
+								}
+								mmap = nmap;
+							}
+						}
+						return null;
+					};
+					
+					ImmutableReferenceGenomicRegion<String[]> r = new ImmutableReferenceGenomicRegion<>(
+							ref.toStrand(Strand.parse(fields[6])),
+							new ArrayGenomicRegion(Integer.parseInt(fields[3])-1,Integer.parseInt(fields[4])),
+							new String[] {attr.apply(ename),fn.equals("CDS") && attr.apply("Name")!=null?attr.apply("Name"):attr.apply("protein_id")});
+					HashMap<String, ImmutableReferenceGenomicRegion<String[]>> map = featureMap.computeIfAbsent(attr.apply(elabel), x->new HashMap<>());
+					if (map.containsKey(fn))
+						throw new RuntimeException(attr.apply(ename)+" contains more than one "+fn);
+					map.put(fn, r);
+					
+					parentMap.put(gedipos,amap);
+					parentMap.put(amap.get("ID"),amap);
+					
+				}
+			}
+			
+			
+			ReferenceSequence ref = Chromosome.obtain(acc,Strand.Plus);
+			
+			
+			if (name==null) name = FileUtils.getNameWithoutExtension(path);
+			
+			prefix = folder==null?path:new File(folder,FileUtils.getNameWithoutExtension(path)).toString();
+			if (seq!=null && folder==null) prefix = FileUtils.getNameWithoutExtension(seq); 
 			annopath = prefix+".index";
 			triepath = prefix+".names";
 			genetabpath = prefix+".genes.tab";
 			transtabpath = prefix+".transcripts.tab";
 			
 			
-			seqpath = prefix+".fasta";
+			seqpath = seq==null?prefix+".fasta":seq.getPath();
 			
-			
-			progress.init().setDescription("Indexing sequence "+genbank);
 			FastaFile ff = new FastaFile(seqpath);
-			ff.startWriting();
-			ff.writeEntry(new FastaEntry(file.getAccession(),file.getSource().toUpperCase()));
-			ff.finishWriting();
+			
+			if (seq==null && seqSupp!=null) {
+				progress.init().setDescription("Extracting sequence "+path);
+				ff.startWriting();
+				ff.writeEntry(new FastaEntry(acc,seqSupp.get().toUpperCase()));
+				ff.finishWriting();
+			} else {
+				if (ff==null) throw new RuntimeException("No fasta file given!");
+				String sequence = ff.entryIterator(false).getUniqueResult("Only a fasta file with a single entry is allowed here!","Fasta file empty!").getSequence();
+				LineWriter wr = new LineOrientedFile(prefix+".fasta").write();
+				wr.writeLine(new FastaEntry(ref.getName(),sequence).toString());
+				wr.close();
+				
+				seqpath = prefix+".fasta";
+				ff = new FastaFile(seqpath);
+			}
+			
+			progress.init().setDescription("Indexing sequence "+path);
 			ff.obtainDefaultIndex().create(ff);
 			progress.finish();
 			seqpath = ff.obtainDefaultIndex().getAbsolutePath();
 			
-			GenomicRegionStorage<NameAttributeMapAnnotation> full = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(String.class, genbank+".full").add(Class.class, NameAttributeMapAnnotation.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
-			ReferenceSequence ref = Chromosome.obtain(file.getAccession(),Strand.Plus);
-			if (!new File(genbank+".full.cit").exists()) {
-				progress.init().setDescription("Indexing full annotation file in "+genbank);
-				full.fill(file.featureIterator().map(f->
-					new ImmutableReferenceGenomicRegion<NameAttributeMapAnnotation>(
-							ref.toStrand(f.getPosition().getStrand()),
-							f.getPosition().toGenomicRegion(),
-							new NameAttributeMapAnnotation(f.getFeatureName(), f.toSimpleMap()))
-				));
-				progress.finish();
-			}
 			
 			
-			String elabel = genbankLabel;
 			
-			HashMap<String, ImmutableReferenceGenomicRegion<String>> mrnas = file.featureIterator("mRNA").map(f->
-				new ImmutableReferenceGenomicRegion<String>(
-					ref.toStrand(f.getPosition().getStrand()),
-					f.getPosition().toGenomicRegion(), f.getStringValue(elabel))).indexAdapt(r->r.getData(),v->v,IndexGenome::adaptLabel);
-			HashMap<String, ImmutableReferenceGenomicRegion<String>> cdss = file.featureIterator("CDS").map(f->
-			new ImmutableReferenceGenomicRegion<String>(
-				ref.toStrand(f.getPosition().getStrand()),
-				f.getPosition().toGenomicRegion(), f.getStringValue(elabel))).indexAdapt(r->r.getData(),v->v,IndexGenome::adaptLabel);
+//			HashMap<String, ImmutableReferenceGenomicRegion<String>> mrnas = file.featureIterator("mRNA").map(f->
+//				new ImmutableReferenceGenomicRegion<String>(
+//					ref.toStrand(f.getPosition().getStrand()),
+//					f.getPosition().toGenomicRegion(), f.getStringValue(elabel))).indexAdapt(r->r.getData(),v->v,IndexGenome::adaptLabel);
+//			HashMap<String, ImmutableReferenceGenomicRegion<String>> cdss = file.featureIterator("CDS").map(f->
+//			new ImmutableReferenceGenomicRegion<String>(
+//				ref.toStrand(f.getPosition().getStrand()),
+//				f.getPosition().toGenomicRegion(), f.getStringValue(elabel))).indexAdapt(r->r.getData(),v->v,IndexGenome::adaptLabel);
 			
 			LineWriter geneout = new LineOrientedFile(genetabpath).write().writef("Gene ID\tGene Symbol\tBiotype\tSource\n");
 			LineWriter transout = new LineOrientedFile(transtabpath).write().writef("Transcript ID\tProtein ID\tBiotype\tSource\n");
+//			for (GenbankFeature f : file.featureIterator("CDS").loop()) {
+//					geneout.writef("%s\t%s\t%s\tgenbank\n",f.getStringValue(elabel),f.getStringValue(ename),f.getFeatureName().equals("CDS")?"protein_coding":f.getFeatureName());
+//					transout.writef("%s\t%s\t%s\tgenbank\n",f.getStringValue(elabel),f.getStringValue("protein_id"),f.getFeatureName().equals("CDS")?"protein_coding":f.getFeatureName());
+//			}
 			
-			for (GenbankFeature f : file.featureIterator("CDS").loop()) {
-				geneout.writef("%s\t%s\t%s\tgenbank\n",f.getStringValue(elabel),f.getStringValue(elabel),"protein_coding");
-				transout.writef("%s\t%s\t%s\tgenbank\n",f.getStringValue(elabel),f.getStringValue("protein_id"),"protein_coding");
+			for (String label : featureMap.keySet()) {
+				for (String feat : featureMap.get(label).keySet()) {
+					if (!feat.equalsIgnoreCase("mRNA") && !feat.equalsIgnoreCase("gene")) {
+						ImmutableReferenceGenomicRegion<String[]> r = featureMap.get(label).get(feat);
+						geneout.writef("%s\t%s\t%s\tgenbank\n",label,r.getData()[0]==null?label:r.getData()[0],feat.equals("CDS")?"protein_coding":feat);
+						transout.writef("%s\t%s\t%s\tgenbank\n",label,r.getData()[1]==null?"":r.getData()[1],feat.equals("CDS")?"protein_coding":feat);
+					}
+				}
 			}
 			
 			geneout.close();
 			transout.close();
 			
 			HashSet<String> genes = new HashSet<String>();
-			genes.addAll(mrnas.keySet());
-			genes.addAll(cdss.keySet());
+//			genes.addAll(mrnas.keySet());
+//			genes.addAll(cdss.keySet());
+			genes.addAll(featureMap.keySet());
 			
-			progress.init().setDescription("Indexing annotation file in "+genbank).setCount(genes.size());
+			progress.init().setDescription("Indexing annotation file in "+path).setCount(genes.size());
 			MemoryIntervalTreeStorage<Transcript> mem = new MemoryIntervalTreeStorage<Transcript>(Transcript.class);
 			for (String gene : genes) {
 				progress.incrementProgress();
-				ImmutableReferenceGenomicRegion<String> mrna = mrnas.get(gene);
-				ImmutableReferenceGenomicRegion<String> cds = cdss.get(gene);
+//				ImmutableReferenceGenomicRegion<String> mrna = mrnas.get(gene);
+//				ImmutableReferenceGenomicRegion<String> cds = cdss.get(gene);
+				
+				HashMap<String, ImmutableReferenceGenomicRegion<String[]>> map = featureMap.get(gene);
+				ImmutableReferenceGenomicRegion<String[]> mrna = map.get("mRNA");
+				if (mrna==null) mrna = map.get("gene");
+				if (mrna==null && map.size()==1) mrna = map.values().iterator().next();
+				ImmutableReferenceGenomicRegion<String[]> cds = map.get("CDS");
+				
 				if (mrna==null) {
 					mem.add(cds.getReference(),cds.getRegion(),new Transcript(gene, gene, cds.getRegion().getStart(), cds.getRegion().getEnd()));
 				} else if (cds==null) {
 					mem.add(mrna.getReference(),mrna.getRegion(),new Transcript(gene, gene, -1,-1));
 				} else {
+					if (mrna==null || cds==null)
+						throw new RuntimeException("Cannot determine gene "+gene);
 					if (!mrna.getReference().equals(cds.getReference()))
 						throw new RuntimeException("Inconsistent references for "+gene);
 					if (!mrna.getRegion().containsUnspliced(cds.getRegion()))
@@ -265,22 +412,68 @@ public class IndexGenome {
 				aaano = (GenomicRegionStorage<Transcript>) WorkspaceItemLoaderExtensionPoint.getInstance().get(Paths.get(annopath+".cit")).load(Paths.get(annopath+".cit"));
 			} catch (Throwable e) {}
 			if (aaano==null) {
-				GenomicRegionStorage<Transcript> transcripts = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(String.class, annopath).add(Class.class, Transcript.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
-				transcripts.fill(mem);
-				annoStorageClass = transcripts.getClass().getSimpleName();
+				aaano = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(String.class, annopath).add(Class.class, Transcript.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
+				aaano.fill(mem);
+				annoStorageClass = aaano.getClass().getSimpleName();
 			} else {
 				annoStorageClass = aaano.getClass().getSimpleName();
 			}
 			
-			progress.init().setDescription("Indexing annotation file in "+genbank).setCount(genes.size());
+			progress.init().setDescription("Indexing annotation file in "+path).setCount(genes.size());
 			Trie<ImmutableReferenceGenomicRegion<Void>> trie = new Trie<ImmutableReferenceGenomicRegion<Void>>();
-			for (GenbankFeature g : file.featureIterator("gene").loop()) {
-				ImmutableReferenceGenomicRegion<Void> rgr = new ImmutableReferenceGenomicRegion<Void>(ref, g.getPosition().toGenomicRegion());
-				String id = g.getStringValue("gene");
-				if (id!=null) trie.put(id, rgr);
+			for (String gene : featureMap.keySet()) {
+				ImmutableReferenceGenomicRegion<String[]> g = featureMap.get(gene).get("gene");
+				if (g!=null)
+					trie.put(gene, new ImmutableReferenceGenomicRegion<>(g.getReference(), g.getRegion()));
 			}
+//			for (GenbankFeature g : makeIt.apply(new String[] {"gene"}).loop()) {
+//				ImmutableReferenceGenomicRegion<Void> rgr = new ImmutableReferenceGenomicRegion<Void>(ref, g.getPosition().toGenomicRegion());
+//				String id = g.getStringValue("gene");
+//				if (id!=null) trie.put(id, rgr);
+//			}
 			Orm.serialize(triepath, trie);
 			progress.finish();
+			
+			annotPath = StringUtils.removeFooter(seqpath,"fi")+"gtf";
+			if (!new File(annotPath).exists()) {
+				progress.init().setDescription("Output GTF for "+path).setCount((int) aaano.size());
+				LineWriter gtf = new LineOrientedFile(annotPath).write();
+				for (ImmutableReferenceGenomicRegion<Transcript> tr : aaano.ei().loop()) {
+					gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\";\n", 
+							tr.getReference().getName(),"gene",
+							tr.getRegion().getStart()+1,tr.getRegion().getEnd(),
+							tr.getReference().getStrand().getGff(),
+							tr.getData().getGeneId());
+					gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
+							tr.getReference().getName(),"transcript",
+							tr.getRegion().getStart()+1,tr.getRegion().getEnd(),
+							tr.getReference().getStrand().getGff(),
+							tr.getData().getGeneId(),
+							tr.getData().getTranscriptId());
+					for (int p=0; p<tr.getRegion().getNumParts(); p++) {
+						gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
+								tr.getReference().getName(),"exon",
+								tr.getRegion().getStart(p)+1,tr.getRegion().getEnd(p),
+								tr.getReference().getStrand().getGff(),
+								tr.getData().getGeneId(),
+								tr.getData().getTranscriptId());
+					}
+					if (tr.getData().isCoding()) {
+						GenomicRegion cds = tr.getData().getCds(tr.getReference(), tr.getRegion());
+						for (int p=0; p<cds.getNumParts(); p++) {
+							gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
+									tr.getReference().getName(),"CDS",
+									cds.getStart(p)+1,cds.getEnd(p),
+									tr.getReference().getStrand().getGff(),
+									tr.getData().getGeneId(),
+									tr.getData().getTranscriptId());
+						}
+					}
+				}
+				gtf.close();
+				
+				progress.finish();
+			}
 			
 			
 		}
@@ -371,7 +564,7 @@ public class IndexGenome {
 			out.writef("\t\t<Csv file=\"%s\" field=\"geneId,symbol,biotype,source\" />\n",new File(genetabpath).getAbsolutePath());
 			out.writef("\t</GenomicMappingTable>\n");
 			
-			FastaFile tr = new FastaFile(FileUtils.getFullNameWithoutExtension(seqpath)+".transcripts.fasta");
+			FastaFile tr = new FastaFile(prefix+".transcripts.fasta");
 			if (!tr.exists()) {
 				GenomicRegionStorage<Transcript> cl = (GenomicRegionStorage<Transcript>) WorkspaceItemLoaderExtensionPoint.getInstance().get(Paths.get(annopath+".cit")).load(Paths.get(annopath+".cit"));
 				FastaIndexSequenceProvider sss = new FastaIndexSequenceProvider(new FastaIndexFile(seqpath).open());
@@ -433,6 +626,27 @@ public class IndexGenome {
 			}
 		}
 		
+		if (star) {
+			//STAR --runThreadN 24 --runMode genomeGenerate --genomeDir . --genomeFastaFiles Homo_sapiens.GRCh38.dna.primary_assembly.fa --sjdbGTFfile Homo_sapiens.GRCh38.86.gtf
+			String fasta = new FastaIndexFile(seqpath).open().getFastaFile().getPath();
+			String index = new File(new File(fasta).getParentFile(),"STAR-index").getPath();
+			if (!new File(index+"/SAindex").exists()) {
+				new File(index).mkdirs();
+				progress.init().setDescription("Creating STAR index "+index);
+				ProcessBuilder pb = new ProcessBuilder(
+						"STAR","--runThreadN",Math.max(1, Runtime.getRuntime().availableProcessors()/2)+"",
+						"--runMode","genomeGenerate","--genomeDir",
+						index,"--genomeFastaFiles",fasta,
+						"--sjdbGTFfile",annotPath
+				);
+				pb.redirectError(Redirect.INHERIT);
+				pb.redirectOutput(Redirect.INHERIT);
+				pb.start().waitFor();
+				progress.finish();
+			}
+			out.write("\t<Info name=\"STAR\" info=\""+index+"\" />\n");
+		}
+		
 		
 		out.write("</Genomic>");
 		out.close();
@@ -455,10 +669,13 @@ public class IndexGenome {
 		System.err.println(" -ignoreMulti\t\tIgnore identical transcripts in Gtf file");
 		System.err.println(" -gb <genbank-file>\t\tGenbank file containing annotation and sequence");
 		System.err.println(" -gblabel <label>\t\tWhich genbank entry to take as gene and transcript label (default: label)");
+		System.err.println(" -gbname <label>\t\tWhich genbank entry to take as gene name in the mapping table (default: same as gblabel)");
+		System.err.println(" -gbfeatures <names>\t\tInclude other features as ncRNAs (comma separated, default: empty)");
 		System.err.println(" -f <folder>\t\tOutput folder (Default: next to Fasta and Gtf / genbank)");
 		System.err.println(" -n <name>\t\tName of the genome for later use (Default: file name of gtf/genbank-file)");
 		System.err.println(" -o <file>\t\tSpecify output file (Default: ~/.gedi/genomic/${name}.oml)");
 		System.err.println(" -nobowtie\t\t\tDo not create bowtie indices");
+		System.err.println(" -nostar\t\t\tDo not create STAR indices");
 		System.err.println(" -p\t\t\tShow progress");
 		System.err.println(" -h\t\t\tShow this message");
 		System.err.println(" -D\t\t\tOutput debugging information");

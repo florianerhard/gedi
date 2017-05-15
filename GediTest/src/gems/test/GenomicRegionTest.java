@@ -24,7 +24,9 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.AlignedReadsDataFactory;
+import gedi.core.reference.Chromosome;
 import gedi.core.region.ArrayGenomicRegion;
+import gedi.core.region.GenomicRegionPosition;
 import gedi.util.FileUtils;
 import gedi.util.io.randomaccess.PageFileWriter;
 
@@ -49,6 +51,66 @@ public class GenomicRegionTest {
 		ArrayGenomicRegion reg2 = FileUtils.readGenomicRegion(wr.read(true));
 		
 		assertEquals(reg, reg2);
+		
+	}
+	
+	
+	@Test
+	public void positionTest() {
+		assertEquals(8,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),-2));
+		assertEquals(10,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),0));
+		assertEquals(12,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),2));
+		assertEquals(5,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),-5));
+		assertEquals(8,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),-2));
+		assertEquals(10,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),0));
+		assertEquals(18,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),2));
+		assertEquals(21,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),5));
+		
+		assertEquals(8,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),-2));
+		assertEquals(10,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),0));
+		assertEquals(12,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),2));
+		assertEquals(5,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),-5));
+		assertEquals(8,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),-2));
+		assertEquals(10,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),0));
+		assertEquals(18,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),2));
+		assertEquals(21,GenomicRegionPosition.Start.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),5));
+
+		assertEquals(18,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),-2));
+		assertEquals(20,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),0));
+		assertEquals(22,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),2));
+		assertEquals(9,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),-5));
+		assertEquals(18,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),-2));
+		assertEquals(20,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),0));
+		assertEquals(22,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),2));
+		assertEquals(25,GenomicRegionPosition.End.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),5));
+
+		assertEquals(18,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),-2));
+		assertEquals(20,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),0));
+		assertEquals(22,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),2));
+		assertEquals(9,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),-5));
+		assertEquals(18,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),-2));
+		assertEquals(20,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),0));
+		assertEquals(22,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),2));
+		assertEquals(25,GenomicRegionPosition.End.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),5));
+		
+		assertEquals(17,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),-2));
+		assertEquals(19,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),0));
+		assertEquals(21,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,20),2));
+		assertEquals(8,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),-5));
+		assertEquals(11,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),-2));
+		assertEquals(19,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),0));
+		assertEquals(21,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),2));
+		assertEquals(24,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1+"),new ArrayGenomicRegion(10,12,18,20),5));
+
+		assertEquals(17,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),-2));
+		assertEquals(19,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),0));
+		assertEquals(21,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,20),2));
+		assertEquals(8,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),-5));
+		assertEquals(11,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),-2));
+		assertEquals(19,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),0));
+		assertEquals(21,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),2));
+		assertEquals(24,GenomicRegionPosition.Stop.position(Chromosome.obtain("chr1-"),new ArrayGenomicRegion(10,12,18,20),5));
+
 		
 	}
 	

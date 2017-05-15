@@ -43,10 +43,24 @@ public class Annotation<T> {
 	}
 	
 	public void merge(Annotation<T> other) {
-		if (other.mem!=null)
-			storages.add(other.mem);
-		else
-			storages.addAll(other.storages);
+		if (mem!=null) {
+			if (other.mem!=null)
+				addToMem(other.mem);
+			else {
+				Iterator<GenomicRegionStorage<T>> it = other.storages.iterator();
+				while (it.hasNext()) {
+					MemoryIntervalTreeStorage<T> o = it.next().toMemory();
+					addToMem(o);
+				}
+			}
+		}
+		else {
+			if (other.mem!=null)
+				storages.add(other.mem);
+			else
+				storages.addAll(other.storages);
+		}
+		
 	}
 	
 	public MemoryIntervalTreeStorage<T> get() {
@@ -54,17 +68,21 @@ public class Annotation<T> {
 			Iterator<GenomicRegionStorage<T>> it = storages.iterator();
 			mem = it.next().toMemory();
 			while (it.hasNext()) {
-				long before = mem.size();
 				MemoryIntervalTreeStorage<T> o = it.next().toMemory();
-				long add = o.size();
-				mem.fill(o);
-				if (mem.size()<before+add)
-					throw new RuntimeException("Removed multi entries!");
+				addToMem(o);
 			}
 		}
 		return mem;
 	}
 
+
+	private void addToMem(MemoryIntervalTreeStorage<T> o) {
+		long before = mem.size();
+		long add = o.size();
+		mem.fill(o);
+		if (mem.size()<before+add)
+			throw new RuntimeException("Removed multi entries!");		
+	}
 
 	public String getId() {
 		return id;

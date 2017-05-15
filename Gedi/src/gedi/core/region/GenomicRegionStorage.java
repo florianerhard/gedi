@@ -79,6 +79,8 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 		return EI.wrap(getReferenceSequences());
 	}
 	
+	Class<D> getType();
+	
 	/**
 	 * Iterates over all {@link ImmutableReferenceGenomicRegion}s in this storage. Does not return null, but an empty spliterator, when applicable.
 	 * @return
@@ -100,8 +102,6 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 		re.fill(this);
 		return re;
 	}
-	
-	Class<D> getType();
 	
 	
 	/**
@@ -249,7 +249,9 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 				return ei(ref);
 			return ei(ref.toPlusStrand()).chain(ei(ref.toMinusStrand()));
 		}
-		return ei(ImmutableReferenceGenomicRegion.parse(location));
+		if (!location.contains(","))
+			return ei(ImmutableReferenceGenomicRegion.parse(location));
+		return EI.split(location, ',').unfold(loc->ei(loc));
 	}
 	
 	default ExtendedIterator<ImmutableReferenceGenomicRegion<D>> ei(String...location) {

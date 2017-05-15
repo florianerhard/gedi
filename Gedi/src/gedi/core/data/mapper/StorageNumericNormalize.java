@@ -18,6 +18,7 @@
 
 package gedi.core.data.mapper;
 
+import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.tree.redblacktree.IntervalTree;
 

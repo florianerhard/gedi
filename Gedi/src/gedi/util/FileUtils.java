@@ -30,6 +30,7 @@ import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
+import gedi.util.io.text.LineOrientedFile;
 import gedi.util.orm.Orm;
 import gedi.util.orm.OrmSerializer;
 
@@ -546,6 +547,23 @@ public class FileUtils {
 		in.close();
 		return re;
 	}
+
+	public static String getExtensionSibling(String path, String extension) {
+			if (extension.startsWith(".")) extension = extension.substring(1);
+			
+			int dot = path.lastIndexOf('.');
+			int slash = path.lastIndexOf('/');
+			if (dot<slash || dot==-1) return path+"."+extension;
+			return path.substring(0, dot)+"."+extension;
+	}
+	public static File getExtensionSibling(File f, String extension) {
+		if (extension.startsWith(".")) extension = extension.substring(1);
+		String path = f.getPath();
+		int dot = path.lastIndexOf('.');
+		int slash = path.lastIndexOf('/');
+		if (dot<slash || dot==-1) return new File(path+"."+extension);
+		return new File(path.substring(0, dot)+"."+extension);
+}
 
 
 }

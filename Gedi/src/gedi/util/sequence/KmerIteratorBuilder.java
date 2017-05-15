@@ -91,6 +91,11 @@ public class KmerIteratorBuilder {
 		return q;
 	}
 	
+	/**
+	 * Gets only overlapping kmers from the alphabet (and skips all others)!
+	 * @param s
+	 * @return
+	 */
 	public KMerHashIterator iterateSequence(CharSequence s) {
 		return new KMerHashIterator(s);
 	}

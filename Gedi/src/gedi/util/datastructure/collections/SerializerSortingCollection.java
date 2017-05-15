@@ -93,9 +93,15 @@ public class SerializerSortingCollection<T> implements Collection<T>, Closeable 
 				}
 				);
 			}
-			serializer.endDeserialize(f);
 			
-			return EI.merge(comp, iter);
+			return EI.merge(comp, iter).endAction(()->{
+				try {
+					serializer.endDeserialize(f);
+					f.close();
+				} catch (Exception e) {
+					throw new RuntimeException("Could not end deserialization!",e);
+				}
+			});
 		
 		} catch (IOException e) {
 			throw new RuntimeException("Cannot iterate temp file!",e);

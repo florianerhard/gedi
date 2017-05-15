@@ -63,6 +63,11 @@
 	<StorageSource id="-.<?JS print(experimentNames[e]) ?>.orfdetails" filter="-">
 		<add st="<?JS print(experimentNames[e]) ?>.orfdetailstorage" />
 	</StorageSource>
+
+	<AlignedReadsDataToCoverageMapper id="+.<?JS print(experimentNames[e]) ?>.coverageall" input="+.<?JS print(experimentNames[e]) ?>.reads" />
+	<AlignedReadsDataToCoverageMapper id="-.<?JS print(experimentNames[e]) ?>.coverageall" input="-.<?JS print(experimentNames[e]) ?>.reads" />
+	<NumericComputeSumAll input="+.<?JS print(experimentNames[e]) ?>.coverageall" id="+.<?JS print(experimentNames[e]) ?>.coverage"/>
+	<NumericComputeSumAll input="-.<?JS print(experimentNames[e]) ?>.coverageall" id="-.<?JS print(experimentNames[e]) ?>.coverage"/>
 	
 	<OrfStartScore id="+.<?JS print(experimentNames[e]) ?>.startscore" input="+.<?JS print(experimentNames[e]) ?>.orfdetails" strand="+" />
 	<OrfStartScore id="-.<?JS print(experimentNames[e]) ?>.startscore" input="-.<?JS print(experimentNames[e]) ?>.orfdetails" strand="-" />
@@ -156,6 +161,12 @@
 
 	<?JS for (var e=0; e<experimentNames.length; e++) { ?>
 	<ScaleLimitLinker id="+.<?JS print(experimentNames[e]) ?>.alllinker" />
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.coverage" id="+.<?JS print(experimentNames[e]) ?>.Coverage" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<LimitLinker l="+.<?JS print(experimentNames[e]) ?>.alllinker" />
+	</LinesTrack>
 	<?JS for (var o=0; o<onlines.length; o++) { ?>
 	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.infcod.<?JS print(new Integer(o)) ?>" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Online.<?JS print(new Integer(o)) ?>" >
 		<LogScale base="10" />
@@ -302,6 +313,12 @@
 
 	<?JS for (var e=0; e<experimentNames.length; e++) { ?>
 	<ScaleLimitLinker id="-.<?JS print(experimentNames[e]) ?>.alllinker" />
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.coverage" id="-.<?JS print(experimentNames[e]) ?>.Coverage">
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<LimitLinker l="-.<?JS print(experimentNames[e]) ?>.alllinker" />
+	</LinesTrack>
 	<?JS for (var o=0; o<onlines.length; o++) { ?>
 	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.infcod.<?JS print(new Integer(o)) ?>" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Online.<?JS print(new Integer(o)) ?>" >
 		<LogScale base="10" />

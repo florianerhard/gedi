@@ -18,6 +18,11 @@
 
 package gedi.util.sequence;
 
+import gedi.core.data.reads.AlignedReadsMismatch;
+import gedi.core.data.reads.AlignedReadsSoftclip;
+import gedi.core.data.reads.AlignedReadsVariation;
+import gedi.core.reference.Strand;
+import gedi.core.data.reads.AlignedReadsDataFactory.VarIndel;
 import gedi.util.ArrayUtils;
 import gedi.util.SequenceUtils;
 import gedi.util.StringUtils;
@@ -25,6 +30,7 @@ import gedi.util.sequence.MismatchString.MismatchStringPart;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -271,6 +277,40 @@ public class MismatchString extends AbstractList<MismatchStringPart> {
 		MismatchString re = new MismatchString();
 		re.components = parts.toArray(new MismatchStringPart[0]);
 		re.length = s.length();
+		return re;
+	}
+	
+	public static MismatchString from(AlignedReadsVariation[] var, Strand strand, int len, boolean genomicToRead) {
+		ArrayList<MismatchStringPart> parts = new ArrayList<MismatchStringPart>();
+		
+		if (var.length==0) parts.add(new StretchOfMatches(len));
+		else {
+			int start = 0;// var[0] instanceof AlignedReadsSoftclip?1:0;
+			int end = var.length; //var[var.length-1] instanceof AlignedReadsSoftclip?var.length-1:var.length;
+			
+			Arrays.sort(var);
+			boolean minus = strand.equals(Strand.Minus);
+			if (minus) ArrayUtils.reverse(var);
+			int pos = 0;
+			for (int i=start; i<end; i++) {
+				if (var[i] instanceof AlignedReadsMismatch) {
+					int ppos = minus?len-1-var[i].getPosition():var[i].getPosition();
+					parts.add(new StretchOfMatches(ppos-pos));
+					char read = !genomicToRead?var[i].getReferenceSequence().charAt(0):var[i].getReadSequence().charAt(0);
+					if (genomicToRead && var[i].getReadSequence().charAt(0)==var[i].getReferenceSequence().charAt(0))
+						read = 'N';
+					parts.add(new Mismatch(minus?SequenceUtils.getDnaComplement(read):read));
+					pos = ppos+1;
+				}
+				else
+					throw new RuntimeException("Cannot create MismatchString for anything else than mismatches!");
+			}
+			parts.add(new StretchOfMatches(len-pos));
+		}
+		
+		MismatchString re = new MismatchString();
+		re.components = parts.toArray(new MismatchStringPart[0]);
+		re.length = len;
 		return re;
 	}
 

@@ -42,13 +42,20 @@ public class Nashorn {
 	public static void main(String[] args) throws ScriptException, IOException {
 		Gedi.startup();
 		
-		JS js = new JS();
-		js.addParam(args, true);
-		
-		String prep = js.prepareScript(args[0]);
-		FileUtils.writeAllText(prep, new File(args[0]+".replaced"));
-		
-		js.eval(prep);
+		if (args.length==2 && args[0].equals("-e")) {
+			JS js = new JS();
+			String prep = js.prepareSource(args[1]);
+			js.eval(prep);
+		}
+		else {
+			JS js = new JS();
+			js.addParam(args, true);
+			
+			String prep = js.prepareScript(args[0]);
+			FileUtils.writeAllText(prep, new File(args[0]+".replaced"));
+			
+			js.eval(prep);
+		}
 		
 	}
 	

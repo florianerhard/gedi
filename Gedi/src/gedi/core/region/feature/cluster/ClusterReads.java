@@ -200,7 +200,7 @@ public class ClusterReads extends AbstractFeature<Void> {
 	
 	private ExtendedIterator<MutableReferenceGenomicRegion<NumericArray>> iterateFile(boolean deleteOnEnd) throws IOException {
 	
-		if (buffer==null) {
+		if (buffer==null || bout==null) {
 			// not a single feature entered this thread, so this could be!
 			return EI.empty();
 		}

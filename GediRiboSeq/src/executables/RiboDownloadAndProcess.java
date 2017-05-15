@@ -28,7 +28,7 @@ import gedi.util.functions.EI;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
-import gedi.util.io.text.jph.Jhp;
+import gedi.util.io.text.jhp.Jhp;
 import gedi.util.mutable.MutablePair;
 
 import java.io.File;

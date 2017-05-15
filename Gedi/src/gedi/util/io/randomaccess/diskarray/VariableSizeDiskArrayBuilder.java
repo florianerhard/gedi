@@ -22,10 +22,12 @@ import gedi.util.FileUtils;
 import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
+import gedi.util.io.randomaccess.serialization.BinarySerializer;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Iterator;
 
 
 public class VariableSizeDiskArrayBuilder<T extends BinarySerializable> {
@@ -55,11 +57,11 @@ public class VariableSizeDiskArrayBuilder<T extends BinarySerializable> {
 		return currentLength;
 	}
 	
-	public VariableSizeDiskArrayBuilder<T> add(Collection<T> data) throws IOException {
+	public VariableSizeDiskArrayBuilder<T> add(Iterator<T> data) throws IOException {
 		currentLength++;
 		index.putLong(this.data.position());
-		for (T d : data)
-			d.serialize(this.data);
+		while (data.hasNext())
+			data.next().serialize(this.data);
 		return this;
 	}
 	

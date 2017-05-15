@@ -33,7 +33,7 @@ import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
 import gedi.util.io.text.StreamLineWriter;
-import gedi.util.io.text.jph.Jhp;
+import gedi.util.io.text.jhp.Jhp;
 
 public class Cluster {
 

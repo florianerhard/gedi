@@ -18,7 +18,19 @@
 
 package gedi.util.dynamic;
 
-import gedi.util.ParseUtils;
+import java.io.StringReader;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.json.Json;
+import javax.lang.model.type.NullType;
+
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
 import gedi.util.dynamic.impl.ArrayDynamicObject;
@@ -28,26 +40,16 @@ import gedi.util.dynamic.impl.EmptyDynamicObject;
 import gedi.util.dynamic.impl.IntDynamicObject;
 import gedi.util.dynamic.impl.ListDynamicObject;
 import gedi.util.dynamic.impl.MapDynamicObject;
+import gedi.util.dynamic.impl.ObjectDynamicObject;
 import gedi.util.dynamic.impl.StringDynamicObject;
+import gedi.util.functions.EI;
 import gedi.util.orm.Orm;
 import gedi.util.properties.PropertyProvider;
-
-import java.io.StringReader;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.StringProperty;
-
-import javax.json.Json;
-import javax.lang.model.type.NullType;
 
 
 /**
@@ -209,7 +211,7 @@ public interface DynamicObject {
 		else if (isBoolean()) sb.append(asBoolean());
 		else if (isInt()) sb.append(asInt());
 		else if (isDouble()) sb.append(asDouble());
-		else if (isString()) sb.append("\"").append(asString()).append("\"");
+		else if (isString()) sb.append("\"").append(asString().replace("\"", "\\\"")).append("\"");
 		else if (isArray()) {
 			sb.append("[");
 			for (int i=0; i<length(); i++) {
@@ -254,7 +256,7 @@ public interface DynamicObject {
 	
 	public static DynamicObject from(String key, Object value) {
 		HashMap<String,Object> m = new HashMap<>();
-		m.put(key, value);
+		m.put(key, from(value));
 		return from(m);
 	}
 	
@@ -284,7 +286,8 @@ public interface DynamicObject {
 		if (o instanceof List) return from(((List)o).toArray());
 		if (o.getClass().isArray()) return from((Object[])o);
 		if (o instanceof Map) return from((Map)o);
-		throw new RuntimeException("Cannot create Dynamic object!");
+		return new ObjectDynamicObject(o);
+//		throw new RuntimeException("Cannot create Dynamic object!");
 	}
 
 
@@ -304,6 +307,7 @@ public interface DynamicObject {
 			if (json.startsWith("\"") && json.endsWith("\""))
 				return new StringDynamicObject(json.substring(1, json.length()-1));
 		}
+		json = json.replaceAll(",(\\s*[\\]}])", "$1");
 		return new JsonDynamicObject(Json.createReader(new StringReader(json)).read());
 	}
 	
@@ -322,6 +326,7 @@ public interface DynamicObject {
 				json = json.substring(1, json.length()-1);
 			return new StringDynamicObject(json);
 		}
+		json = json.replaceAll(",(\\s*[\\]}])", "$1");
 		return new JsonDynamicObject(Json.createReader(new StringReader(json)).read());
 	}
 	
@@ -353,7 +358,53 @@ public interface DynamicObject {
 		if (objects.size()==1) return objects.iterator().next();
 		return new CascadingDynamicObject(objects.toArray(new DynamicObject[0]));
 	}
+	
+	default DynamicObject cascade(DynamicObject other) {
+		return new CascadingDynamicObject(new DynamicObject[]{this,other});
+	}
+	default DynamicObject merge(DynamicObject other) {
+		return new MergedDynamicObject(new DynamicObject[]{this,other});
+	}
 
+	
+	/**
+	 * Tries to set properties of o (via setter or {@link PropertyProvider} if this is a Object, via array access if this is an array) from this object 
+	 * @param o
+	 */
+	default <T> T javafy(Class<T> cls) {
+		if (isArray() && cls.isArray()) {
+			T re = (T) Array.newInstance(cls.getComponentType(), length());
+			for (int i=0; i<length(); i++)
+				Array.set(re, i, getEntry(i).javafy(cls.getComponentType()));
+			return re;
+		}
+		
+		if (isObject()) {
+			T re = Orm.create(cls);
+			for (String prop : getProperties()) {
+				DynamicObject sub = getEntry(prop);
+				Field f = ReflectionUtils.findAnyField(cls, prop, false);
+				if (!Modifier.isPublic(f.getModifiers()))
+					f.setAccessible(true);
+				try {
+					f.set(re,sub.javafy(f.getType()));
+				} catch (IllegalArgumentException | IllegalAccessException e) {
+					throw new RuntimeException("Cannot javafy DynamicObject, cannot set value (property="+prop+", class="+cls+", json="+toJson()+")");
+				}
+			}
+			return re;
+		}
+		
+		if (isNull()) return null;
+		if (isBoolean()) return (T)(Boolean)asBoolean();
+		if (isInt()) return (T)(Integer)asInt();
+		if (isDouble()) return (T)(Double)asDouble();
+		if (isString()) return (T)(String)asString();
+		
+		throw new RuntimeException("Cannot javafy DynamicObject, types incompatible (class="+cls+", json="+toJson()+")");
+		
+	}
+	
 	/**
 	 * Tries to set properties of o (via setter or {@link PropertyProvider} if this is a Object, via array access if this is an array) from this object 
 	 * @param o
@@ -517,5 +568,14 @@ public interface DynamicObject {
 		map.put(prop, parseExpression(expression, value));
 		return new MapDynamicObject(map);
 	}
+
+	public static <T> DynamicObject arrayOfObjects(String propertName, Iterable<T> objects) {
+		return from(EI.wrap(objects).map(o->from(propertName,o)).toArray(DynamicObject.class));
+	}
+	
+	public static <T> DynamicObject arrayOfObjects(String propertName, T... objects) {
+		return from(EI.wrap(objects).map(o->from(propertName,o)).toArray(DynamicObject.class));
+	}
+
 	
 }

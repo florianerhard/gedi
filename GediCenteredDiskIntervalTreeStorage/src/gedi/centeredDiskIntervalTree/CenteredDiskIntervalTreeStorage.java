@@ -303,7 +303,7 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 				last = rgr.getReference();
 				
 				InternalCenteredDiskIntervalTreeBuilder<D> builder = references.get(rgr.getReference());
-				if (builder==null) references.put(rgr.getReference(), builder = new InternalCenteredDiskIntervalTreeBuilder<D>(new File(path).getAbsoluteFile().getParent(),new File(path).getName(),globalInfo));
+				if (builder==null) references.put(rgr.getReference(), builder = new InternalCenteredDiskIntervalTreeBuilder<D>(new File(path).getAbsoluteFile().getParent(),new File(path).getName()+"."+rgr.getReference().toPlusMinusString(),globalInfo));
 				builder.add(rgr.getRegion(), rgr.getData());
 //				if (++re%10000==0) {
 //					System.out.println(re+" regions");
@@ -328,7 +328,7 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 			
 			long[] offset = new long[refs.length+1];
 			for (int i=0; i<refs.length; i++) {
-				System.out.println("Output "+refs[i]);
+//				System.out.println("Output "+refs[i]);
 				offset[i] = out.position();
 				InternalCenteredDiskIntervalTreeBuilder<D> builder = references.get(refs[i]);
 				builder.build(out);

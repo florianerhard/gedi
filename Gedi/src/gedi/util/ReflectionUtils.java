@@ -301,10 +301,10 @@ public class ReflectionUtils {
 	 * @param param
 	 * @return
 	 */
-	public static Field findAnyField(Class<?> cls, String name) {
+	public static Field findAnyField(Class<?> cls, String name, boolean staticField) {
 		for (; cls!=null; cls = cls.getSuperclass())
 			for (Field m : cls.getDeclaredFields()) {
-				if (m.getName().equals(name))
+				if (Modifier.isStatic(m.getModifiers())==staticField && m.getName().equals(name))
 					return m;
 			}
 		return null;
@@ -532,31 +532,35 @@ public class ReflectionUtils {
 	}
 	
 	public static <T> boolean has(T o, String field) {
-		return findAnyField(o.getClass(), field)!=null;
+		return findAnyField(o.getClass(), field, false)!=null;
+	}
+	
+	public static <T> boolean hasStatic(Class<T> o, String field) {
+		return findAnyField((Class<?>) o, field, true)!=null;
 	}
 
 	public static <T,O> O get(T o, String field) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-		Field f = findAnyField(o.getClass(), field);
+		Field f = findAnyField(o.getClass(), field, false);
 		if (!Modifier.isPublic(f.getModifiers()))
 			f.setAccessible(true);
 		return (O) f.get(o);
 	}
 	
 	public static <T,O> O getStatic(Class<T> o, String field) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-		Field f = findAnyField(o, field);
+		Field f = findAnyField(o, field, true);
 		if (!Modifier.isPublic(f.getModifiers()))
 			f.setAccessible(true);
 		return (O) f.get(null);
 	}
 	public static <T,O> void setStatic(Class<T> o, String field, O toset) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-		Field f = findAnyField(o, field);
+		Field f = findAnyField(o, field, true);
 		if (!Modifier.isPublic(f.getModifiers()))
 			f.setAccessible(true);
 		f.set(null, toset);
 	}
 	
 	public static <T,O> void set(T o, String field, O toset) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-		Field f = findAnyField(o.getClass(), field);
+		Field f = findAnyField(o.getClass(), field, false);
 		if (!Modifier.isPublic(f.getModifiers()))
 			f.setAccessible(true);
 		f.set(o,toset);

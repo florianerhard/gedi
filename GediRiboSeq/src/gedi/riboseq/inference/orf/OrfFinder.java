@@ -117,6 +117,7 @@ public class OrfFinder {
 	private double orffrac2 =0.4;
 	private int minRi = 0;
 	
+	private boolean filterByInternal = true;
 	private boolean filterByGap = false;
 	private boolean assembleAnnotationFirst = true;
 	
@@ -156,6 +157,10 @@ public class OrfFinder {
 		this.filterByGap = filterByGap;
 	}
 	
+	public void setFilterByInternal(boolean filterByInternal) {
+		this.filterByInternal = filterByInternal;
+	}
+	
 	public void setUseEM(boolean em) {
 		this.useEM = em;
 	}
@@ -166,6 +171,14 @@ public class OrfFinder {
 	
 	public void setUseReadSplits(boolean useReadSplits) {
 		this.useReadSplits = useReadSplits;
+	}
+	
+	public void setMinAaLength(int minAaLength) {
+		this.minAaLength = minAaLength;
+	}
+	
+	public void setMinOrfTotalActivity(double minOrfTotalActivity) {
+		this.minOrfTotalActivity = minOrfTotalActivity;
 	}
 
 	public MemoryIntervalTreeStorage<Orf> computeGene(String gene, Progress progress) throws IOException {
@@ -391,7 +404,7 @@ public class OrfFinder {
 							total>minOrfTotalActivity && oorf.hasStop && 
 							oorf.activityFraction>minIsoformFraction && 
 							oorf.tmCov>minTmCov && 
-							oorf.internalPval<0.01
+							(!filterByInternal || oorf.internalPval<0.01)
 							;
 					
 					if (thisistheend && startCand>=0 && total<=minOrfTotalActivity)
@@ -450,7 +463,7 @@ public class OrfFinder {
 					oorf.inferredStartPosition>=0 && oorf.hasStop && 
 					oorf.activityFraction>minIsoformFraction && 
 					oorf.tmCov>minTmCov && 
-					oorf.internalPval<0.01 &&
+					(!filterByInternal || oorf.internalPval<0.01) &&
 					(!filterByGap || oorf.gapPval>0.01) && 
 					oorf.presentPval<0.01 &&
 //					oorf.clusterFraction>minClusterFraction &&
@@ -768,7 +781,7 @@ public class OrfFinder {
 								cods.add(c);
 						}
 					}
-					
+//						System.out.println(codonsRegion.map(best));
 					if ((uniqueCodons>=minUniqueCodons || uniqueCodons==cods.size()) && uniqueActivity>minUniqueActivity && totalActivity>minOrfTotalActivity) {
 						
 						Collections.sort(cods);

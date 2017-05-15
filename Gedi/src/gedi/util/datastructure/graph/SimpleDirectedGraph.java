@@ -21,7 +21,6 @@ package gedi.util.datastructure.graph;
 
 
 import gedi.util.ArrayUtils;
-import gedi.util.io.Directory;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.math.stat.RandomNumbers;
 import gedi.util.mutable.MutableInteger;
@@ -493,7 +492,7 @@ public class SimpleDirectedGraph<T> {
 		this.name = name;
 	}
 
-	public void save(Directory dir) throws IOException {
+	public void save(File dir) throws IOException {
 		save(new File(dir,getName()+".network").getAbsolutePath());
 	}
 	

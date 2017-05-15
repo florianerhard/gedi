@@ -35,7 +35,7 @@ public class CleavageModelEstimatorThread extends Thread {
 	public CleavageModelEstimatorThread(CleavageModelEstimator estimator, int c, int maxpos, int repeats) {
 		this.estimator = estimator;
 		this.c = c;
-		this.maxPos = maxpos;
+		this.maxPos = maxpos<0?12:maxpos;
 		this.repeats = repeats;
 	}
 	public double[] getBestPl() {

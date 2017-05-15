@@ -70,7 +70,7 @@ public class TableTest {
 	}
 	
 	
-//	@Test
+	@Test
 	public void myorm() throws Exception {
 		Unsafe unsafe = null;
 		try {
@@ -122,7 +122,7 @@ public class TableTest {
 		}
 	}
 	
-//	@Test
+	@Test
 	public void orm() throws Exception {
 		Object[] a = new Object[8];
 		for (int i=0; i<obj.length; i++) {
@@ -139,7 +139,7 @@ public class TableTest {
 		}
 	}
 
-//	@Test
+	@Test
 	public void direct() throws Exception {
 		Object[] a = new Object[8];
 		for (int i=0; i<obj.length; i++) {
@@ -189,7 +189,7 @@ public class TableTest {
 			System.out.println(Arrays.toString(Orm.toArray(o, null)));
 		}
 		
-		assertEquals(obj.length, table.size());
+		assertEquals(200, table.size());
 	}
 	
 	

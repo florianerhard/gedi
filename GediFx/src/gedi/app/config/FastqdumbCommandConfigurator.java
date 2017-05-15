@@ -36,7 +36,6 @@ import gedi.app.classpath.ClassPathCache;
 import gedi.app.classpath.DirectoryClassPath;
 import gedi.app.classpath.JARClassPath;
 import gedi.util.FileUtils;
-import gedi.util.io.Directory;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
@@ -61,6 +60,6 @@ public class FastqdumbCommandConfigurator extends CommandConfigurator {
 	
 	@Override
 	public String getHelp() {
-		return "To download files from SRA, fastq-dump from the NCBI SRA tools must be installed and runnable from command line!";
+		return "To download files from SRA, fastq-dump from the NCBI SRA tools must be installed and runnable from command line! Don't forget to deactivate caching using vdb-config -i";
 	}
 }

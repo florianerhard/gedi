@@ -312,6 +312,36 @@ public class R extends RConnection {
 		}
 	}
 	
+	
+	public R startPNG(String filename) {
+		return startPNG(filename,480,480);
+	}
+	public R startPNG(String filename, int width, int height) {
+		if (pdf!=null)
+			throw new RuntimeException("Do not plot into more than one png!");
+		try {
+			log.log(Level.FINE,"Start plot into file "+filename);
+			evalf("png('%s',width=%d,height=%d)",filename,width,height);
+			this.pdf = filename;
+			return this;
+		} catch (Exception e) {
+			log.log(Level.SEVERE, "Failed starting plots!",e);
+			throw new RuntimeException("Could not start plot!",e);
+		}
+	}
+	
+	public String finishPNG() {
+		String pdf = this.pdf;
+		this.pdf = null;
+		try {
+			eval("dev.off()");
+			return pdf;
+		} catch (Exception e) {
+			log.log(Level.SEVERE, "Failed finishing plots!",e);
+			throw new RuntimeException("Could not finish plot!",e);
+		}
+	}
+	
 	public ArrayList<BufferedImage> finishPlots() {
 		ArrayList<BufferedImage> re = new ArrayList<BufferedImage>();
 		finishPlots(re);

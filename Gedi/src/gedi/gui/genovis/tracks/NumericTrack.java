@@ -29,9 +29,11 @@ import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.mutable.MutableDouble;
 import gedi.util.mutable.MutableInteger;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Paint;
+import java.awt.Stroke;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
@@ -63,6 +65,23 @@ public abstract class NumericTrack<T> extends VisualizationTrackAdapter<T,Double
 	
 	NumericTrackGroup group;
 	ScaleLimitLinker limitLinker;
+	
+	
+	public final static double DEFAULT_SINGLE_RADIUS = 2;
+	protected double singleRad = DEFAULT_SINGLE_RADIUS;
+
+	public final static double DEFAULT_POINT_RADIUS = 2;
+	public final static double DEFAULT_LINE_WIDTH = 1;
+	protected double pointRad = DEFAULT_POINT_RADIUS;
+
+	protected boolean points = true;
+	protected Stroke stroke;
+	
+	
+	public void setPoints(boolean points) {
+		this.points = points;
+	}
+	
 
 	public NumericTrack(Class<T> cls) {
 		super(cls);
@@ -325,6 +344,12 @@ public abstract class NumericTrack<T> extends VisualizationTrackAdapter<T,Double
 	
 	protected void beginPass(
 			TrackRenderContext<T> context, int pass) {
+		
+		singleRad = getStyles().get("["+pass+"].singleSize").asDouble(DEFAULT_SINGLE_RADIUS);
+		
+		pointRad = getStyles().get("["+pass+"].pointSize").asDouble(DEFAULT_POINT_RADIUS);
+		stroke = new BasicStroke((float)getStyles().get("["+pass+"].lineWidth").asDouble(DEFAULT_LINE_WIDTH));
+		context.g2.setPaint(PaintUtils.parseColor(getStyles().get("["+pass+"].color").asString("#000000")));
 	}
 
 	

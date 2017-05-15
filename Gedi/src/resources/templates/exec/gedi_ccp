@@ -1,0 +1,28 @@
+#!/bin/bash
+
+<?JS if (type=="devel") { ?>
+
+workspace="<?JS root ?>";
+projects=`cd $workspace/; ls -d */`;
+
+out=$(mktemp)
+
+for project in $projects; do
+	cpPath="$workspace/${project}.classpath"
+
+	grep 'kind="lib"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" >> $out
+	grep 'kind="output"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" >> $out
+
+done
+
+
+cp=`sort -u $out | xargs | tr " " ":"`
+rm $out
+
+echo -n $cp
+
+<?JS } else  { ?>
+
+echo -n "<?JS root ?>/gedi.jar:<?JS root ?>/lib/.*"
+
+<?JS }  ?>

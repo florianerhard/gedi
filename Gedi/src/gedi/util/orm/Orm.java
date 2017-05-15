@@ -644,6 +644,7 @@ public class Orm {
 		Type[] genericDeclaringClasses;
 		Class[] classes;
 		String[] names;
+		String[] declaredNames;
 		HashMap<String,Integer> nameToIndex;
 		
 		long[] pointerOffset;
@@ -754,6 +755,15 @@ public class Orm {
 				}
 			}
 			return names;
+		}
+		public synchronized String[] getDeclaredNames() {
+			if (declaredNames==null) {
+				declaredNames = new String[getFields().length];
+				for (int i=0; i<declaredNames.length; i++) {
+					declaredNames[i] = getFields()[i].getName();
+				}
+			}
+			return declaredNames;
 		}
 	}
 		

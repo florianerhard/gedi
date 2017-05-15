@@ -40,7 +40,7 @@ public class MultiFeatureMapping extends AbstractFeature<Void> {
 	 * Example: ['Human'],['rRNA'],[*]
 	 * 
 	 * I.e. comma separated list of [] entries describing the input sets; either containing a ; separated list of ' delimited strings
-	 * or one of the following: U, N, ?, +, * (corresponding to 1 element, more than one elements, 0 or 1 element, at least 1 element
+	 * or one of the following: nothing, U, N, ?, +, * (corresponding to 0 elements, 1 element, more than one elements, 0 or 1 element, at least 1 element
 	 * and any number of elements
 	 * 
 	 * to Syntax:

@@ -25,6 +25,7 @@ import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.tree.redblacktree.IntervalTree;
 import gedi.util.mutable.MutableDouble;
 
+import java.awt.Stroke;
 import java.awt.geom.CubicCurve2D;
 
 
@@ -45,7 +46,7 @@ public class RegionLinesTrack extends NumericRegionTrack {
 	
 	@Override
 	protected void beginPass(TrackRenderContext<IntervalTree<GenomicRegion,NumericArray>> context, int row) {
-		context.g2.setPaint(PaintUtils.parseColor(getStyles().get("["+row+"].color").asString("#000000")));
+		super.beginPass(context, row);
 	}
 	
 	@Override
@@ -70,10 +71,14 @@ public class RegionLinesTrack extends NumericRegionTrack {
 		
 		double xc = (x1+x2)/2;
 		
+		Stroke ostroke = context.g2.getStroke();
+		context.g2.setStroke(stroke);
+		
 		context.g2.draw(new CubicCurve2D.Double(x1, y01, x1, y01+(y-y01)*yFactor, xc-(xc-x1)*xFactor, y, xc, y));
 		context.g2.draw(new CubicCurve2D.Double(x2, y02, x2, y02+(y-y02)*yFactor, xc+(xc-x1)*xFactor, y, xc, y));
 		
-		
+		context.g2.setStroke(ostroke);
+
 		return 1;
 	}
 	

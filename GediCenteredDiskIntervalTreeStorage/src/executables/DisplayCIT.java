@@ -19,7 +19,6 @@
 package executables;
 
 import gedi.app.Gedi;
-import gedi.cascadingProperty.CpsReader;
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
@@ -30,16 +29,17 @@ import gedi.gui.genovis.SetLocationField;
 import gedi.gui.genovis.SwingGenoVisViewer;
 import gedi.gui.genovis.TrackSelectionTreeButton;
 import gedi.gui.genovis.VisualizationTrack;
-import gedi.oml.OmlNodeExecutor;
-import gedi.oml.OmlReader;
-import gedi.oml.petrinet.Pipeline;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.StringUtils;
 import gedi.util.functions.EI;
 import gedi.util.io.text.LineIterator;
-import gedi.util.io.text.jph.Jhp;
+import gedi.util.io.text.jhp.Jhp;
 import gedi.util.nashorn.JS;
+import gedi.util.oml.OmlNodeExecutor;
+import gedi.util.oml.OmlReader;
+import gedi.util.oml.cps.CpsReader;
+import gedi.util.oml.petrinet.Pipeline;
 
 import java.awt.BorderLayout;
 import java.io.File;

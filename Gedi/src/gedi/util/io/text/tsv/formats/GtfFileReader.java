@@ -95,7 +95,7 @@ public class GtfFileReader extends GenomicExonsTsvFileReader<Transcript> {
 				for (int i=0; i<a.length; i++)
 					if (getGtfField("protein_id",a[i])!=null)
 						prot = getGtfField("protein_id",a[i]);
-				trans.writef("%s\t%s\t%s\t%s\n",getGtfField("transcript_id",a[0]),prot,a[0][1],getGtfField("transcript_source",a[0],""));
+				trans.writef("%s\t%s\t%s\t%s\n",getGtfField("transcript_id",a[0]),prot,getGtfField("transcript_biotype",a[0],""),getGtfField("transcript_source",a[0],""));
 				
 			} catch (IOException e) {
 				throw new RuntimeException(e);

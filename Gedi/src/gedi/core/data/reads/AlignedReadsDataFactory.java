@@ -96,14 +96,14 @@ public class AlignedReadsDataFactory {
 	
 	public AlignedReadsDataFactory setId(int id) {
 		checkDistinct();
-		if (ids.size()!=currentDistinct)
+		if (ids.size()<currentDistinct)
 			throw new RuntimeException("Call setId for all distinct sequences!");
 		setId(currentDistinct, id);
 		return this;
 	}	
 	public AlignedReadsDataFactory setWeight(float weight) {
 		checkDistinct();
-		if (weights.size()!=currentDistinct)
+		if (weights.size()<currentDistinct)
 			throw new RuntimeException("Call setWeight for all distinct sequences!");
 		setWeight(currentDistinct, weight);
 		return this;

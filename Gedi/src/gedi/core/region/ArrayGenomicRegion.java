@@ -75,7 +75,7 @@ public class ArrayGenomicRegion implements GenomicRegion, BinarySerializable {
 	
 	@Override
 	public ArrayGenomicRegion toArrayGenomicRegion() {
-		return this;
+		return new ArrayGenomicRegion(this);
 	}
 	
 	/**

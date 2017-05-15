@@ -20,8 +20,10 @@ package gedi.core.region.feature.output;
 
 import gedi.core.region.feature.GenomicRegionFeatureProgram;
 import gedi.util.ArrayUtils;
+import gedi.util.FileUtils;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.r.RConnect;
+import gedi.util.r.RRunner;
 import gedi.util.userInteraction.results.ImageResult;
 import gedi.util.userInteraction.results.Result;
 import gedi.util.userInteraction.results.ResultConsumer;
@@ -44,6 +46,7 @@ import javafx.scene.image.Image;
  */
 public class Barplot implements ResultProducer {
 	private String name;
+	private String title;
 	private String description;
 	
 	private String[] aes;
@@ -59,6 +62,10 @@ public class Barplot implements ResultProducer {
 	private boolean isFinal;
 	
 	private ArrayList<String> add = new ArrayList<String>();
+	private double minimalFraction = 0.01;
+	private boolean sort = false;
+	private LineOrientedFile csvFile;
+	private String section;
 	
 	public Barplot(String[] aes, String position) {
 		this.aes = aes;
@@ -81,11 +88,28 @@ public class Barplot implements ResultProducer {
 		this.label = label;
 	}
 	
+	public void setMinimalFraction(double minimalFraction) {
+		this.minimalFraction  = minimalFraction;
+	}
+	
+	public void setSort() {
+		this.sort = true;
+	}
+	
 	public void setName(String name) {
 		this.name = name;
 	}
+	public void rotateLabels() {
+		add("theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))");
+	}
 	public void setDescription(String description) {
 		this.description = description;
+	}
+	public void setTitle(String title) {
+		this.title = title;
+	}
+	public String getTitle() {
+		return title==null?FileUtils.getNameWithoutExtension(pfile):title;
 	}
 
 	public void setKeepScript(boolean keepScript) {
@@ -110,6 +134,10 @@ public class Barplot implements ResultProducer {
 		script.writef("suppressMessages(library(ggplot2))\n");
 		script.writef("suppressMessages(library(reshape2))\n\n");
 		script.writef("t<-read.delim('%s',check.names=F)\n",file.getPath());
+		if (minimalFraction>0) {
+			script.writef("rowmax<-apply(as.data.frame(t[,-1:-%d]),2,max)\n",inputs.length);
+			script.writef("t<-t[apply(as.data.frame(t[,-1:-%d]),1,function(v) sum(v>=rowmax*%.4f)>0),]\n",inputs.length,minimalFraction);
+		}
 		
 		if (needsMelt) {
 			script.writef("t<-melt(t,id=1:%d)\n",inputs.length);
@@ -136,6 +164,7 @@ public class Barplot implements ResultProducer {
 			script.writef("names(t)[dim(t)[2]]<-'Count'\n");
 		}
 		
+		String x = null;
 		list = new StringBuilder();
 		for (int i=0; i<inputs.length; i++) {
 			if (isAes(aes,i) && !isSpecialAes(aes,i)) {
@@ -144,6 +173,8 @@ public class Barplot implements ResultProducer {
 					list.append("fill=factor(`").append(inputs[i]).append("`)");
 				else
 					list.append(aes[i]).append("=`").append(inputs[i]).append("`");
+				if (aes[i].equals("x"))
+					x = inputs[i];
 			}
 		}
 		if (needsMelt && isAes(aes,inputs.length) && !isSpecialAes(aes,inputs.length)) {
@@ -153,6 +184,11 @@ public class Barplot implements ResultProducer {
 		if (isAes(aes,aes.length-1) && !isSpecialAes(aes,aes.length-1)) {
 			if (list.length()>0) list.append(",");
 			list.append(aes[aes.length-1]).append("=`Count`");
+		}
+		
+		if (sort) {
+			script.writef("agg<-aggregate(t$Count,list(t$`%s`),sum)\n",x);
+			script.writef("t$`%s` = factor(t$`%s`,levels=agg$Group.1[order(agg$x,decreasing=T)])\n",x,x);
 		}
 		
 		script.writef("g<-ggplot(t,aes(%s))",list);
@@ -186,13 +222,16 @@ public class Barplot implements ResultProducer {
 		
 		script.writeLine();
 		
+		this.csvFile = file;
 		pfile = this.file!=null?this.file:file.getExtensionSibling("png").getPath();
 		script.writef("ggsave('%s',width=7,height=7)\n\n",pfile);
 		
 		script.finishWriting();
 		
 		try {
-			RConnect.R().run(script.toURI().toURL());
+			RRunner r = new RRunner(script.getPath());
+			r.run(false);
+//			RConnect.R().run(script.toURI().toURL());
 		} catch (Exception e) {
 			GenomicRegionFeatureProgram.log.log(Level.WARNING,"Could not plot results in "+pfile+"!",e);
 		}
@@ -239,6 +278,7 @@ public class Barplot implements ResultProducer {
 	public String getName() {
 		return name;
 	}
+	
 
 	@Override
 	public String getDescription() {
@@ -254,4 +294,25 @@ public class Barplot implements ResultProducer {
 	public void unregisterConsumer(ResultConsumer consumer) {
 		consumers.remove(consumer);
 	}
+
+	public String getImageFile() {
+		return pfile;
+	}
+	
+	public String getScriptFile() {
+		return csvFile.getExtensionSibling("R").getPath();
+	}
+	
+	public String getCsvFile() {
+		return csvFile.getPath();
+	}
+	
+	public void setSection(String section) {
+		this.section = section;
+	}
+	
+	public String getSection() {
+		return section;
+	}
+	
 }

@@ -100,10 +100,12 @@ public class FeatureMapping extends AbstractFeature<Object> {
 	
 	public void addDefault(String to) {
 		mapper.add((a,s)->{
-			a.add(to);
+			if (a.isEmpty())
+				a.add(to);
 			return 1;
 		});
 	}
+	
 	
 	public void addTable(String file, String separator, String from, String to) throws IOException {
 		LineIterator it = new LineOrientedFile(file).lineIterator();
@@ -150,6 +152,16 @@ public class FeatureMapping extends AbstractFeature<Object> {
 	
 	public void addTranscripts(Genomic g, String targetProperty) {
 		Function<String, String> tab = g.getTranscriptTable(targetProperty);
+		mapper.add((s,k)->{
+			Object val = tab.apply(k);
+			if (val==null) return 0;
+			s.add(val);
+			return 1;
+		});
+	}
+	
+	public void addGenes(Genomic g, String targetProperty) {
+		Function<String, String> tab = g.getGeneTable(targetProperty);
 		mapper.add((s,k)->{
 			Object val = tab.apply(k);
 			if (val==null) return 0;

@@ -23,6 +23,7 @@ import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
 
 import java.io.IOException;
+import java.util.Locale;
 
 public abstract class DoubleArray implements NumericArray {
 	

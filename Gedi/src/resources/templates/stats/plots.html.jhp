@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<title><? title ?></title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://www.w3schools.com/lib/w3-theme-blue-grey.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css">
+<script>
+var plotsize = function() {
+		var contentsize=$( window ).width()>994?$( window ).width()-250:$( window ).width(); // menu is hidden when screen size < 994px
+		var percent = Math.floor(100/Math.ceil(contentsize/640)); // how many cards fit in the width?
+		$(".plot").css("width",percent+"%");
+    };
+$(document).ready(function(){
+    $(".navi").click(function(){
+        $("#tab"+this.id).toggle();
+        $(this).toggleClass("w3-theme");
+    });
+    $(".navsection").click(function(){
+        $("#"+$(this).data("id")).toggle();
+        $(this).toggleClass("w3-theme");
+    });
+    $(".close").click(function(){
+        $("#tab"+$(this).data("id")).hide();
+        $("#"+$(this).data("id")).removeClass("w3-theme");
+    });
+    $("#navclose").click(function() {$("#navbar").hide();});
+    $("#navopen").click(function() {$("#navbar").show();});
+    $( window ).resize(plotsize);
+    plotsize();
+});
+</script>
+<body>
+
+
+<div class="w3-sidebar w3-bar-block w3-light-grey w3-collapse w3-card-2" style="width:250px" id="navbar">
+  <button class="w3-bar-item w3-button w3-large w3-hide-large" id="navclose">Close &times;</button>
+  <h5 class="w3-bar-item">Plots</h5>
+<?JS 
+var n=0; 
+for each (var section in sections.keySet()) {
+if (section!=null) {
+ ?>
+<button class="w3-button w3-block w3-left-align navsection" data-id="sec<? n ?>">
+  <? section ?> <i class="fa fa-caret-down"></i>
+</button>
+<div id="sec<? n ?>" class="w3-white w3-card-2" style="display:none" >
+<?JS 
+} 
+for each (var plot in sections.get(section)) { ?>
+  <button class="w3-bar-item w3-button navi" id="<? plot.id ?>" ><? plot.title ?></button>
+<?JS } 
+if (section!=null) {
+?>
+</div>
+<?JS 
+}
+n=new Integer(n+1); 
+} ?>
+</div>
+
+<div style="margin-left:250px; padding: 0px;" class="w3-main" id="content">
+<div class="w3-theme" style="padding: 1px;">
+  <button class="w3-button w3-theme w3-xlarge w3-hide-large" id="navopen">&#9776;</button>
+  <div class="w3-center">
+  <h1 class="w3-xxxlarge w3-animate-top"><?JS title ?></h1>
+  <h4>Created by GEDI <?JS print(Gedi.version()); ?></h4>
+  </div>  
+  <?JS 
+  var downsampling;
+  var mode;
+  if (downsampling || mode) { ?>
+  <div class="w3-right-align">
+  <p>
+  	<?JS if (downsampling) { ?>
+  	Downsampling: <?JS downsampling ?>
+  	<?JS } ?>
+  	<?JS if (downsampling && mode) { ?>
+  	<br/>
+  	<?JS } ?>
+  	<?JS if (mode) { ?>
+  	Read count mode: <?JS mode ?></p>
+  	<?JS } ?>
+  </div>
+  <?JS } ?>
+</div>
+
+<div style="display: flex; flex-wrap: wrap;" class="w3-container w3-row-padding" >
+<?JS for each (var section in sections.values()) { for each (var plot in section) { ?>
+
+<div id="tab<? plot.id ?>"  style="display:none" class="w3-padding-16 plot w3-third">
+<div class="w3-card-4 w3-display-container">
+<span class="w3-display-topright"><a href="<? plot.script ?>" download class="w3-button" style="padding: 8px 6px;"><i class="fa fa-file-code-o"></i></a><a href="<? plot.csv ?>" download class="w3-button"  style="padding: 8px 6px;"><i class="fa fa-file-excel-o"></i></a><div data-id="<? plot.id ?>" class="close w3-button"  style="padding: 8px 10px;"><i class="fa fa-remove"></i></div></span>
+  <a href="<? plot.img ?>" target="_blank"><img src="<? plot.img ?>" style="width:100%"></a>
+  <div class="w3-container">
+  <h4><? plot.title ?></h4>
+  <?JS if (plot.description) { ?>
+  <p><? plot.description ?></p>
+  <?JS } ?>
+  </div>
+</div>
+</div>
+<?JS }} ?>
+
+</div>
+
+</body>
+</html>

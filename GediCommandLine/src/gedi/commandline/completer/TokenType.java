@@ -67,8 +67,8 @@ class TokenType {
 				if ((Modifier.isStatic(m.getModifiers())!=isObject) 
 						&& Modifier.isPublic(m.getModifiers()) &&  m.getName().equals(name)) {
 					
-					int minParam = m.getParameterCount()==0?0:EI.wrap(m.getParameters()).map(p->p.isVarArgs()?0:1).collect((BinaryOperator<Integer>)((a,b)->a+b));
-					int maxParam = m.getParameterCount()==0?0:EI.wrap(m.getParameters()).map(p->p.isVarArgs()?Integer.MAX_VALUE-m.getParameterCount():1).collect((BinaryOperator<Integer>)((a,b)->a+b));
+					int minParam = m.getParameterCount()==0?0:EI.wrap(m.getParameters()).map(p->p.isVarArgs()?0:1).reduce((BinaryOperator<Integer>)((a,b)->a+b));
+					int maxParam = m.getParameterCount()==0?0:EI.wrap(m.getParameters()).map(p->p.isVarArgs()?Integer.MAX_VALUE-m.getParameterCount():1).reduce((BinaryOperator<Integer>)((a,b)->a+b));
 					
 					if (paramcount>=minParam && paramcount<=maxParam)
 						re.add(m.getReturnType());

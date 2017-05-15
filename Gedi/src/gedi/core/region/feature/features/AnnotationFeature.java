@@ -18,6 +18,7 @@
 
 package gedi.core.region.feature.features;
 
+import gedi.core.data.annotation.Transcript;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.ReferenceSequenceConversion;
@@ -30,10 +31,12 @@ import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
+import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.function.BiPredicate;
@@ -44,10 +47,12 @@ import java.util.function.UnaryOperator;
 public class AnnotationFeature<T> extends AbstractFeature<Object> {
 
 	private ArrayList<GenomicRegionStorage<T>> storages = new ArrayList<GenomicRegionStorage<T>>();
+	private IntArrayList flank = new IntArrayList();
+	
 	private ReferenceSequenceConversion referenceSequenceConversion = ReferenceSequenceConversion.none;
 	
 	private boolean toMemory = true;
-	private BiPredicate<MutableReferenceGenomicRegion<T>,MutableReferenceGenomicRegion<Object>> checker = (r,referenceRegion)->r.getRegion().intersects(referenceRegion.getRegion());
+	private BiPredicate<ImmutableReferenceGenomicRegion<T>,MutableReferenceGenomicRegion<Object>> checker = (r,referenceRegion)->r.getRegion().intersects(referenceRegion.getRegion());
 	private boolean dataonly;
 	
 	public AnnotationFeature() {
@@ -59,6 +64,7 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 		AnnotationFeature<T> re = new AnnotationFeature<T>();
 		re.copyProperties(this);
 		re.storages = storages;
+		re.flank = flank;
 		re.referenceSequenceConversion = referenceSequenceConversion;
 		re.toMemory = toMemory;
 		re.checker = checker;
@@ -74,15 +80,38 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 	}
 	
 	public void add(GenomicRegionStorage<T> storage) {
-		if (toMemory)
-			storage = storage.toMemory();
-		this.storages.add(storage);
+		add(storage,0);
 	}
 	
 	public void addTranscripts(Genomic genomic) {
-		this.storages.add((GenomicRegionStorage<T>) genomic.getTranscripts());
+		addTranscripts(genomic, 0);
 	}
 	
+	public void addMajorTranscripts(Genomic genomic) {
+		addMajorTranscripts(genomic, 0);
+	}
+	
+	public void add(GenomicRegionStorage<T> storage, int flank) {
+		if (flank>0) {
+			MemoryIntervalTreeStorage<T> mem = new MemoryIntervalTreeStorage<>(storage.getType());
+			storage.ei().map(r->new ImmutableReferenceGenomicRegion<T>(r.getReference(), r.getRegion().extendBack(flank).extendFront(flank),r.getData())).add(mem);
+			storage = mem;
+		}
+		else if (toMemory)
+			storage = storage.toMemory();
+		this.storages.add(storage);
+		this.flank.add(flank);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void addTranscripts(Genomic genomic, int flank) {
+		add((GenomicRegionStorage<T>) genomic.getTranscripts(),flank);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void addMajorTranscripts(Genomic genomic, int flank) {
+		add((GenomicRegionStorage<T>) genomic.getMajorTranscripts(),flank);
+	}
 	
 	public void setReferenceSequenceConversion(
 			ReferenceSequenceConversion referenceSequenceConversion) {
@@ -97,10 +126,10 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 		return this.toMemory;
 	}
 	
-	public void convertAnnotation(UnaryOperator<MemoryIntervalTreeStorage<?>> converter) {
-		for (int i=0; i<storages.size(); i++) 
-			storages.set(i, (GenomicRegionStorage)converter.apply(storages.get(i).toMemory()));
-	}
+//	public void convertAnnotation(UnaryOperator<MemoryIntervalTreeStorage<?>> converter) {
+//		for (int i=0; i<storages.size(); i++) 
+//			storages.set(i, (GenomicRegionStorage)converter.apply(storages.get(i).toMemory()));
+//	}
 	
 	
 	public void setExact(int tolerance5p, int tolerance3p) {
@@ -138,22 +167,29 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 	protected void accept_internal(Set<Object> values) {
 		ReferenceSequence reference = referenceSequenceConversion.apply(this.referenceRegion.getReference());
 		
-		for (GenomicRegionStorage<T> storage : storages) 
-			storage.iterateIntersectingMutableReferenceGenomicRegions(reference, referenceRegion.getRegion()).forEachRemaining(rgr->{
+		for (int s=0; s<storages.size(); s++) {
+			GenomicRegionStorage<T> storage = storages.get(s);
+			int flank = this.flank.getInt(s);
+			
+			for (ImmutableReferenceGenomicRegion<T> rgr : storage.ei(reference, referenceRegion.getRegion()).loop()) {
 				if (checker.test(rgr,referenceRegion))
-					values.add(dataonly?rgr.getData():new MutableReferenceGenomicRegion().set(rgr));
-			});
+					values.add(dataonly?rgr.getData():new ImmutableReferenceGenomicRegion<Object>(rgr.getReference(),rgr.getRegion().extendBack(-flank).extendFront(-flank),rgr.getData()));
+			}
+				
+		}
+			
 		
 		if (reference.getStrand()==Strand.Independent)
-			for (GenomicRegionStorage<T> storage : storages) {
-				storage.iterateIntersectingMutableReferenceGenomicRegions(reference.toPlusStrand(), referenceRegion.getRegion()).forEachRemaining(rgr->{
+			for (int s=0; s<storages.size(); s++) {
+				GenomicRegionStorage<T> storage = storages.get(s);
+				int flank = this.flank.getInt(s);
+				
+				for (ImmutableReferenceGenomicRegion<T> rgr : storage.ei(reference.toPlusStrand(), referenceRegion.getRegion())
+							.chain(storage.ei(reference.toMinusStrand(), referenceRegion.getRegion())).loop()) {
 					if (checker.test(rgr,referenceRegion))
-						values.add(dataonly?rgr.getData():new MutableReferenceGenomicRegion().set(rgr));
-				});
-				storage.iterateIntersectingMutableReferenceGenomicRegions(reference.toMinusStrand(), referenceRegion.getRegion()).forEachRemaining(rgr->{
-					if (checker.test(rgr,referenceRegion))
-						values.add(dataonly?rgr.getData():new MutableReferenceGenomicRegion().set(rgr));
-				});
+						values.add(dataonly?rgr.getData():new ImmutableReferenceGenomicRegion<Object>(rgr.getReference(),rgr.getRegion().extendBack(-flank).extendFront(-flank),rgr.getData()));
+				}
+				
 			}
 	}
 

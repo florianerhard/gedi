@@ -1,0 +1,51 @@
+#
+#  Completion for gedi:
+#
+#  gedi -e [anything in package executables]
+#  gedi .... -g [genome]
+#
+_gedi() 
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts=
+ 
+    if [[ "$prev" == "-e" && "$COMP_CWORD" -eq "2" ]]
+	then
+		opts=
+		for i in $( gedi_ccp | tr : "\n" | grep -v "/lib/" ); do 	
+			if [[ -d "$i/executables" ]]; then
+				for c in $( cd $i/executables/; ls *.class | fgrep -v \$ ); do
+					opts="$opts $( basename $c .class )" 
+				done
+			elif [ ${i: -4} == ".jar" ]; then
+				for c in $( jar tf $i | egrep "^executables/[^/]+.class$" ); do
+					opts="$opts $( basename $c .class )" 
+				done
+			fi
+	
+		done
+
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		return 0
+	fi
+
+    for ((i=$COMP_CWORD-1;i>2;i--)) {
+	local arg=${COMP_WORDS[i]}
+	if [ "$arg" == "-g" ]; then
+		opts=$(for x in `ls -1 $HOME/.gedi/genomic/*.oml`; do basename $x .oml; done )
+
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		return 0
+	fi
+
+	if [ ! -f "$HOME/.gedi/genomic/$arg.oml" ]; then
+		break
+	fi
+    }
+
+    COMPREPLY=( $(compgen -f ${cur}) )
+}
+complete -F _gedi gedi

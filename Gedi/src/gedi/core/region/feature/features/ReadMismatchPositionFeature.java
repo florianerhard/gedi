@@ -18,51 +18,25 @@
 
 package gedi.core.region.feature.features;
 
-import gedi.core.data.reads.AlignedReadsData;
-import gedi.core.reference.ReferenceSequence;
-import gedi.core.region.GenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
-
-import java.util.ArrayList;
-import java.util.Set;
+import gedi.core.region.feature.special.UnfoldGenomicRegionStatistics;
 
 
-@GenomicRegionFeatureDescription(toType=Integer.class)
-public class ReadMismatchPositionFeature extends AbstractFeature<Integer> {
+@GenomicRegionFeatureDescription(toType=UnfoldGenomicRegionStatistics.class)
+public class ReadMismatchPositionFeature extends AbstractReadMismatchFeature {
 
-	
-
-	public ReadMismatchPositionFeature() {
-		minInputs = maxInputs = 0;
-	}
-	
-	
-	public boolean dependsOnData() {
-		return true;
-	}
 	
 	@Override
-	public GenomicRegionFeature<Integer> copy() {
+	public GenomicRegionFeature<UnfoldGenomicRegionStatistics> copy() {
 		ReadMismatchPositionFeature re = new ReadMismatchPositionFeature();
 		re.copyProperties(this);
 		return re;
 	}
 
-
 	@Override
-	protected void accept_internal(Set<Integer> values) {
-		AlignedReadsData d = (AlignedReadsData) referenceRegion.getData();
-		
-		int v = d.getVariationCount(0);
-		for (int i=0; i<v; i++) {
-			
-			if (d.isMismatch(0, i)) {
-				values.add(d.getMismatchPos(0, i));
-			}
-			
-		}
-		
+	protected String getReturnValue(int pos, String g, String r) {
+		return pos+"";
 	}
 
 	

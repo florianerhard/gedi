@@ -16,11 +16,12 @@ mkdir -p $root
 
 echo In $root
 workspace=`dirname $0`
+curd=`pwd`
 
 projects=`cd $workspace/; ls -d */`;
 
-libs=`tempfile`
-javas=`tempfile`
+libs=`mktemp`
+javas=`mktemp`
 
 echo Discovering files
 
@@ -56,5 +57,5 @@ cp $workspace/build.xml $root
 
 cd $root
 ant $target
-cd $workspace
+cd $curd
 

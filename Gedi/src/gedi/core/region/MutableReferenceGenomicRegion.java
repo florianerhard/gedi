@@ -256,6 +256,15 @@ public class MutableReferenceGenomicRegion<D> implements ReferenceGenomicRegion<
 	}
 
 	
+	public MutableReferenceGenomicRegion<D> extendRegion(int upstream, int downstream) {
+		if (reference.getStrand().equals(Strand.Minus))
+			region = region.extendFront(downstream).extendBack(upstream);
+		else
+			region = region.extendFront(upstream).extendBack(downstream);
+		return this;
+	}
+
+	
 	public MutableReferenceGenomicRegion<D> transformReference(UnaryOperator<ReferenceSequence> fun) {
 		reference = fun.apply(reference);
 		return this;

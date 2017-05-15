@@ -20,7 +20,9 @@ package gedi.core.reference;
 
 import gedi.core.data.annotation.ReferenceSequenceLengthProvider;
 import gedi.core.data.annotation.ReferenceSequencesProvider;
+import gedi.core.genomic.Genomic;
 import gedi.util.StringUtils;
+import gedi.util.functions.EI;
 import gedi.util.io.text.LineOrientedFile;
 
 import java.io.IOException;
@@ -42,6 +44,11 @@ public class LazyGenome implements ToIntFunction<String> {
 		this.lengths = lengths;
 	}
 
+	public LazyGenome(Genomic g) {
+		this.refSeqs = ()->EI.wrap(g.getSequenceNames()).map(n->Chromosome.obtain(n));
+		this.lengths = g;
+	}
+	
 	public LazyGenome(String path) throws IOException {
 		refs = new ArrayList<String>();
 		map = new HashMap<String, Integer>();

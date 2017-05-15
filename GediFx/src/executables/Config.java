@@ -58,6 +58,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TextArea;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -133,7 +134,9 @@ public class Config  {
 						conf.set(v);
 				});
 
-				Label msg = new Label();
+				TextArea msg = new TextArea();
+				msg.setEditable(false);
+				msg.setPrefColumnCount(50);
 				msg.setWrapText(true);
 				index++;
 
@@ -174,12 +177,12 @@ public class Config  {
 	private static class AdditionalDecorator implements ValidationDecoration {
 
 		private HashSet<Control> errors = new HashSet<>();
-		private HashMap<Control,MutableQuintuple<GridPane,Integer,Label,Label,Label>> map = new HashMap<>();
+		private HashMap<Control,MutableQuintuple<GridPane,Integer,Label,Label,TextArea>> map = new HashMap<>();
 		private HashMap<GridPane,MutableQuadruple<ArrayList<Control>,Tab,Label,Label>> map2 = new HashMap<>();
 
 
-		public void add(Control ctrl, GridPane grid, int row, Tab tab, Label msg) {
-			map.put(ctrl, new MutableQuintuple<GridPane, Integer, Label, Label, Label>(grid, row, createOk(), createError(), msg));
+		public void add(Control ctrl, GridPane grid, int row, Tab tab, TextArea msg) {
+			map.put(ctrl, new MutableQuintuple<GridPane, Integer, Label, Label, TextArea>(grid, row, createOk(), createError(), msg));
 			map2.computeIfAbsent(grid, g->new MutableQuadruple<>(new ArrayList<>(), tab, createOk(), createError())).Item1.add(ctrl);
 		}
 
@@ -199,7 +202,7 @@ public class Config  {
 
 		@Override
 		public void removeDecorations(Control target) {
-			MutableQuintuple<GridPane,Integer,Label,Label,Label> t = map.get(target);
+			MutableQuintuple<GridPane,Integer,Label,Label,TextArea> t = map.get(target);
 			t.Item1.getChildren().remove(t.Item3);
 			t.Item1.getChildren().remove(t.Item4);
 			t.Item1.add(t.Item3,3,t.Item2);
@@ -211,7 +214,7 @@ public class Config  {
 		@Override
 		public void applyValidationDecoration(ValidationMessage message) {
 			if (message.getSeverity()==Severity.ERROR) {
-				MutableQuintuple<GridPane,Integer,Label,Label,Label> t = map.get(message.getTarget());
+				MutableQuintuple<GridPane,Integer,Label,Label,TextArea> t = map.get(message.getTarget());
 				t.Item1.getChildren().remove(t.Item3);
 				t.Item1.getChildren().remove(t.Item4);
 				t.Item1.add(t.Item4,3,t.Item2);
