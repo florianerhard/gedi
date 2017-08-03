@@ -99,11 +99,15 @@ public class PriceSignalToNoise extends GediProgram {
 		tab.writef("%.3f\t%.0f\t%.0f\n", delta, all[0], all[1]);
 		tab.close();
 
-		context.getLog().info("Running R scripts for plotting");
-		RRunner r = new RRunner(prefix+".signaltonoise.R");
-		r.set("prefix",prefix);
-		r.addSource(getClass().getResourceAsStream("/resources/R/signaltonoise.R"));
-		r.run(true);
+		try {
+			context.getLog().info("Running R scripts for plotting");
+			RRunner r = new RRunner(prefix+".signaltonoise.R");
+			r.set("prefix",prefix);
+			r.addSource(getClass().getResourceAsStream("/resources/R/signaltonoise.R"));
+			r.run(true);
+		} catch (Throwable e) {
+			context.getLog().log(Level.SEVERE, "Could not plot!", e);
+		}
 		
 		return null;
 	}

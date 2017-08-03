@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.script.ScriptException;
@@ -101,11 +102,15 @@ public class PriceEstimateModel extends GediProgram {
 			out.writef("Untemplated addition\t0\t%.7f\n", u);
 			out.close();
 			
-			context.getLog().info("Running R scripts for plotting");
-			RRunner r = new RRunner(prefix+".ribomodel.R");
-			r.set("prefix",prefix);
-			r.addSource(getClass().getResourceAsStream("/resources/R/ribomodel.R"));
-			r.run(true);
+			try {
+				context.getLog().info("Running R scripts for plotting");
+				RRunner r = new RRunner(prefix+".ribomodel.R");
+				r.set("prefix",prefix);
+				r.addSource(getClass().getResourceAsStream("/resources/R/ribomodel.R"));
+				r.run(true);
+			} catch (Throwable e) {
+				context.getLog().log(Level.SEVERE, "Could not plot!", e);
+			}
 		}
 		
 		return null;

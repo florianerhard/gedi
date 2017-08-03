@@ -55,6 +55,7 @@ import gedi.util.oml.cps.CpsReader;
 import gedi.util.oml.petrinet.Pipeline;
 
 import java.awt.BorderLayout;
+import java.awt.Frame;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -405,7 +406,6 @@ public class RiboView {
 			viewer.addTrack(track);
 
 		JFrame frame = new JFrame();
-		frame.setExtendedState(frame.getExtendedState()|JFrame.MAXIMIZED_BOTH);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 		frame.getContentPane().setLayout(new BorderLayout());
@@ -420,7 +420,8 @@ public class RiboView {
 		frame.pack();
 		frame.setVisible(true);
 		viewer.setLocation(reg.getReference(),reg.getRegion());
-
+		frame.setExtendedState(frame.getExtendedState()|Frame.MAXIMIZED_BOTH);
+		
 		
 	}
 	
