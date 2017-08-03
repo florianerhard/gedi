@@ -52,6 +52,13 @@ public class StepFunction extends KnotFunction {
 
         return fx;
     }
+
+	@Override
+	protected double noKnotBetweenintegral(double from, double to) {
+		return applyAsDouble(from)*(to-from);
+	}
+
+	
     
    
     

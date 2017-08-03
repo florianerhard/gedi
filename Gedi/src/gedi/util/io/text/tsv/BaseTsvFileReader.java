@@ -47,7 +47,8 @@ public abstract class BaseTsvFileReader<D> {
 	public MemoryIntervalTreeStorage<D> readIntoMemoryTakeFirst(LineWriter nonunique) throws IOException {
 		return readIntoMemory((c,d)->{
 			if (c!=null) {
-				nonunique.writeLine2("GenomicRegion not unique (for "+c+" and "+d+")");
+				if (nonunique!=null)
+					nonunique.writeLine2("GenomicRegion not unique (for "+c+" and "+d+")");
 				return c;
 			}
 			return d;

@@ -37,15 +37,6 @@ public class PreparedIntKernel implements Kernel {
 		ArrayUtils.cumSumInPlace(cumWeights, 1);
 	}
 	
-	@Override
-	public String[] parameterNames() {
-		return kernel.parameterNames();
-	}
-	
-	@Override
-	public String getParameter(String name) {
-		return kernel.getParameter(name);
-	}
 	
 	@Override
 	public String name() {
@@ -54,7 +45,7 @@ public class PreparedIntKernel implements Kernel {
 	
 	@Override
 	public String toString() {
-		return toKernelString();
+		return name();
 	}
 	
 	public int getMinAffectedIndex(int index) {

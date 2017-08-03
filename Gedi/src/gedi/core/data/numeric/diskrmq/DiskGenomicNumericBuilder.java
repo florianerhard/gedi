@@ -49,7 +49,7 @@ import java.util.ListIterator;
 
 public class DiskGenomicNumericBuilder {
 
-	static final String MAGIC = "DGN";
+	public static final String MAGIC = "DGN";
 	
 	private String file;
 	private PageFileWriter writer;

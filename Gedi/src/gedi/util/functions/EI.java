@@ -103,6 +103,7 @@ public interface EI {
 	}
 	
 	public static <T> ExtendedIterator<T> wrap(Iterable<T> itr) {
+		if (itr==null) return empty();
 		return wrap(itr.iterator());
 	}
 	

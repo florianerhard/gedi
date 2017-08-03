@@ -29,12 +29,12 @@ import gedi.util.io.text.tsv.GenomicTsvFileReader;
 public class LocationFileReader extends GenomicTsvFileReader<NameAnnotation> {
 
 	public LocationFileReader(String path) {
-		super(path, false, "\t", new ScoreNameBedElementParser(), null, NameAnnotation.class);
+		super(path, false, "\t", new LocationParser(), null, NameAnnotation.class);
 	}
 
 	
 	
-	public static class ScoreNameBedElementParser implements TriConsumer<HeaderLine, String[], MutableReferenceGenomicRegion<NameAnnotation>> {
+	public static class LocationParser implements TriConsumer<HeaderLine, String[], MutableReferenceGenomicRegion<NameAnnotation>> {
 
 		@Override
 		public void accept(HeaderLine a, String[] fields,

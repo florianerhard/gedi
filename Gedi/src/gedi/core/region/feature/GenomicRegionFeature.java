@@ -18,8 +18,10 @@
 
 package gedi.core.region.feature;
 
+import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.output.FeatureStatisticOutput;
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
@@ -281,6 +283,9 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 	default UnaryOperator<NumericArray> getPostCountAdapter() {
 		return null;
 	}
+
+
+	ReferenceGenomicRegion<Object> getReferenceRegion();
 	
 	
 	

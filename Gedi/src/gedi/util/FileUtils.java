@@ -33,17 +33,22 @@ import gedi.util.io.randomaccess.serialization.BinarySerializable;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.orm.Orm;
 import gedi.util.orm.OrmSerializer;
+import gedi.util.userInteraction.progress.Progress;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
@@ -56,6 +61,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
+import java.util.function.LongFunction;
+import java.util.function.UnaryOperator;
+import java.util.zip.GZIPInputStream;
+
+import org.apache.commons.compress.utils.IOUtils;
 
 import sun.nio.ch.DirectBuffer;
 import cern.colt.bitvector.BitVector;
@@ -564,6 +574,52 @@ public class FileUtils {
 		if (dot<slash || dot==-1) return new File(path+"."+extension);
 		return new File(path.substring(0, dot)+"."+extension);
 }
+
+	
+	public static long downloadGunzip(File file, String url, Progress progress) throws MalformedURLException, IOException {
+		return download(file,url,s->{
+			try {
+				return new GZIPInputStream(s);
+			} catch (IOException e) {
+				throw new RuntimeException("Could not read GZIP format!");
+			}
+		},progress,size->"Downloaded "+StringUtils.getHumanReadableMemory(size));
+	}
+	public static long download(File file, String url, Progress progress) throws MalformedURLException, IOException {
+		return download(file,url,s->s,progress,size->"Downloaded "+StringUtils.getHumanReadableMemory(size));
+	}
+	public static long download(File file, String url, UnaryOperator<InputStream> streamAdapter, Progress progress) throws MalformedURLException, IOException {
+		return download(file,url,streamAdapter,progress,size->"Downloaded "+StringUtils.getHumanReadableMemory(size));
+	}
+	public static long download(File file, String url, UnaryOperator<InputStream> streamAdapter, Progress progress,LongFunction<String> bytesToMessage) throws MalformedURLException, IOException {
+		final byte[] buffer = new byte[8024];
+        int n = 0;
+        long count=0;
+        InputStream input = new URL(url).openStream();
+        if (streamAdapter!=null)
+        	input = streamAdapter.apply(input);
+        OutputStream output = new FileOutputStream(file);
+        while (-1 != (n = input.read(buffer))) {
+            output.write(buffer, 0, n);
+            count += n;
+            long ucount = count;
+            progress.incrementProgress().setDescription(()->bytesToMessage.apply(ucount));
+        }
+        input.close();
+        output.close();
+        return count;
+	}
+	
+	public static ArrayList<String> getFtpFolder(String url) throws MalformedURLException, IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(new URL(url).openStream()));
+        String line;
+        ArrayList<String> re = new ArrayList<>();
+        while (null!=(line=br.readLine())) {
+        	line = line.substring(line.lastIndexOf(' ')+1);
+        	re.add(line);
+        }
+        return re;
+	}
 
 
 }

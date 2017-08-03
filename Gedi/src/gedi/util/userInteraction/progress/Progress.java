@@ -47,11 +47,15 @@ public interface Progress {
 	Progress setProgress(int count);
 	Progress incrementProgress();
 	
-	Progress setMinimumTimeBetweenUpdates(long milli);
+	void updateView(int index, int total);
+	void firstView(int total);
+	void lastView(int total);
 	
 	
-	boolean isUserCanceled();
 	boolean isGoalKnown();
+	boolean isRunning();
+	ProgressManager getManager();
+	void setManager(ProgressManager man);
 	
 	void finish();
 	

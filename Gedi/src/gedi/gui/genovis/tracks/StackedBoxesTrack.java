@@ -67,21 +67,22 @@ public class StackedBoxesTrack extends NumericValuesTrack implements BarNumericV
 		}
 
 		for (int row=0; row<value.length(); row++) {
-			
-			context.g2.setPaint(PaintUtils.parseColor(getStyles().get("["+row+"].color").asString()));
-			cstack+=Double.isNaN(value.getDouble(row))?0:value.getDouble(row);
-			
-			double y = getY(transform(cstack),min,max);
-					
-			double w = block.getWidth(viewer.getLocationMapper());
-			Rectangle2D box = new Rectangle2D.Double(
-					getBounds().getX()+block.getStartPixel(viewer.getLocationMapper())+w/div*offs, 
-					Math.min(lastY, y), 
-					w/div, 
-					Math.abs(y-lastY));
-			context.g2.fill(box);
-			context.g2.draw(box);
-			lastY = y;
+			if (value.getDouble(row)>0) {
+				context.g2.setPaint(PaintUtils.parseColor(getStyles().get("["+row+"].color").asString()));
+				cstack+=Double.isNaN(value.getDouble(row))?0:value.getDouble(row);
+				
+				double y = getY(transform(cstack),min,max);
+						
+				double w = block.getWidth(viewer.getLocationMapper());
+				Rectangle2D box = new Rectangle2D.Double(
+						getBounds().getX()+block.getStartPixel(viewer.getLocationMapper())+w/div*offs, 
+						Math.min(lastY, y), 
+						w/div, 
+						Math.abs(y-lastY));
+				context.g2.fill(box);
+				context.g2.draw(box);
+				lastY = y;
+			}
 		}
 		
 		return value.length();

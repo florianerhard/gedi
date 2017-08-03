@@ -19,26 +19,33 @@
 package executables;
 
 import gedi.app.Gedi;
+import gedi.core.data.numeric.diskrmq.DiskGenomicNumericBuilder;
+import gedi.core.data.numeric.diskrmq.DiskGenomicNumericProvider;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
 import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
 import gedi.gui.genovis.SetLocationField;
 import gedi.gui.genovis.SwingGenoVisViewer;
 import gedi.gui.genovis.TrackSelectionTreeButton;
 import gedi.gui.genovis.VisualizationTrack;
-import gedi.riboseq.inference.orf.Orf;
+import gedi.riboseq.inference.orf.PriceOrf;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
+import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.text.LineIterator;
+import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.jhp.Jhp;
 import gedi.util.io.text.tsv.formats.Csv;
 import gedi.util.nashorn.JS;
@@ -49,6 +56,7 @@ import gedi.util.oml.petrinet.Pipeline;
 
 import java.awt.BorderLayout;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -179,7 +187,10 @@ public class RiboView {
 				onlines.add(new RiboViewOnline(checkParam(args, ++i)));
 			}
 			else if (args[i].equals("-regu")) {
-				onlines.add(new RiboViewOnline(checkDoubleParam(args, ++i)));
+				onlines.add(new RiboViewOnline(checkDoubleParam(args, ++i),0));
+			}
+			else if (args[i].equals("-rho")) {
+				onlines.add(new RiboViewOnline(-1,checkDoubleParam(args, ++i)));
 			}
 			else if (args[i].equals("-g")) {
 				ArrayList<String> names = new ArrayList<>();
@@ -222,18 +233,24 @@ public class RiboView {
 				totalCreate.addAll(Arrays.asList(totalCountFile));
 			}
 			for (String f : folder) {
-				for (String orfFile : EI.wrap(new File(f).list()).filter(p->p.endsWith(".merged.orfs.cit")).loop()) {
+				for (String orfFile : EI.wrap(new File(f).list()).filter(p->p.endsWith(".orfs.cit") && !p.contains(".tmp.")).loop()) {
 					String pref = new File(new File(f),orfFile.substring(0,orfFile.length()-".orfs.cit".length())).getPath();
-					String total = pref.substring(0, pref.length()-".merged".length())+".stattotal.stat";
-					if (!new File(total).exists() && autoFolders.contains(new File(total).getParentFile().getName())) {
-						total = new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/stats/"+new File(total).getName().replace("stattotal", "total");
-						if (!new File(total).exists())
-							total = new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/report/"+new File(total).getName().replace("total.stat", "total.tsv");
-						if (!new File(total).exists())
-							total = EI.files(new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/report/").filter(fi->fi.getPath().endsWith("total.tsv")).map(fi->fi.getAbsolutePath()).first();
-					}
 					prefCreate.add(pref);
-					totalCreate.add(total);
+					File meta = new File(new File(f),orfFile+".metadata.json");
+					if (meta.exists()) {
+						totalCreate.add(meta.getPath());
+					} else {
+						String total = pref.substring(0, pref.length()-(orfFile.endsWith(".merged.orfs.cit")?".merged".length():0))+".stattotal.stat";
+						if (!new File(total).exists() && autoFolders.contains(new File(total).getParentFile().getName())) {
+							total = new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/stats/"+new File(total).getName().replace("stattotal", "total");
+							if (!new File(total).exists())
+								total = new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/report/"+new File(total).getName().replace("total.stat", "total.tsv");
+							if (!new File(total).exists())
+								total = EI.files(new File(total).getAbsoluteFile().getParentFile().getParentFile().getPath()+"/report/").filter(fi->fi.getPath().endsWith("total.tsv")).map(fi->fi.getAbsolutePath()).first();
+						}
+						
+						totalCreate.add(total);
+					}
 					log.log(Level.INFO, "Adding "+pref);
 				}
 			}
@@ -274,23 +291,32 @@ public class RiboView {
 		HashMap context = new HashMap();
 		context.put("genomic", g);
 		
-		
+		Class<?> orfclass = null;
 		
 		for (int e=0; e<prefix.length; e++) {
 			experimentNames[e] = FileUtils.getFullNameWithoutExtension(prefix[e]);
 			models[e] = prefix[e]+".model";
 			
-			DataFrame df = Csv.toDataFrame(totalCountFile[e],true,0,null);
-			df.remove(df.getColumn(0));
-			names[e] = EI.seq(0, df.columns()).map(c->df.getColumn(c).name()).toArray(String.class);
-			totals[e] = EI.seq(0, df.columns()).mapToDouble(c->df.getColumn(c).getDoubleValue(0)).toDoubleArray();
+			if (totalCountFile[e].endsWith("metadata.json")) {
+				DynamicObject json = DynamicObject.parseJson(new LineOrientedFile(totalCountFile[e]).readAllText2());
+				totals[e] = EI.wrap(json.getEntry("conditions").asArray()).mapToDouble(c->Math.max(1, c.getEntry("total").asDouble())).toDoubleArray();
+				names[e] = EI.wrap(json.getEntry("conditions").asArray()).map(c->c.getEntry("name").asString()).toArray(String.class);
+			}
+			else {
+				DataFrame df = Csv.toDataFrame(totalCountFile[e],true,0,null);
+				df.remove(df.getColumn(0));
+				names[e] = EI.seq(0, df.columns()).map(c->df.getColumn(c).name()).toArray(String.class);
+				totals[e] = EI.seq(0, df.columns()).mapToDouble(c->df.getColumn(c).getDoubleValue(0)).toDoubleArray();
+			}
+			
 			String uprefix = prefix[e];
 			condRmq[e] = EI.seq(0,names[e].length).map(s->uprefix+"."+s+".codons.rmq").toArray(String.class);
 			
 			Path p = Paths.get(prefix[e]+".orfs.cit");
-			GenomicRegionStorage<Orf> orfs = ((GenomicRegionStorage<Orf>) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p)).toMemory();
+			GenomicRegionStorage<?> orfs = ((GenomicRegionStorage<?>) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p)).toMemory();
 
 			context.put("orfs"+e, orfs);
+			orfclass = orfs.getType();
 			
 			String womer = StringUtils.removeFooter(prefix[e],".merged");
 			String[] readPossi = {
@@ -341,7 +367,15 @@ public class RiboView {
 		js.putVariable("models", models);
 		js.putVariable("onlines",onlines.toArray(new RiboViewOnline[0]));
 		
-		InputStream stream = RiboView.class.getResourceAsStream(!onlines.isEmpty()?"ribovisonlineem.oml.jhp":"ribovis.oml.jhp");
+		InputStream stream;
+		if (orfclass==PriceOrf.class) {
+			if (!checkOldRmq(prefix[0]+".codons.rmq"))
+				stream = RiboView.class.getResourceAsStream(!onlines.isEmpty()?"pricevisonlineem2.oml.jhp":"pricevis2.oml.jhp");
+			else
+				stream = RiboView.class.getResourceAsStream(!onlines.isEmpty()?"pricevisonlineem.oml.jhp":"pricevis.oml.jhp");
+		} else
+			stream = RiboView.class.getResourceAsStream(!onlines.isEmpty()?"ribovisonlineem.oml.jhp":"ribovis.oml.jhp");
+		
 		String src = new LineIterator(stream).concat("\n");
 		Jhp jhp = new Jhp(js);
 		src = jhp.apply(src);
@@ -350,11 +384,19 @@ public class RiboView {
 		Pipeline pipeline = (Pipeline)new OmlNodeExecutor().addInterceptor(new CpsReader().parse(cps)).execute(new OmlReader().setJs(js).parse(src),context);
 		
 		
+		
+		
 		if (loc==null || !loc.contains(":")) {
-			ReferenceSequence ref = loc==null?g.getTranscripts().getReferenceSequences().iterator().next():Chromosome.obtain(loc);
-			GenomicRegion reg = g.getTranscripts().getTree(ref).getRoot().getKey().removeIntrons();
-			reg = reg.extendAll(reg.getTotalLength()/3, reg.getTotalLength()/3);
-			loc = ref.toPlusMinusString()+":"+reg.toRegionString();
+			ReferenceGenomicRegion<?> rgr = g.getNameIndex().get(loc);
+			if (rgr!=null) {
+				rgr = rgr.toMutable().transformRegion(r->r.extendFront(1)).toImmutable();// workaround for IndexGenome bug
+				loc = rgr.toLocationString();
+			} else {
+				ReferenceSequence ref = loc==null?g.getTranscripts().getReferenceSequences().iterator().next():Chromosome.obtain(loc);
+				GenomicRegion reg = g.getTranscripts().getTree(ref).getRoot().getKey().removeIntrons();
+				reg = reg.extendAll(reg.getTotalLength()/3, reg.getTotalLength()/3);
+				loc = ref.toPlusMinusString()+":"+reg.toRegionString();
+			}
 		}
 		MutableReferenceGenomicRegion reg = new MutableReferenceGenomicRegion().parse(loc).toStrandIndependent();
 
@@ -372,7 +414,7 @@ public class RiboView {
 
 		JPanel fl = new JPanel();
 		fl.add(new TrackSelectionTreeButton(viewer));
-		fl.add(new SetLocationField(viewer, true, g.getNameIndex()));
+		fl.add(new SetLocationField(viewer, true, g));
 		frame.getContentPane().add(fl, BorderLayout.NORTH);
 
 		frame.pack();
@@ -382,11 +424,35 @@ public class RiboView {
 		
 	}
 	
+	private static boolean checkOldRmq(String file) throws IOException {
+		PageFile f = new PageFile(file);
+		if (!f.getAsciiChars(DiskGenomicNumericBuilder.MAGIC.length()).equals(DiskGenomicNumericBuilder.MAGIC))
+			throw new RuntimeException("Not a valid file!");
+		
+		
+		int refs = f.getInt();
+		Chromosome chr = Chromosome.read(f);
+		long pos = f.getLong();
+		long cur = f.position();
+		f.position(pos);
+		char type = f.getAsciiChar();
+		int size = f.getInt();
+		int numCond = f.getInt();
+		
+		int a = f.getInt();
+		int b = f.getInt();
+		int c = f.getInt();
+		return a+1==b && b+1==c;
+	}
+
+
 	public static class RiboViewOnline {
 		public double regu;
+		public double rho;
 		public String simpleModel;
-		public RiboViewOnline(double regu) {
+		public RiboViewOnline(double regu, double rho) {
 			this.regu = regu;
+			this.rho = rho;
 		}
 		public RiboViewOnline(String simpleModel) {
 			this.simpleModel = simpleModel;

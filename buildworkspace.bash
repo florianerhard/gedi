@@ -20,8 +20,8 @@ curd=`pwd`
 
 projects=`cd $workspace/; ls -d */`;
 
-libs=`mktemp`
-javas=`mktemp`
+libs=`mktemp tmp.XXXXXX`
+javas=`mktemp tmp.XXXXXX`
 
 echo Discovering files
 
@@ -30,10 +30,12 @@ while [[ "${#proarr[@]}" -gt "0" ]]
 do
 	project=${proarr[0]}
 	cpPath="$workspace/${project}.classpath"
+eworkspace=`echo $workspace | sed -e 's/\//\\\\\//'`
+eproject=`echo $project | sed -e 's/\//\\\\\//'`
 
 if [[ -e "$cpPath" ]]; then
-	grep 'kind="lib"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" >> $libs
-	grep 'kind="src"' $cpPath | egrep -o 'path=\"[^/].*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" | sed -e "s!src\$!src/*!" >> $javas
+	grep 'kind="lib"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s/^\([^/]\)/$eworkspace\\/${eproject}\1/" >> $libs
+	grep 'kind="src"' $cpPath | egrep -o 'path=\"[^/].*?\"' | cut -f2 -d'"' | sed -e "s/^\([^/]\)/$eworkspace\\/${eproject}\1/" | sed -e "s/src\$/src\\/*/" >> $javas
 fi
 
 proarr=("${proarr[@]:1}")

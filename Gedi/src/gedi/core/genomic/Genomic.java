@@ -145,6 +145,11 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	}
 	
 	@Override
+	public String toString() {
+		return id;
+	}
+	
+	@Override
 	public ExtendedIterator<ReferenceSequence> iterateReferenceSequences() {
 		return getTranscripts().iterateReferenceSequences();
 	}
@@ -237,7 +242,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	}
 	
 	public Collection<String> getGeneTableColumns() {
-		return mapTabs.get(AnnotationType.Transcripts.name()).getColumns();
+		return mapTabs.get(AnnotationType.Genes.name()).getColumns();
 	}
 	
 	public Collection<String> getGeneTableColumns(String from) {

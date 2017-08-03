@@ -29,6 +29,7 @@ import gedi.app.Config;
 import gedi.app.Gedi;
 import gedi.util.FileUtils;
 import gedi.util.StringUtils;
+import gedi.util.LogUtils.LogMode;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
@@ -160,7 +161,7 @@ public class Cluster {
 		name = args[i++];
 		command = args[i++];
 		
-		Gedi.startup(true,true);
+		Gedi.startup(true,LogMode.Silent);
 
 		String batch;
 		DynamicObject defaultParam = DynamicObject.getEmpty();

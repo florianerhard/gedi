@@ -26,7 +26,7 @@ import java.util.Locale;
 public class ConsoleProgress extends AbstractProgress {
 
 	private int pad = 0;
-	private boolean newline = false;
+	private int maxDescrLen = 80;
 	public PrintStream out;
 	
 	
@@ -35,45 +35,82 @@ public class ConsoleProgress extends AbstractProgress {
 	}
 
 	public ConsoleProgress(PrintStream out) {
-		this.out = out;
+		this(out,null);
 	}
 
+	public ConsoleProgress(ProgressManager man) {
+		this(System.out,man);
+	}
+
+	public ConsoleProgress(PrintStream out, ProgressManager man) {
+		this.out = out;
+		if (man!=null)
+			setManager(man);
+	}
+
+	public void setMaxDescriptionLength(int maxDescrLen) {
+		this.maxDescrLen = maxDescrLen;
+	}
+
+	private int view;
+	private String[] viewcs = {"|","/","-","\\"};
+
+	private static boolean first = true;
 
 	@Override
-	protected void update() {
+	public void firstView(int total) {
+		if (total>1)
+			out.println();
+		if (total==1) {
+			out.print("\33[?25l");
+			if (first) {
+				Runtime.getRuntime().addShutdownHook(new Thread(()->out.print("\33[?25h")));
+				first = false;
+			}
+		}
+	}
+
+	@Override
+	public void updateView(int index, int total) {
 		CharSequence d = getDescription();
-		if (d!=null && d.length()>pad) pad = d.length();
-		String description = d==null?"":StringUtils.padRight(d.toString(), pad,' ');
+		if (d==null) d="";
+		if (d.length()>maxDescrLen) d = d.subSequence(0, maxDescrLen-3).toString()+"...";
+		if (d.length()>pad) pad = d.length();
+		
+		String description = StringUtils.padRight(d.toString(), pad,' ');
+		
+		view++;
+		
+		if (index==0 && total>1) {
+			out.print("\33["+(total-1)+"A");
+		}
+		
+		String viewc = viewcs[view%viewcs.length];
 		
 		if (progress>0) {
 			if (isGoalKnown())
-				out.printf(Locale.US,"\33[2K\r%s %d/%d (%.2f%%, %.1f/sec) Estimated time: %s",description,progress,count,(progress*100.0)/count,getPerSecond(),getEstimatedTime());
+				out.printf(Locale.US,"\r\33[2K%s %s %d/%d (%.2f%%, %.1f/sec) Estimated time: %s",viewc,description,progress,count,(progress*100.0)/count,getPerSecond(),getEstimatedTime());
 			else 
-				out.printf(Locale.US,"\33[2K\r%s %d (%.1f/sec)",description,progress,getPerSecond());
+				out.printf(Locale.US,"\r\33[2K%s %s %d (%.1f/sec)",viewc,description,progress,getPerSecond());
 		}
 		else {
-			out.printf(Locale.US,"\33[2K\r%s",description);
+			out.printf(Locale.US,"\r\33[2K%s %s",viewc,description);
 		}
-		if (newline)
-			out.println("");
-	}
-	
-	public ConsoleProgress setNewline(boolean newline) {
-		this.newline = newline;
-		return this;
-	}
-	
-	
-	@Override
-	public void finish() {
-		update();
-		out.printf(Locale.US,"\33[2K\rProcessed %d elements in %s (Throughput: %.1f/sec)\n",progress,StringUtils.getHumanReadableTimespan(getTotalTime()),getPerSecond());
-	}
-
-	@Override
-	protected void start() {
 		
+		if (index+1<total)
+			out.print("\n");
+	}
+	
+	
+	@Override
+	public void lastView(int total) {
+		if (total>1)
+			out.print("\33["+(total-1)+"A");
+		out.printf(Locale.US,"\r\33[2KProcessed %d elements in %s (Throughput: %.1f/sec)\n",progress,StringUtils.getHumanReadableTimespan(getTotalTime()),getPerSecond());
+		if (total>1)
+			out.print("\33["+(total-1)+"B");
+		if (total==1)
+			out.print("\33[?25h");
 	}
 
-	
 }

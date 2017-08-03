@@ -31,6 +31,8 @@ public class LocationsFileLoader implements WorkspaceItemLoader<MemoryIntervalTr
 
 	public static final String[] extensions = new String[]{"locations"};
 	
+	private boolean ignore = false;
+	
 	@Override
 	public String[] getExtensions() {
 		return extensions;
@@ -39,7 +41,15 @@ public class LocationsFileLoader implements WorkspaceItemLoader<MemoryIntervalTr
 	@Override
 	public MemoryIntervalTreeStorage<NameAnnotation> load(Path path)
 			throws IOException {
-		return new LocationFileReader(path.toString()).readIntoMemoryThrowOnNonUnique();
+		if (ignore)
+			return new LocationFileReader(path.toString()).readIntoMemoryTakeFirst();
+		else
+			return new LocationFileReader(path.toString()).readIntoMemoryThrowOnNonUnique();
+	}
+	
+	public LocationsFileLoader setIgnore(boolean ignore) {
+		this.ignore = ignore;
+		return this;
 	}
 
 	@Override

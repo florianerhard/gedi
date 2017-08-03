@@ -18,16 +18,22 @@
 
 package gedi.core.region;
 
+import gedi.core.data.annotation.Transcript;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
+import gedi.util.datastructure.graph.SimpleDirectedGraph;
 import gedi.util.datastructure.tree.redblacktree.Interval;
+import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iterable<GenomicRegionPart> {
 
@@ -611,7 +617,8 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 	 * @param coord
 	 */
 	default int induce(int pos) {
-		if (!contains(pos)) throw new IllegalArgumentException("Position is not contained!");
+		if (!contains(pos))
+			throw new IllegalArgumentException("Position is not contained!");
 		int re = 0;
 		for (int i=0; i<getNumParts(); i++) {
 			if (getEnd(i)>pos) return re+pos-getStart(i);
@@ -889,8 +896,15 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 		return o.getTotalLength()-o.induceMaybeOutside(getStop());
 	}
 	
+	default GenomicRegion getIntron(int i) {
+		return new ArrayGenomicRegion(getEnd(i),getStart(i+1));
+	}
+	
+	default ExtendedIterator<GenomicRegion> introns() {
+		return EI.seq(1, getNumParts()).map(i->getIntron(i-1));
+	}
 
-
+	
 	
 
 

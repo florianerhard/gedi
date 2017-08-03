@@ -379,13 +379,13 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 			out.putString(dataClass.getName()); // new!
 			out.putString(globalInfo.toJson()); // newnew!
 			
-			ConsoleProgress pr = new ConsoleProgress();
+//			ConsoleProgress pr = new ConsoleProgress();
 			
 			long[] offset = new long[refs.length+1];
 			int[] re = {0};
 			for (int i=0; i<refs.length; i++) {
 //				System.out.println("Starting "+refs[i]);
-				pr.init().setDescriptionf("Processing %s", mappedRefs[i]);
+//				pr.init().setDescriptionf("Processing %s", mappedRefs[i]);
 				offset[i] = out.position();
 				InternalCenteredDiskIntervalTreeBuilder<D> builder = new InternalCenteredDiskIntervalTreeBuilder<D>(new File(path).getAbsoluteFile().getParent(),new File(path).getName(), globalInfo);
 //				ReferenceSequence ref = refs[i];
@@ -397,15 +397,15 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 						if (r2!=null) {
 							builder.add(r2.getRegion(), r2.getData());
 							re[0]++;
-							pr.incrementProgress();
+//							pr.incrementProgress();
 						}
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
 					});
 //				}
-				pr.finish();
-				pr.out.printf("Writing CIT for %s\n", mappedRefs[i]);
+//				pr.finish();
+//				pr.out.printf("Writing CIT for %s\n", mappedRefs[i]);
 				builder.build(out);
 //				System.out.println("Finished "+refs[i]+" @"+re[0]);
 			}
@@ -528,14 +528,23 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 
 	@Override
 	public void clear() {
-		throw new UnsupportedOperationException();
+		try {
+			close();
+			new File(getPath()).delete();
+		} catch (IOException e) {
+			throw new RuntimeException("Could not delete CIT!",e);
+		}
 	}
 
 	@Override
 	public String getName() {
 		return FileUtils.getNameWithoutExtension(getPath());
 	}
-	
+
+	@Override
+	public String toString() {
+		return getPath();
+	}
 	
 	
 }

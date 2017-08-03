@@ -295,8 +295,10 @@ public class CleavageModelEstimatorThread extends Thread {
 						}
 					}
 				
-				
-				estimator.progress.setDescriptionf("Repeat %d, Iteration %d: LL=%.6g; bestLL=%.6g", rep, it, ll, bestLL);
+				int urep = rep;
+				int uit = it;
+				double ull = ll;
+				estimator.progress.setDescription(()->String.format("Model inference: Repeat %d, Iteration %d: LL=%.6g; bestLL=%.6g", urep, uit, ull, bestLL));
 				estimator.progress.incrementProgress();
 				
 				

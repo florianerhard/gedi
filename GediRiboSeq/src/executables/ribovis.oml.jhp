@@ -261,7 +261,7 @@
 		<Hspace space="0" />
 		<Vspace space="6" />
 		<Background c="#fff7bc" />
-		<?JS if (tracks[e].startsWith("Peptide") || tracks[e].startsWith("Orf")) { ?>
+		<?JS if (tracks[e].startsWith("Pept") || tracks[e].startsWith("Orf") || tracks[e].endsWith("ORF-RATER") || tracks[e].endsWith("RPBP")) { ?>
 		<BoxRenderer>
 			<PeptideRenderer class="codon">
 				<Height h="20" />
@@ -423,7 +423,7 @@
 		<Hspace space="0" />
 		<Vspace space="6" />
 		<Background c="#fff7bc" />
-		<?JS if (tracks[e].startsWith("Peptide") || tracks[e].startsWith("Orf")) { ?>
+		<?JS if (tracks[e].startsWith("Pept") || tracks[e].startsWith("Orf") || tracks[e].endsWith("ORF-RATER") || tracks[e].endsWith("RPBP")) { ?>
 		<BoxRenderer>
 			<PeptideRenderer class="codon">
 				<Height h="20" />

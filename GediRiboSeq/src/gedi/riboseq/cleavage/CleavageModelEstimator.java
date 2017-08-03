@@ -103,9 +103,13 @@ public class CleavageModelEstimator {
 		this.annotation = annotation;
 		this.reads = reads;
 		this.filter = filter;
-		setMerge(false);
-		
 	}
+	
+	public CleavageModelEstimator(GenomicRegionStorage<Transcript> annotation,
+			GenomicRegionStorage<AlignedReadsData> reads,String filter) {
+		this(annotation, reads, RiboUtils.parseReadFilter(filter));
+	}
+
 
 	public void setProgress(Progress progress) {
 		this.progress = progress;
@@ -281,7 +285,7 @@ public class CleavageModelEstimator {
 				ImmutableReferenceGenomicRegion<AlignedReadsData> rgr = it.next();
 				
 				progress.incrementProgress();
-				progress.setDescription(()->rgr.toLocationString());
+				progress.setDescription(()->"Collecting statistics "+rgr.toLocationString());
 				
 				GenomicRegion read = rgr.getRegion();
 				int first = -1;
@@ -567,25 +571,29 @@ public class CleavageModelEstimator {
 	// f=2 means that codon starts at 2,5,8,11,...
 	
 	
-	public BufferedImage plotProbabilities(String title, String plotFile) throws REngineException, IOException {
-		R r = RConnect.getInstance().get();
-		r.assign("col", bestPl);
-		r.assign("row", bestPr);
-		if (generatedLeft!=null) {
-			r.assign("gl", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedLeft,ArrayUtils.repeat(0, bestPl.length-generatedLeft.length-10)));
-			r.assign("gr", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedRight,ArrayUtils.repeat(0, bestPr.length-generatedRight.length-10)));
-			r.startPlots(800, 800).eval("barplot(rbind(gl, col, gr, row),beside=T)");
+	public BufferedImage plotProbabilities(String title, String plotFile) {
+		try {
+			R r = RConnect.getInstance().get();
+			r.assign("col", bestPl);
+			r.assign("row", bestPr);
+			if (generatedLeft!=null) {
+				r.assign("gl", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedLeft,ArrayUtils.repeat(0, bestPl.length-generatedLeft.length-10)));
+				r.assign("gr", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedRight,ArrayUtils.repeat(0, bestPr.length-generatedRight.length-10)));
+				r.startPlots(800, 800).eval("barplot(rbind(gl, col, gr, row),beside=T)");
+			}
+			else {
+				String t = title!=null?title:FileUtils.getNameWithoutExtension(plotFile);
+				r.startPlots(800, 800).eval("barplot(c(rev(col[-1]),NA,NA,NA,row),beside=T,main='"+t+"', names.args=c())");
+			}
+			
+			BufferedImage img = r.finishPlot();
+			
+			if (plotFile!=null)
+				ImageIO.write(img, "png", new File(plotFile));
+			return img;
+		} catch (Exception e) {
+			return null;
 		}
-		else {
-			String t = title!=null?title:FileUtils.getNameWithoutExtension(plotFile);
-			r.startPlots(800, 800).eval("barplot(c(rev(col[-1]),NA,NA,NA,row),beside=T,main='"+t+"', names.args=c())");
-		}
-		
-		BufferedImage img = r.finishPlot();
-		
-		if (plotFile!=null)
-			ImageIO.write(img, "png", new File(plotFile));
-		return img;
 	}
 	
 	public double estimateBoth(int c, int nthreads) {

@@ -30,8 +30,10 @@ import gedi.riboseq.utils.RiboUtils;
 import gedi.util.ArrayUtils;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
+import gedi.util.functions.EI;
 import gedi.util.mutable.MutableDouble;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -208,10 +210,26 @@ public class ReadsXCodonMatrix {
 		return 1*m*m+m*m+m;
 	}
 
-	/**
-	 * Normalize first slot for each codon
-	 */
+	
+//	private double[] first;
+//	private HashMap<Codon,Integer> c2i = new HashMap<>();
+//	private HashMap<Integer,ArrayList<Codon>> startMap = new HashMap<>();
+//	private HashMap<Integer,ArrayList<Codon>> endMap = new HashMap<>();
+	
+	
 	public void finishReads() {
+//		first = new double[codonProto.size()];
+//		int ind = 0;
+//		for (Codon c : codonProto.keySet()) {
+//			for (Read r : M.get(c).keySet())
+//				if (M.get(c).get(r)[0]>0)
+//					first[ind]+=r.totalCount*M.get(c).get(r)[0];
+//			c2i.put(c, ind);
+//			startMap.computeIfAbsent(c.getStart(), x->new ArrayList<>()).add(c);
+//			endMap.computeIfAbsent(c.getEnd(), x->new ArrayList<>()).add(c);
+//			ind++;
+//		}
+		
 //		for (Codon c : codonProto.keySet()) {
 //			codonLL.put(c, new MutableDouble(Double.NaN));
 //		}
@@ -658,6 +676,46 @@ public class ReadsXCodonMatrix {
 		}
 		return re;
 	}
+	
+//	public double applyPrior(double rho, double[] before) {
+//		double total = 0;
+//		for (Codon c : codonProto.keySet())
+//			total+=c.totalActivity;
+//		
+//		double sum = 0;
+//		int ind = 0;
+//		for (Codon c : codonProto.keySet()) {
+//			double lc = EI.wrap(endMap.get(c.getStart())).mapToDouble(cx->cx.totalActivity).sum();
+//			double rc = EI.wrap(startMap.get(c.getEnd())).mapToDouble(cx->cx.totalActivity).sum();
+//			double lf = EI.wrap(endMap.get(c.getStart())).mapToDouble(cx->first[c2i.get(cx)]).sum();
+//			double rf = EI.wrap(startMap.get(c.getEnd())).mapToDouble(cx->first[c2i.get(cx)]).sum();
+//			
+//			//double a = c.totalActivity-rho*first[ind++];
+//			
+//			double a = (first[ind++]+rf+lf)/(c.totalActivity+rc+lc);
+//			a = c.totalActivity*(1-rho*a);
+//			if (c.totalActivity+rc+lc==0)
+//				a = 0;
+//			c.goodness = Math.max(0, a);
+//			sum+=c.goodness;
+//		}
+//		
+//		double re = 0;
+//		ind = 0;
+//		for (Codon c : codonProto.keySet()) {
+//			c.totalActivity=c.goodness/sum*total;
+//			re=Math.max(re,Math.abs(before[ind++]-c.totalActivity));
+//		}
+//		return re;
+//	}
+//	
+//	public double[] getCurrentActivities(double[] act) {
+//		if (act==null || act.length!=codonProto.size()) act = new double[codonProto.size()];
+//		int ind = 0;
+//		for (Codon c : codonProto.keySet()) 
+//			act[ind++]=c.totalActivity;
+//		return act;
+//	}
 	
 	/**
 	 * sum slot 1 for each codon and store in the codon activity vector at index index

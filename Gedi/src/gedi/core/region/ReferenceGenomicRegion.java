@@ -18,6 +18,7 @@
 
 package gedi.core.region;
 
+import gedi.core.data.annotation.GenomicRegionMappable;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
@@ -81,7 +82,10 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 		ReferenceSequence ref = getReference();
 		if (region.getReference().getStrand()==Strand.Minus) ref = ref.toOppositeStrand();
 		else if (region.getReference().getStrand()==Strand.Independent) ref = ref.toStrandIndependent();
-		return new ImmutableReferenceGenomicRegion<T>(ref, map(region.getRegion()),region.getData());
+		T data = region.getData();
+		if (data instanceof GenomicRegionMappable)
+			data = (T) ((GenomicRegionMappable) data).map(this);
+		return new ImmutableReferenceGenomicRegion<T>(ref, map(region.getRegion()),data);
 	}
 	
 	default <T> ImmutableReferenceGenomicRegion<T> induce(ReferenceGenomicRegion<T> region, String referenceName) {
@@ -91,7 +95,12 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 		ReferenceSequence ref = Chromosome.obtain(referenceName, Strand.Plus);
 		if (region.getReference().getStrand()!=getReference().getStrand()) ref = ref.toOppositeStrand();
 		else if (region.getReference().getStrand()==Strand.Independent) ref = ref.toStrandIndependent();
-		return new ImmutableReferenceGenomicRegion<T>(ref, induce(region.getRegion()),region.getData());
+		
+		T data = region.getData();
+		if (data instanceof GenomicRegionMappable)
+			data = (T) ((GenomicRegionMappable) data).induce(this);
+		
+		return new ImmutableReferenceGenomicRegion<T>(ref, induce(region.getRegion()),data);
 	}
 	
 	

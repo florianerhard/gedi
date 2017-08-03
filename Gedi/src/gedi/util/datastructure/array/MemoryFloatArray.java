@@ -25,7 +25,7 @@ import java.util.Arrays;
 
 public class MemoryFloatArray extends FloatArray {
 	
-	private float[] a;
+	protected float[] a;
 	
 	public MemoryFloatArray() {
 	}

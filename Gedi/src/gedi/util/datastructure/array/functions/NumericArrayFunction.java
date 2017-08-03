@@ -21,6 +21,7 @@ package gedi.util.datastructure.array.functions;
 import gedi.util.ArrayUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
+import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 
 import java.util.Arrays;
 import java.util.function.DoublePredicate;
@@ -61,6 +62,15 @@ public interface NumericArrayFunction extends ToDoubleFunction<NumericArray> {
 	public static final NumericArrayFunction Median = new UnivariateStatisticAdapter(new Percentile(50));
 	public static final NumericArrayFunction UpperQuartile = new UnivariateStatisticAdapter(new Percentile(75));
 	
+	public static final NumericArrayFunction SinhMean = n-> {
+		double re = 0;
+		for (int i=0; i<n.length(); i++) {
+			double c = n.getDouble(i);
+			double asinh = Math.log(c+Math.sqrt(c*c+1));
+			re+=asinh;
+		}
+		return Math.sinh(re/n.length());
+	};
 	
 	public static final NumericArrayFunction SaveMax = n-> {
 		double re = Double.NEGATIVE_INFINITY;
@@ -80,6 +90,17 @@ public interface NumericArrayFunction extends ToDoubleFunction<NumericArray> {
 				re = re+c;
 		}
 		return re;
+	};
+	
+	public static final NumericArrayFunction GeometricMeanRemoveNonPositive = n->{
+		DoubleArrayList r = new DoubleArrayList();
+		for (int i=0; i<n.length(); i++) {
+			double c = n.getDouble(i);
+			if (c>0)
+				r.add(c);
+		}
+		if (r.isEmpty()) return 0;
+		return new GeometricMean().evaluate(r.toDoubleArray());
 	};
 	
 	
@@ -102,7 +123,6 @@ public interface NumericArrayFunction extends ToDoubleFunction<NumericArray> {
 		}
 		return Median.applyAsDouble(a);
 	};
-	
 	
 	public static final NumericArrayFunction Count = n-> {
 		return n.length();
@@ -129,6 +149,20 @@ public interface NumericArrayFunction extends ToDoubleFunction<NumericArray> {
 					if (predicate.test(value.getDouble(i)))
 						re++;
 				return (double)re/value.length();
+			}
+		};
+	}
+	
+	public static NumericArrayFunction count(final DoublePredicate predicate) {
+		return new NumericArrayFunction() {
+			
+			@Override
+			public double applyAsDouble(NumericArray value) {
+				int re = 0;
+				for (int i=0; i<value.length(); i++)
+					if (predicate.test(value.getDouble(i)))
+						re++;
+				return re;
 			}
 		};
 	}

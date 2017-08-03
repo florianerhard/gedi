@@ -22,6 +22,7 @@ import gedi.app.classpath.ClassPath;
 import gedi.app.classpath.ClassPathCache;
 import gedi.app.classpath.JARClassPath;
 import gedi.util.LogUtils;
+import gedi.util.LogUtils.LogMode;
 import gedi.util.functions.EI;
 
 import java.io.IOException;
@@ -39,14 +40,19 @@ public class Gedi {
 		startup(false);
 	}
 	public synchronized static void startup(boolean discoverClasses) {
-		startup(discoverClasses,false);
+		startup(discoverClasses,isDebug()?LogMode.Debug:LogMode.Normal);
 	}
-	public synchronized static void startup(boolean discoverClasses, boolean nolog) {
+	private static boolean isDebug() {
+		return java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("jdwp") >= 0;
+	}
+	public synchronized static void startup(boolean discoverClasses, LogMode mode) {
 		if (!started) {
 			Config.getInstance();
-			LogUtils.config(nolog);
+			LogUtils.config(mode);
 			log.info("Command: "+getStartupCommand());
 			log.info("Gedi "+version()+" ("+develOption()+") startup");
+			if (isDebug()) 
+				log.info("Debug mode");
 			Runtime.getRuntime().addShutdownHook(new Thread(()->log.info("Finished: "+getStartupCommand())));
 			Locale.setDefault(Locale.US);
 			

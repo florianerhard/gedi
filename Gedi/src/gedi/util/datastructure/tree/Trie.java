@@ -698,7 +698,7 @@ public class Trie<T> implements Map<String,T> {
 	private transient HashMap<Node,Node> suffixLinks;
 	private transient HashMap<Node,Integer> nodeLevel;
 	private transient HashMap<Node,LinkedList<Node>> additionalResults;
-	private void prepareAhoCorasick() {
+	private synchronized void prepareAhoCorasick() {
 		if (suffixLinks!=null) return;
 		suffixLinks = new HashMap<Node, Node>();
 		nodeLevel = new HashMap<Trie.Node, Integer>();
@@ -749,23 +749,23 @@ public class Trie<T> implements Map<String,T> {
 	}
 	
 	
-	public <C extends Collection<AhoCorasickResult<T>>> C ahoCorasick(String text, C re) {
+	public <C extends Collection<AhoCorasickResult<T>>> C ahoCorasick(CharSequence text, C re) {
 		Iterator<AhoCorasickResult<T>> it = iterateAhoCorasick(text, false);
 		while (it.hasNext())
 			re.add(it.next());
 		return re;
 	}
 	
-	public ArrayList<AhoCorasickResult<T>> ahoCorasick(String text) {
+	public ArrayList<AhoCorasickResult<T>> ahoCorasick(CharSequence text) {
 		return ahoCorasick(text, new ArrayList<AhoCorasickResult<T>>());
 	}
 	
-	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final String text) {
+	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final CharSequence text) {
 		return iterateAhoCorasick(text, false);
 	}
-	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final String text, final boolean reUse) {
+	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final CharSequence text, final boolean reUse) {
 		prepareAhoCorasick();
-		final AhoCorasickResult<T> re = new AhoCorasickResult<T>();
+		final AhoCorasickResult<T> one = reUse?new AhoCorasickResult<T>():null;
 		return new ExtendedIterator<AhoCorasickResult<T>>() {
 			Node q = root;
 			int index = 0;
@@ -781,10 +781,12 @@ public class Trie<T> implements Map<String,T> {
 			public AhoCorasickResult<T> next() {
 				lookAhead();
 				Node n = values.removeFirst();
+				AhoCorasickResult<T> re = reUse?one:new AhoCorasickResult<T>();
 				re.end = index;
 				re.start = index-nodeLevel.get(n);
 				re.object = (T)n.value;
-				return reUse?re:new AhoCorasickResult<T>(re);
+				re.text = text;
+				return re;
 			}
 			
 			private void lookAhead() {
@@ -802,6 +804,7 @@ public class Trie<T> implements Map<String,T> {
 	
 	
 	public static class AhoCorasickResult<T> implements Interval {
+		CharSequence text;
 		int start;
 		int end;
 		T object;
@@ -810,12 +813,15 @@ public class Trie<T> implements Map<String,T> {
 			this.start = ori.start;
 			this.end =ori.end;
 			this.object = ori.object;
+			this.text = text;
 		}
 		
 		public int getEnd() {
 			return end;
 		}
-		
+		public CharSequence getKey() {
+			return text.subSequence(start, end);
+		}
 		public T getValue() {
 			return object;
 		}

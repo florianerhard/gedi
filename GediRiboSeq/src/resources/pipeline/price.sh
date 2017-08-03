@@ -8,7 +8,6 @@ varin("tokens","Array of pipeline tokens (to resolve dependencies of programs)",
 varin("name","Name for output files",true);
 varin("references","Definitions of reference sequences",true);
 varin("reads","Filename containing read mappings",true);
-varin("startcodon","Treatment pairs for start codon prediction",false);
 
 ?>
 
@@ -27,21 +26,15 @@ else {
 	
 
 
-var startcodon;
-if (startcodon) 
-	startcodon = "-t "+startcodon.map(function(a) a.join("/")).join(" ");
-else 
-	startcodon = "";
 
 ?>
-	
-<?JS prerunner(id+"model",tokens) ?>gedi -t <?JS tmp ?> -e EstimateRiboModel -r <?JS reads ?> -g <?JS genomes ?>  -o <?JS wd ?>/price/<?JS name ?> -D <?JS var model = postrunner(id+"model") ?> 
-<?JS prerunner(id+"err",[model]) ?>gedi -t <?JS tmp ?> -e EstimateModelError -r <?JS reads ?> -o <?JS wd ?>/price/<?JS name ?>.merged -D <?JS startcodon ?> -m <?JS wd ?>/price/<?JS name ?>.merged.model -g <?JS genomes ?> <?JS var err = postrunner(id+"err") ?> 
-<?JS prerunner(id+"orfs",[err]) ?>gedi -t <?JS tmp ?> -e InferOrfs -r <?JS reads ?> -o <?JS wd ?>/price/<?JS name ?>.merged -D -m <?JS wd ?>/price/<?JS name ?>.merged.model -g <?JS genomes ?> <?JS var end = postrunner(id+"orfs") ?> 
+
+<?JS prerunner(id+"price",tokens) ?>gedi -t <?JS tmp ?> -e Price -reads <?JS reads ?> -genomic <?JS genomes ?> -prefix <?JS wd ?>/price/<?JS name ?> -D <?JS var price = postrunner(id+"price") ?> 
+
 
 <?JS
 
 name = id;
-tokens = [end];
+tokens = [price];
 
 ?> 

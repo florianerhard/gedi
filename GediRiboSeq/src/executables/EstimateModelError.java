@@ -377,25 +377,25 @@ public class EstimateModelError {
 			.parallelized(nthreads,10,it->it.<Integer>map(gene->{
 				try {
 					Inferred inferred = infer(gene,inference,dataset);	
-					internalProcessor.process(inferred);
+//					internalProcessor.process(inferred);
 					
 					if (inferred.major.major!=null) {
 						if (inferred.major.act>=eminGapActivity || dataset.predefinedMajor!=null) {
 							inferred.loadCodons();
 							if (inferred.getCoverage()>1 || dataset.predefinedMajor!=null) {
-								startstopProcessor.process(inferred);
-								if (svmProcessor!=null)
-									svmProcessor.process(inferred);
-								lfcProcessor.process(inferred);
+//								startstopProcessor.process(inferred);
+//								if (svmProcessor!=null)
+//									svmProcessor.process(inferred);
+//								lfcProcessor.process(inferred);
 								signalToNoiseProcessor.process(inferred);
-								aroundStartProcessor.process(inferred);
+//								aroundStartProcessor.process(inferred);
 								
-								simulateProcessor.process(inferred);
-								if (ribotaperProcessor!=null)
-									ribotaperProcessor.process(inferred);
+//								simulateProcessor.process(inferred);
+//								if (ribotaperProcessor!=null)
+//									ribotaperProcessor.process(inferred);
 							}
-							gapsProcessor.process(inferred);
-							gofProcessor.process(inferred);
+//							gapsProcessor.process(inferred);
+//							gofProcessor.process(inferred);
 						}
 					}
 					return 1;
@@ -408,59 +408,59 @@ public class EstimateModelError {
 		
 		log.info("Writing statistics");
 		aroundStartProcessor.finish();
-		simulateProcessor.finish();
-		signalToNoiseProcessor.finish();
-		
-		log.info("Running LFC SVM");
-		lfcProcessor.finish();
-		if (lfcProcessor.model!=null)
-			dataset.models[0].setLfcSvm(new RiboModel.LfcParameters(lfcProcessor.model, dataset.startCodonPairs, lfcProcessor.cutoff, lfcProcessor.lfcpseudo, lfcProcessor.lfcReferenceStart, lfcProcessor.lfcReferenceEnd));
-		
-		if (svmProcessor!=null) {
-			log.info("Running Start-codon SVM");
-			svmProcessor.finish();
-			dataset.models[0].setStartSvm(svmProcessor.model, svmProcessor.sum, svmProcessor.getConditions(), svmProcessor.upstream, svmProcessor.downstream, svmProcessor.probCutoff);
-		}
-		
-		log.info("Writing start stop estimates");
-		startstopProcessor.finish();
-		
-		log.info("Writing internal estimates");
-		internalProcessor.finish(progress);
-		dataset.models[0].setRolling(trim,threshold);
-		
-		gapsProcessor.finish(progress);
-		gofProcessor.finish(progress);
-
-		
-		
-		log.info("Computing scores for major isoforms");
-		LineWriter scores = new LineOrientedFile(prefix+".major.scores").write().writeLine("Gene\tMean\tGap\tLength\tThreshold\tPval");
-		// "Gene\tCds\tLength\tSum\tMean coverage\tGaps\tStart\tStop"
-		for (String[] f : new LineOrientedFile(prefix+".bfits.data").lineIterator().skip(1).map(s->StringUtils.split(s,'\t')).loop()) {
-//			double gap = dataset.model.computeGapPval(Integer.parseInt(f[2]), Double.parseDouble(f[4]), Integer.parseInt(f[5]));
-			double pval = dataset.models[0].getGapPvalue(Integer.parseInt(f[2]), Double.parseDouble(f[3])/Integer.parseInt(f[2]), Integer.parseInt(f[5]));
-			scores.writef("%s\t%.5f\t%d\t%d\t%.4f\t%.4g\n", f[0],Double.parseDouble(f[3])/Integer.parseInt(f[2]), Integer.parseInt(f[5]), Integer.parseInt(f[2]),
-					dataset.models[0].getGapThreshold(Double.parseDouble(f[3])/Integer.parseInt(f[2])),
-					pval);
-		}
-		scores.close();
-
-
-		PageFileWriter pf = new PageFileWriter(prefix+".model");
-		for (RiboModel model : dataset.models)
-			model.serialize(pf);
-		pf.close();
-		
-		
-		
-		log.info("Running R scripts for plotting");
-		RRunner r = new RRunner(prefix+".plot.R");
-		r.set("prefix",prefix);
-		r.addSource(EstimateModelError.class.getResourceAsStream("signaltonoise_eval.R"));
-		r.addSource(EstimateModelError.class.getResourceAsStream("startcodon_eval.R"));
-		r.addSource(EstimateModelError.class.getResourceAsStream("error_eval.R"));
-		r.run(false);
+//		simulateProcessor.finish();
+//		signalToNoiseProcessor.finish();
+//		
+//		log.info("Running LFC SVM");
+//		lfcProcessor.finish();
+//		if (lfcProcessor.model!=null)
+//			dataset.models[0].setLfcSvm(new RiboModel.LfcParameters(lfcProcessor.model, dataset.startCodonPairs, lfcProcessor.cutoff, lfcProcessor.lfcpseudo, lfcProcessor.lfcReferenceStart, lfcProcessor.lfcReferenceEnd));
+//		
+//		if (svmProcessor!=null) {
+//			log.info("Running Start-codon SVM");
+//			svmProcessor.finish();
+//			dataset.models[0].setStartSvm(svmProcessor.model, svmProcessor.sum, svmProcessor.getConditions(), svmProcessor.upstream, svmProcessor.downstream, svmProcessor.probCutoff);
+//		}
+//		
+//		log.info("Writing start stop estimates");
+//		startstopProcessor.finish();
+//		
+//		log.info("Writing internal estimates");
+//		internalProcessor.finish(progress);
+//		dataset.models[0].setRolling(trim,threshold);
+//		
+//		gapsProcessor.finish(progress);
+//		gofProcessor.finish(progress);
+//
+//		
+//		
+//		log.info("Computing scores for major isoforms");
+//		LineWriter scores = new LineOrientedFile(prefix+".major.scores").write().writeLine("Gene\tMean\tGap\tLength\tThreshold\tPval");
+//		// "Gene\tCds\tLength\tSum\tMean coverage\tGaps\tStart\tStop"
+//		for (String[] f : new LineOrientedFile(prefix+".bfits.data").lineIterator().skip(1).map(s->StringUtils.split(s,'\t')).loop()) {
+////			double gap = dataset.model.computeGapPval(Integer.parseInt(f[2]), Double.parseDouble(f[4]), Integer.parseInt(f[5]));
+//			double pval = dataset.models[0].getGapPvalue(Integer.parseInt(f[2]), Double.parseDouble(f[3])/Integer.parseInt(f[2]), Integer.parseInt(f[5]));
+//			scores.writef("%s\t%.5f\t%d\t%d\t%.4f\t%.4g\n", f[0],Double.parseDouble(f[3])/Integer.parseInt(f[2]), Integer.parseInt(f[5]), Integer.parseInt(f[2]),
+//					dataset.models[0].getGapThreshold(Double.parseDouble(f[3])/Integer.parseInt(f[2])),
+//					pval);
+//		}
+//		scores.close();
+//
+//
+//		PageFileWriter pf = new PageFileWriter(prefix+".model");
+//		for (RiboModel model : dataset.models)
+//			model.serialize(pf);
+//		pf.close();
+//		
+//		
+//		
+//		log.info("Running R scripts for plotting");
+//		RRunner r = new RRunner(prefix+".plot.R");
+//		r.set("prefix",prefix);
+//		r.addSource(EstimateModelError.class.getResourceAsStream("signaltonoise_eval.R"));
+//		r.addSource(EstimateModelError.class.getResourceAsStream("startcodon_eval.R"));
+//		r.addSource(EstimateModelError.class.getResourceAsStream("error_eval.R"));
+//		r.run(false);
 		
 //		RConnect.R().set("prefix", prefix);
 //		RConnect.R().run(EstimateModelError.class.getResource("error_eval.R"));
@@ -809,7 +809,8 @@ public class EstimateModelError {
 			upstream = new double[dataset.numCond][lenUpstream];
 			
 			
-			for (Codon cc : codons.getData().getIntervalsIntersecting(major.getStart(), major.getStop(), new ArrayList<>())) {
+			ArrayGenomicRegion search = upstreamPart.union(major);
+			for (Codon cc : codons.getData().getIntervalsIntersecting(search.getStart(), search.getStop(), new ArrayList<>())) {
 				if (major.containsUnspliced(cc)) { 
 					if (major.induce(cc).getStart()%3==0) {
 						tsig+=cc.getTotalActivity();

@@ -142,7 +142,7 @@
 			{ "name": "R", "color": "red"},
 			{ "name": "K", "color": "red"},
 		{"name": "Frame0", "color": "#ffa940"},
-		{"name": "Frame1", "color": "#6269CE"},
+		{"name": "Frame1", "color": "#3d89de"},
 		{"name": "Frame2", "color": "#228653"}
 	]
 }
@@ -150,7 +150,7 @@
 .codon {
 	"styles": [
 		{"name": "Frame0", "color": "#ffa940", "lineWidth": 1},
-		{"name": "Frame1", "color": "#6269CE", "lineWidth": 1},
+		{"name": "Frame1", "color": "#3d89de", "lineWidth": 1},
 		{"name": "Frame2", "color": "#228653", "lineWidth": 1}
 	]
 }

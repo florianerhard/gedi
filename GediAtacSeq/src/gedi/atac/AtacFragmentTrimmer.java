@@ -34,7 +34,6 @@ import gedi.util.io.text.LineOrientedFile;
 import gedi.util.mutable.MutableInteger;
 import gedi.util.userInteraction.progress.NoProgress;
 import gedi.util.userInteraction.progress.Progress;
-import gedi.util.userInteraction.progress.ProgressFactory;
 
 
 

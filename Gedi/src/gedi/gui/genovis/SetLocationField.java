@@ -18,6 +18,7 @@
 
 package gedi.gui.genovis;
 
+import gedi.core.genomic.Genomic;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
@@ -27,6 +28,7 @@ import gedi.util.gui.JSuggestTextField;
 
 import java.awt.BorderLayout;
 import java.awt.event.ActionListener;
+import java.util.function.Function;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -39,19 +41,27 @@ public class SetLocationField extends JPanel {
 	private JTextField loc;
 
 	public SetLocationField(SwingGenoVisViewer viewer) {
-		this(viewer,false, null);
+		this(viewer,false, null, null);
 	}
 	public SetLocationField(SwingGenoVisViewer viewer, boolean toIndependent) {
-		this(viewer,toIndependent,null);
+		this(viewer,toIndependent,null,null);
 	}
 	
-	public SetLocationField(SwingGenoVisViewer viewer, boolean toIndependent, Trie<? extends ReferenceGenomicRegion<?>> index) {
+	public SetLocationField(SwingGenoVisViewer viewer, boolean toIndependent, Genomic genomic) {
+		this(viewer,toIndependent,genomic.getTranscriptMapping(),genomic.getNameIndex());
+	}
+	public SetLocationField(SwingGenoVisViewer viewer, boolean toIndependent, Function<String,? extends ReferenceGenomicRegion<?>> direct, Trie<? extends ReferenceGenomicRegion<?>> index) {
 		super(new BorderLayout());
 		
 		viewer.addReloadListener(v->updateLocation(viewer.getReference(),viewer.getRegion()));
 		
 		ActionListener l = e->{
-			MutableReferenceGenomicRegion<Void> rgr = new MutableReferenceGenomicRegion<Void>().parse(loc.getText());
+			ReferenceGenomicRegion<?> rgr = null;
+			if (direct!=null) 
+				rgr = direct.apply(loc.getText());
+			if (rgr==null)
+				rgr = new MutableReferenceGenomicRegion<Void>().parse(loc.getText());
+			
 			if (rgr!=null && rgr.getReference()!=null && rgr.getRegion()!=null) {
 				viewer.setLocation(toIndependent?rgr.getReference().toStrandIndependent():rgr.getReference(), rgr.getRegion());
 			}
@@ -63,7 +73,7 @@ public class SetLocationField extends JPanel {
 				if (index.containsKey(f.getTextField().getText())) {
 					f.getTextField().setText(index.get(f.getTextField().getText()).toLocationString());
 					l.actionPerformed(v);
-				} else if (f.getTextField().getText().contains(":")){
+				} else {
 					l.actionPerformed(v);
 				}
 			});

@@ -30,7 +30,7 @@ import gedi.util.io.randomaccess.serialization.BinarySerializable;
 
 import java.io.IOException;
 
-public class Transcript implements BinarySerializable {
+public class Transcript implements BinarySerializable, GenomicRegionMappable<Transcript> {
 
 	private String geneId;
 	private String transcriptId;
@@ -165,6 +165,43 @@ public class Transcript implements BinarySerializable {
 		out.putString(getTranscriptId());
 		out.putInt(getCodingStart());
 		out.putInt(getCodingEnd());
+	}
+
+	@Override
+	public Transcript map(ReferenceGenomicRegion<?> mapper) {
+		if (!isCoding()) return this;
+		int s = mapper.map(codingStart);
+		int e;
+		if (codingEnd==mapper.getRegion().getTotalLength())
+			e = mapper.map(codingEnd-1)+(mapper.getReference().isPlus()?1:-1);
+		else
+			e = mapper.map(codingEnd);
+		if (mapper.getReference().isMinus()) {
+			int tmp = s;
+			s = e;
+			e = tmp;
+		}
+		return new Transcript(geneId,transcriptId,s,e);
+	}
+
+	@Override
+	public Transcript induce(ReferenceGenomicRegion<?> mapper) {
+		if (!isCoding()) return this;
+		
+		int s = mapper.induce(codingStart);
+		int e;
+		if (mapper.getRegion().contains(codingEnd))
+			e = mapper.induce(codingEnd);
+		else
+			e = mapper.induce(codingEnd-1)+(mapper.getReference().isPlus()?1:-1);
+		
+		if (mapper.getReference().isMinus()) {
+			int tmp = s;
+			s = e;
+			e = tmp;
+		}
+		
+		return new Transcript(geneId,transcriptId,s,e);
 	}
 	
 }

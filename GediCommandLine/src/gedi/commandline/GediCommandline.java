@@ -124,6 +124,7 @@ public class GediCommandline {
 				while ((line = context.reader.readLine()) != null) {
 		//			out.println("\u001B[33m======>\u001B[0m\"" + line + "\"");
 		//			out.flush();
+					if (line.trim().startsWith("//") || line.trim().startsWith("#")) continue;
 					
 					if (line.endsWith("\\")){
 						context.prevBuffer.append(line.substring(0, line.length()-1)+"\n");

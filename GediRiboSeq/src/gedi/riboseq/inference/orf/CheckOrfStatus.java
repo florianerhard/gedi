@@ -16,21 +16,9 @@
  * 
  */
 
-package gedi.util.math.stat.testing.multipleTesting;
+package gedi.riboseq.inference.orf;
 
-public class CorrectedPvalueToArray implements CorrectPvalueCallback {
-
-	private double[] a;
-	private int index;
-	
-	public CorrectedPvalueToArray(double[] a, int index) {
-		this.a = a;
-		this.index = index;
-	}
-
-	@Override
-	public void setCorrectedPvalue(double corrected) {
-		a[index] = corrected;
-	}
+public enum CheckOrfStatus {
+	NoOrf,NoStart,OffFrame,Upstream,Downstream,ManyGaps,Abortive,Detected
 
 }

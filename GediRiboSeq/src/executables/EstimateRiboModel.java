@@ -234,7 +234,7 @@ public class EstimateRiboModel {
 			for (int c=0; c<mat.length; c++) {
 				maxpos[c] = -posr[ArrayUtils.argmax(mat[c])];
 				String name = reads.getMetaData()!=null?reads.getMetaData().getEntry("conditions").getEntry(c).getEntry("name").asString():null;
-				if (name==null || name.length()==0) name = i+"";
+				if (name==null || name.length()==0) name = c+"";
 				log.info("maxpos("+name+") = "+maxpos[c]);
 			}
 			maxpos[maxpos.length-1] = -posr[ArrayUtils.argmax(sum)];
@@ -249,6 +249,7 @@ public class EstimateRiboModel {
 		em.setProgress(progress);
 		
 		if (per) {
+			em.setMerge(false);
 			if (new LineOrientedFile(prefix+".conditions.estimateData").exists()) {
 				log.info("Reading estimate data from file "+prefix+".conditions.estimateData");
 				em.readEstimateData(new LineOrientedFile(prefix+".conditions.estimateData"));

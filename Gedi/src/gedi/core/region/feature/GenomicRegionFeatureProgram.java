@@ -264,11 +264,11 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 		last = null;
 		
 		if (threads==0) {
-			log.info("Executing program in single-thread mode.");
+//			log.info("Executing program in single-thread mode.");
 			for (GenomicRegionFeature<?> f : features)
 				f.begin();
 		} else {
-			log.info("Executing program in multi-thread mode with "+threads+" threads");
+//			log.info("Executing program in multi-thread mode with "+threads+" threads");
 			runners = new Runner[threads];
 			for (int i=0; i<runners.length; i++) 
 				runners[i] = new Runner(i,benchmark==null?null:benchmark.sub(), freeRunner,features, inputs);

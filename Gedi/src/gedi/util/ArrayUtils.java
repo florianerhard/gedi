@@ -20,6 +20,7 @@ package gedi.util;
 
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.functions.TriFunction;
+import gedi.util.math.stat.RandomNumbers;
 import gedi.util.mutable.MutablePair;
 import hep.aida.ref.Histogram1D;
 import hep.aida.ref.Histogram2D;
@@ -419,6 +420,7 @@ public class ArrayUtils {
 		return re.toArray((T[]) Array.newInstance(arrays.getClass().getComponentType().getComponentType(), re.size()));
 	}
 
+	
 	public static double[] concat(double[]... arrays) {
 		int n = 0;
 		for (double[] a : arrays)
@@ -426,6 +428,19 @@ public class ArrayUtils {
 		double[] re = new double[n];
 		int index = 0;
 		for (double[] a : arrays) {
+			System.arraycopy(a, 0, re, index, a.length);
+			index+=a.length;
+		}
+		return re;
+	}
+	
+	public static int[] concat(int[]... arrays) {
+		int n = 0;
+		for (int[] a : arrays)
+			n+=a.length;
+		int[] re = new int[n];
+		int index = 0;
+		for (int[] a : arrays) {
 			System.arraycopy(a, 0, re, index, a.length);
 			index+=a.length;
 		}
@@ -929,6 +944,15 @@ public class ArrayUtils {
 			a[m] = tmp;
 		}
 	}
+	
+	public static <T> void shuffleSlice(T[] a, int i, int j, RandomNumbers rnd) {
+		for (int k=i; k<j-1; k++) {
+			int m =rnd.getUnif(0,j-k)+k;
+			T tmp = a[k];
+			a[k] = a[m];
+			a[m] = tmp;
+		}
+	}
 
 	public static void shuffleSlice(double[] a, int i, int j) {
 		Random rnd = new Random();
@@ -1278,6 +1302,7 @@ public class ArrayUtils {
 	 * @return the max
 	 */
 	public static double max(double[] array) {
+		if (array.length==0) return Double.NEGATIVE_INFINITY;
 		double re = array[0];
 		for (int i=1; i<array.length; i++)
 			re = Math.max(re, array[i]);
@@ -1290,6 +1315,7 @@ public class ArrayUtils {
 	 * @return the main
 	 */
 	public static double min(double[] array) {
+		if (array.length==0) return Double.POSITIVE_INFINITY;
 		double re = array[0];
 		for (int i=1; i<array.length; i++)
 			re = Math.min(re, array[i]);
@@ -5591,6 +5617,26 @@ public class ArrayUtils {
             result = (31 * result + element) ^ result;
 
         return result;
+	}
+
+	public static int[] select(int[] a, int[] indices) {
+		int[] re = new int[indices.length];
+		for (int i=0; i<indices.length; i++)
+			re[i] = a[indices[i]];
+		return re;
+	}
+	
+	public static double[] select(double[] a, int[] indices) {
+		double[] re = new double[indices.length];
+		for (int i=0; i<indices.length; i++)
+			re[i] = a[indices[i]];
+		return re;
+	}
+	public static <T> T[] select(T[] a, int[] indices) {
+		T[] re = (T[]) Array.newInstance(a.getClass().getComponentType(), indices.length);
+		for (int i=0; i<indices.length; i++)
+			re[i] = a[indices[i]];
+		return re;
 	}
 
 

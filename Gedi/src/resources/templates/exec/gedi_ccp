@@ -10,8 +10,11 @@ out=$(mktemp)
 for project in $projects; do
 	cpPath="$workspace/${project}.classpath"
 
-	grep 'kind="lib"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" >> $out
-	grep 'kind="output"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s!^\([^/]\)!$workspace/${project}\1!" >> $out
+eworkspace=`echo $workspace | sed -e 's/\//\\\\\//'`
+eproject=`echo $project | sed -e 's/\//\\\\\//'`
+
+	grep 'kind="lib"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s/^\([^/]\)/$eworkspace\\/${project}\1/" >> $out
+	grep 'kind="output"' $cpPath | egrep -o 'path=\".*?\"' | cut -f2 -d'"' | sed -e "s/^\([^/]\)/$eworkspace\\/${eproject}\1/" >> $out
 
 done
 

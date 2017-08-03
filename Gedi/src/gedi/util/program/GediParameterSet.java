@@ -16,26 +16,21 @@
  * 
  */
 
-package gedi.util.userInteraction.progress;
+package gedi.util.program;
 
-public class ProgressFactory {
+import java.util.ArrayList;
+import java.util.HashMap;
 
-	private static ProgressFactory instance;
+public class GediParameterSet {
 	
-	public static synchronized ProgressFactory getInstance() {
-		if (instance==null) instance = new ProgressFactory();
-		return instance;
+	private HashMap<String,GediParameter<?>> map = new HashMap<>();
+	
+	public void add(GediParameter<?> p) {
+		map.put(p.getName(), p);
 	}
-	
-	private Progress progress;
-	
-	private ProgressFactory() {
-		progress = new ConsoleProgress();
+
+	public <T> GediParameter<T> get(String name) {
+		return (GediParameter<T>) map.get(name);
 	}
-	
-	
-	public Progress get() {
-		return progress;
-	}
-	
+
 }

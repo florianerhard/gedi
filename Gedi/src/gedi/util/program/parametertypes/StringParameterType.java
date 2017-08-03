@@ -16,26 +16,20 @@
  * 
  */
 
-package gedi.util.math.stat.testing.multipleTesting;
+package gedi.util.program.parametertypes;
 
+import gedi.util.parsing.StringParser;
 
-public class BenjaminiHochbergCorrection extends AbstractMultipleTestingCorrection {
+public class StringParameterType implements GediParameterType<String> {
 
 	@Override
-	protected void correct(double[] pvals, int length, int additionalInsignificant) {
-		double oldPv = Double.NaN;
-		int oldRank = -1;
-		int total = length+additionalInsignificant;
-		for (int i=length-1; i>=0; i--) {
-			double p = pvals[i];
-			if (p==oldPv)
-				pvals[i]=pvals[oldRank];
-			else {
-				oldRank = i;
-				oldPv = p;
-				pvals[i] = Math.min(1, p*total/(i+1));
-			}
-		}
+	public String parse(String s) {
+		return new StringParser().apply(s);
 	}
-	
+
+	@Override
+	public Class<String> getType() {
+		return String.class;
+	}
+
 }

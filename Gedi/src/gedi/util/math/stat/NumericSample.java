@@ -22,11 +22,12 @@ import java.util.Arrays;
 
 import gedi.util.ArrayUtils;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
+import gedi.util.math.function.StepFunction;
 import gedi.util.math.stat.classification.CompleteRocAnalysis;
 
 public class NumericSample extends DoubleArrayList {
 
-	protected boolean sorted = true;
+	protected boolean sorted = false;
 	
 	public NumericSample() {
 		super();
@@ -139,8 +140,8 @@ public class NumericSample extends DoubleArrayList {
 		sort();
 		int index = binarySearch(value);
 		if (index>=0) {
-			for (; index>0 && doubleArray[index]==value; index--);
-			return count-index;
+			for (; index>=0 && doubleArray[index]==value; index--);
+			return count-index-1;
 		}
 		else return count+index+1;
 	}
@@ -149,8 +150,8 @@ public class NumericSample extends DoubleArrayList {
 		sort();
 		int index = binarySearch(value);
 		if (index>=0) {
-			for (; index<size()-1 && doubleArray[index]==value; index++);
-			return index+1;
+			for (; index<size() && doubleArray[index]==value; index++);
+			return index;
 		}
 		else return -index-1;
 	}
@@ -215,14 +216,14 @@ public class NumericSample extends DoubleArrayList {
 	
 	@Override
 	public boolean add(double e) {
-		sorted = size()==0||e>=getLastDouble();
+		sorted &= size()==0||e>=getLastDouble();
 		return super.add(e);
 	}
 	
 	@Override
 	public void set(int index, double val) {
 		super.set(index, val);
-		sorted = (index==0 || getDouble(index-1)<=val) && (index==count || getDouble(index+1)>=val);
+		sorted &= (index==0 || getDouble(index-1)<=val) && (index==count || getDouble(index+1)>=val);
 	}
 	
 	@Override
@@ -284,5 +285,28 @@ public class NumericSample extends DoubleArrayList {
 		if (!sorted)
 			super.sort();
 		sorted = true;
+	}
+
+	public StepFunction ecdf() {
+		if (size()==0) return new StepFunction(new double[0], new double[0]);
+		
+		sort();
+		DoubleArrayList x = new DoubleArrayList(size());
+		DoubleArrayList y = new DoubleArrayList(size());
+		x.add(doubleArray[0]-1);
+		y.add(0);
+		
+		x.add(doubleArray[0]);
+		y.add(1);
+		for (int i=1; i<count; i++) {
+			if (doubleArray[i]==doubleArray[i-1]) 
+				y.increment(y.size()-1);
+			else {
+				x.add(doubleArray[i]);
+				y.add(y.getLastDouble()+1);
+			}
+		}
+		ArrayUtils.mult(y.getRaw(), 0, y.size(), 1.0/size());
+		return new StepFunction(x.toDoubleArray(), y.toDoubleArray());
 	}
 }

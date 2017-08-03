@@ -187,6 +187,7 @@ public class RiboModel implements BinarySerializable {
 	}
 	
 	private LfcParameters lfcParam;
+
 	
 	public RiboModel() {
 	}
@@ -1042,6 +1043,7 @@ public class RiboModel implements BinarySerializable {
 		
 		return new RiboModel(Pl, Pr, u);
 	}
+
 
 	
 

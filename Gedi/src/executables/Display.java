@@ -275,7 +275,7 @@ public class Display {
 
 		JPanel fl = new JPanel();
 		fl.add(new TrackSelectionTreeButton(viewer));
-		fl.add(new SetLocationField(viewer, true, g.getNameIndex()));
+		fl.add(new SetLocationField(viewer, true, g));
 		frame.getContentPane().add(fl, BorderLayout.NORTH);
 
 		frame.pack();

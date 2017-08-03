@@ -19,6 +19,7 @@
 package gedi.core.data.numeric.diskrmq;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.Collection;

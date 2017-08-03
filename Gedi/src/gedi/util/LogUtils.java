@@ -24,6 +24,9 @@ import java.util.logging.LogManager;
 
 public class LogUtils {
 
+	public enum LogMode {
+		Normal,Silent,Debug
+	}
 	
 //	public static void setFile(String path) throws SecurityException, IOException {
 //		setFile(path,false);
@@ -41,14 +44,21 @@ public class LogUtils {
 //	}
 	
 	public static void config() {
-		config(false);
+		config(LogMode.Normal);
 	}
 	
-	public static void config(boolean silent) {
+	public static void config(LogMode mode) {
 		String fname = System.getProperty("java.util.logging.config.file");
 		if (fname == null) { // already configured, do nothing!
 			try {
-				URL intlog = LogUtils.class.getResource(silent?"/logging_silent.properties":"/logging.properties");
+				String res;
+				if (mode==LogMode.Silent)
+					res = "/logging_silent.properties";
+				else if (mode==LogMode.Debug)
+					res = "/logging_debug.properties";
+				else
+					res = "/logging.properties";
+				URL intlog = LogUtils.class.getResource(res);
 				InputStream str = intlog.openStream();
 				LogManager.getLogManager().readConfiguration(str);
 				str.close();

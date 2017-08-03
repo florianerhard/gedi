@@ -112,6 +112,7 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 				addReadyConsumers(p, ready);
 			ArrayList<Transition> iter = new ArrayList<Transition>();
 			
+			HashSet<Transition> ran = new HashSet<Transition>();
 			HashSet<Transition> runnings = new HashSet<Transition>();
 			HashSet<Future<FireTransition>> futures = new HashSet<Future<FireTransition>>();
 			if (Thread.interrupted() || context.getExecutionId()!=eid) {
@@ -147,12 +148,12 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 				}
 				iter.clear();
 				synchronized (lock) {
+					ready.removeAll(ran);
 					iter.addAll(ready);
 					ready.clear();
 				}
-				
 				for (Transition n : iter) {
-					if (logging) log.log(Level.FINER,()->"Submitting "+n+" (id="+uid+") "+context);
+					if (logging) log.log(Level.FINE,()->"Submitting "+n+" (id="+uid+") "+context);
 					synchronized (lock) {
 						futures.add(threadpool.submit(new FireTransition(n, eid, context, ft->{
 							if (ft.getException()!=null) {
@@ -171,6 +172,7 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 							}
 						})));
 						runnings.add(n);
+						ran.add(n);
 					}
 				}
 			}

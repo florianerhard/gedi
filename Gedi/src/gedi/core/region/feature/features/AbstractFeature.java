@@ -60,6 +60,9 @@ public abstract class AbstractFeature<O> implements GenomicRegionFeature<O>{
 	protected ArrayList<Consumer<GenomicRegionFeature<O>>> finishActions = new ArrayList<Consumer<GenomicRegionFeature<O>>>();
 	
 		
+	public MutableReferenceGenomicRegion<Object> getReferenceRegion() {
+		return referenceRegion;
+	}
 	
 	protected void copyProperties(AbstractFeature<O> from) {
 		this.id = from.id;

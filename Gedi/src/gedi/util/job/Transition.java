@@ -19,8 +19,10 @@
 package gedi.util.job;
 
 import gedi.util.ArrayUtils;
+import gedi.util.StringUtils;
 
 import java.util.Collection;
+import java.util.function.Function;
 
 public class Transition {
 
@@ -69,6 +71,10 @@ public class Transition {
 	
 	@Override
 	public String toString() {
+		return toString(p->StringUtils.toString(p));
+	}
+	
+	public String toString(Function<Place,String> placeStringer) {
 		StringBuilder sb = new StringBuilder();
 		if (job.getId()!=null)
 			sb.append(job.getId()+"("+id+"):[");
@@ -76,10 +82,10 @@ public class Transition {
 			sb.append(id+":[");
 		for (int i=0; i<job.getInputClasses().length; i++) {
 			if (i>0) sb.append(",");
-			sb.append(inPlaces[i]);
+			sb.append(placeStringer.apply(inPlaces[i]));
 		}
 		sb.append("]->[");
-		sb.append(outPlace);
+		sb.append(placeStringer.apply(outPlace));
 		sb.append("]");
 		return sb.toString();
 	}

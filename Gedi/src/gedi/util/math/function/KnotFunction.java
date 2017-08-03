@@ -123,6 +123,28 @@ public abstract class KnotFunction implements DoubleUnaryOperator, BinarySeriali
 	}
 	
 	
+	public double integral(double from, double to) {
+		int fi = Arrays.binarySearch(x, from);
+		int ti = Arrays.binarySearch(x, to);
+		
+		double re = 0;
+		if (-fi-1>=0 && -fi-1<x.length) // if inside: linear interpolated value to 1
+			re+=noKnotBetweenintegral(from,x[-fi-1]);
+		
+		if (-ti-2>=0 && -ti-2<x.length) // if inside: 0 to linear interpolated value
+			re+=noKnotBetweenintegral(x[-ti-2],to);
+		
+		if (fi<0) fi = -fi-1;
+		if (ti<0) ti = -ti-2;
+		for (int k=fi; k<ti; k++)
+			re+=noKnotBetweenintegral(x[k],x[k+1]);
+		
+		return re;
+	}
+	
+	protected abstract double noKnotBetweenintegral(double from, double to);
+
+
 	@Override
 	public void serialize(BinaryWriter out) throws IOException {
 		out.putCInt(x.length);

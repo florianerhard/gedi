@@ -129,10 +129,13 @@ public class IndexGenome {
 		String genbankLabel = "label";
 		String[] genbankFeatures = new String[0];
 		String genbankName = null;
-		boolean ignoreMulti = false;
+		boolean ignoreMulti = true;
 		boolean transcriptome = true;
 		boolean bowtie = true;
 		boolean star = true;
+		
+		String ensemblOrg = null;
+		String ensemblVer = null;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -153,6 +156,12 @@ public class IndexGenome {
 			}
 			else if (args[i].equals("-gb")) {
 				genbank=checkParam(args, ++i);
+			}
+			else if (args[i].equals("-organism")) {
+				ensemblOrg=checkParam(args, ++i);
+			}
+			else if (args[i].equals("-version")) {
+				ensemblVer=checkParam(args, ++i);
 			}
 			else if (args[i].equals("-gff")) {
 				gff=checkParam(args, ++i);
@@ -189,7 +198,7 @@ public class IndexGenome {
 		}
 		
 		
-		if (genbank==null && seq==null) throw new UsageException("No fasta file given!");
+		if (genbank==null && seq==null && ensemblOrg==null) throw new UsageException("No fasta file given!");
 		
 		Gedi.startup();
 		
@@ -479,6 +488,39 @@ public class IndexGenome {
 		}
 		else {
 			
+			if (annotPath==null || seq==null) {
+				if (ensemblOrg!=null && ensemblVer!=null) {
+					
+					annotPath = ensemblOrg+"."+ensemblVer+".gtf";
+					String fastaPath = ensemblOrg+"."+ensemblVer+".fasta";
+					String uensemblVer = ensemblVer;
+					try {
+						if (!new File(annotPath).exists()) {
+							progress.init().setDescription("Downloading gtf from ensembl: "+ensemblOrg+" "+ensemblVer);
+							String path = "ftp://ftp.ensembl.org/pub/release-"+ensemblVer+"/gtf/"+ensemblOrg+"/";
+							String file = EI.wrap(FileUtils.getFtpFolder(path)).filter(s->s.endsWith(uensemblVer+".gtf.gz")).first();
+							FileUtils.downloadGunzip(new File(annotPath),path+file,progress);
+							progress.finish();
+						}
+						
+						if (!new File(fastaPath).exists()) {
+							progress.init().setDescription("Downloading fasta from ensembl: "+ensemblOrg+" "+ensemblVer);
+							String path = "ftp://ftp.ensembl.org/pub/release-"+ensemblVer+"/fasta/"+ensemblOrg+"/dna/";
+							String file = EI.wrap(FileUtils.getFtpFolder(path)).filter(s->s.endsWith(".dna.primary_assembly.fa.gz")).first();
+							FileUtils.downloadGunzip(new File(fastaPath),path+file,progress);
+							progress.finish();
+						}
+					} catch (Exception e) {
+						throw new IOException("Could not download files from ensembl; check name and version!",e);
+					}
+					
+					seq = new FastaFile(fastaPath);
+					seq.setFastaHeaderParser(new DefaultFastaHeaderParser(' '));
+					name = ensemblOrg+"."+ensemblVer;
+				}
+			}
+			
+			
 			transcriptome = annotPath!=null;
 			
 			if (!transcriptome) {
@@ -528,7 +570,7 @@ public class IndexGenome {
 					progress.init().setDescription("Indexing names in "+annopath);
 					Trie<ImmutableReferenceGenomicRegion<Void>> trie = new Trie<ImmutableReferenceGenomicRegion<Void>>();
 					for (String[]a :new LineOrientedFile(annotPath).lineIterator("#").map(a->StringUtils.split(a, '\t')).filter(a->a[2].equals("gene")).loop()) {
-						ImmutableReferenceGenomicRegion<Void> rgr = new ImmutableReferenceGenomicRegion<Void>(Chromosome.obtain(a[0],a[6]), new ArrayGenomicRegion(Integer.parseInt(a[3]),Integer.parseInt(a[4])));
+						ImmutableReferenceGenomicRegion<Void> rgr = new ImmutableReferenceGenomicRegion<Void>(Chromosome.obtain(a[0],a[6]), new ArrayGenomicRegion(Integer.parseInt(a[3])-1,Integer.parseInt(a[4])));
 						if (sss.getSequenceNames().contains(rgr.getReference().getName())) {
 							String id = GtfFileReader.getGtfField("gene_id", a[8]);
 							String n = GtfFileReader.getGtfField("gene_name", a[8]);
@@ -584,7 +626,7 @@ public class IndexGenome {
 			try {
 				if (new ProcessBuilder().command("bowtie-build", "--version").start().waitFor()!=0) throw new IOException();
 			} catch (IOException e) {
-				System.err.println("bowtie-build cannot be invoked! Skipping bowtie index!");
+				System.err.println("bowtie-build cannot be invoked! Skipping bowtie index, you will not be able to use bowtie for this genome, but everything else will work!");
 				bowtie = false;
 			}
 		}
@@ -623,6 +665,16 @@ public class IndexGenome {
 				}
 				out.write("\t<Info name=\"bowtie-transcriptomic\" info=\""+new File(indout).getAbsolutePath()+"\" />\n");
 					
+			}
+		}
+		
+		
+		if (star) {
+			try {
+				if (new ProcessBuilder().command("STAR", "--version").start().waitFor()!=0) throw new IOException();
+			} catch (IOException e) {
+				System.err.println("STAR cannot be invoked! Skipping STAR index, you will not be able to use STAR for this genome, but everything else will work!");
+				star = false;
 			}
 		}
 		
@@ -666,7 +718,8 @@ public class IndexGenome {
 		System.err.println("Options:");
 		System.err.println(" -s <fasta-file>\t\tFasta file containing chromosomes");
 		System.err.println(" -a <gtf-file>\t\tGtf file containing annotation");
-		System.err.println(" -ignoreMulti\t\tIgnore identical transcripts in Gtf file");
+		System.err.println(" -organism <name>\t\tOrganism name to download data from ensembl (e.g. homo_sapiens)");
+		System.err.println(" -version <version>\t\tEnsembl version to download (e.g. 75)");
 		System.err.println(" -gb <genbank-file>\t\tGenbank file containing annotation and sequence");
 		System.err.println(" -gblabel <label>\t\tWhich genbank entry to take as gene and transcript label (default: label)");
 		System.err.println(" -gbname <label>\t\tWhich genbank entry to take as gene name in the mapping table (default: same as gblabel)");

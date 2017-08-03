@@ -45,6 +45,7 @@ public class DiskFloatArray extends FloatArray {
 	@Override
 	public void deserialize(BinaryReader in) throws IOException {
 		length = in.getInt();
+		if (length<0) throw new RuntimeException("Cannot read sparse array!");
 		offset = in.position();
 		this.reader = in;
 		this.writer = in instanceof BinaryWriter?(BinaryWriter)in:null;

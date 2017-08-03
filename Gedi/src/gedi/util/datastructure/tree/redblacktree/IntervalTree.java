@@ -77,6 +77,11 @@ public class IntervalTree<I extends Interval,D> extends AugmentedTreeMap<I, D,Mu
 		return EI.wrap(entrySet()).map(e->new ImmutableReferenceGenomicRegion<D>(reference, e.getKey().asRegion(), e.getValue()));
 	}
 	
+	public ExtendedIterator<I> keys(int start, int stop) {
+		return EI.wrap(iterateIntervalsIntersecting(start, stop, i->true)).map(e->e.getKey());
+	}
+
+	
 	public boolean add(I inter) {
 		boolean re = containsKey(inter);
 		put(inter,null);
@@ -563,7 +568,7 @@ public class IntervalTree<I extends Interval,D> extends AugmentedTreeMap<I, D,Mu
 
 	}
 
-	public void getIntervalsIntersecting(int start, int stop, Consumer<Entry<I,D>> consumer) {
+	public void forEachIntervalsIntersecting(int start, int stop, Consumer<Entry<I,D>> consumer) {
 		Stack<AugmentedTreeMap.Entry<I, D>> stack = new Stack<AugmentedTreeMap.Entry<I,D>>();
 		if (root!=null)
 			stack.push(root);

@@ -288,7 +288,7 @@ public class DisplayBam extends JPanel {
 		JPanel fl = new JPanel();
 		fl.add(createBamViewSelector());
 		fl.add(new TrackSelectionTreeButton(viewer));
-		fl.add(new SetLocationField(viewer, true, g.getNameIndex()));
+		fl.add(new SetLocationField(viewer, true, g));
 		add(fl, BorderLayout.NORTH);
 		
 		if (genomicLocation!=null)

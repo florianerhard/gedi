@@ -190,5 +190,10 @@ public class MemoryIntervalTreeStorage<D> implements GenomicRegionStorage<D>, Re
 		map.clear();
 	}
 
+	@Override
+	public String toString() {
+		return ei().toString(500);
+	}
+	
 	
 }

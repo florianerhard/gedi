@@ -22,9 +22,11 @@ import gedi.app.extension.ExtensionContext;
 import gedi.core.data.annotation.Transcript;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.ReadCountMode;
+import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.GenomicRegionStorageCapabilities;
 import gedi.core.region.GenomicRegionStorageExtensionPoint;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeatureProgram;
@@ -61,7 +63,10 @@ public class RiboClusterBuilder {
 	private String prefix;
 	private Progress progress;
 	private int closeGaps = 50;
+	private int maxSplit = 100_000;
 	private int nthreads;
+	
+	private Predicate<ImmutableReferenceGenomicRegion<RiboClusterInfo>> predicate;
 	
 	public RiboClusterBuilder(String prefix,
 			GenomicRegionStorage<AlignedReadsData> reads,
@@ -78,11 +83,19 @@ public class RiboClusterBuilder {
 		this.nthreads = nthreads;
 	}
 
+	private boolean cont = true;
+	public void setContinueMode(boolean cont) {
+		this.cont = cont;
+	}
+	
+	public void setPredicate(Predicate<ImmutableReferenceGenomicRegion<RiboClusterInfo>> predicate) {
+		this.predicate = predicate;
+	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public MemoryIntervalTreeStorage<RiboClusterInfo> build() throws IOException {
 		
-		if (new File(prefix+".clusters.cit").exists()) {
+		if (new File(prefix+".clusters.cit").exists() && cont) {
 			log.log(Level.INFO, "Using saved clusters: "+prefix+".clusters.cit");
 			Path p = Paths.get(prefix+".clusters.cit");
 			return ((GenomicRegionStorage<RiboClusterInfo>) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p)).toMemory();
@@ -96,6 +109,7 @@ public class RiboClusterBuilder {
 		program.setCheckSorting(true);
 		program.setThreads(nthreads);
 		ClusterReads clustering = new ClusterReads(prefix+".clusters.csv");
+		clustering.addCondition(c->checkIntronLength(c.getReferenceRegion().getRegion()));
 		clustering.setDataToCounts((ard,a)->{
 			if (a==null) a = NumericArray.createMemory(4, NumericArrayType.Double);
 			a.add(0,1);
@@ -118,6 +132,7 @@ public class RiboClusterBuilder {
 		
 		program.begin();
 		progress.init();
+		progress.setDescription("Clustering reads");
 		reads.iterateReferenceGenomicRegions().forEachRemaining(r->{
 			if (filter==null || filter.test(r))
 				program.accept(r);
@@ -161,7 +176,7 @@ public class RiboClusterBuilder {
 		merger.begin();
 		progress.init();
 		progress.setCount((int) re.size());
-		
+		progress.setDescription("Merging clusters");
 		MergeIterator bothit = EI.wrap(re.iterateReferenceGenomicRegions())
 					.merge(FunctorUtils.naturalComparator(),(ExtendedIterator)EI.wrap(annotation.iterateReferenceGenomicRegions()));
 		
@@ -188,14 +203,18 @@ public class RiboClusterBuilder {
 				.filter(rgr->rgr.getData().getRegionCount()>0)
 				);
 		
+		new File(prefix+".clusters.csv").delete();
+		
 		log.log(Level.INFO, String.format("Found %d clusters after looking at annotation",re.size()));
 		
 		
 		re = re.ei()
 				.filter(rgr->rgr.getData().getRegionCount()>=minRegionCount && rgr.getData().getTotalReadCountDivided()>=minReadCount)
+				.iff(predicate!=null, ei->ei.filter(predicate))
 				.reduce(new MemoryIntervalTreeStorage<RiboClusterInfo>(RiboClusterInfo.class), (c,s)->{s.add(c);return s;});
 		
 		log.log(Level.INFO, String.format("Found %d clusters after filtering with read/region count",re.size()));
+		
 		
 		
 		GenomicRegionStorage cl = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(String.class, prefix+".clusters").add(Class.class, RiboClusterInfo.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
@@ -203,6 +222,12 @@ public class RiboClusterBuilder {
 //		new CenteredDiskIntervalTreeStorage(prefix+".clusters.cit", RiboClusterInfo.class).fill(re);
 		
 		return re;
+	}
+
+	private boolean checkIntronLength(GenomicRegion reg) {
+		for (int p=1; p<reg.getNumParts(); p++)
+			if (reg.getStart(p)-reg.getEnd(p-1)>maxSplit) return false;
+		return true;
 	}
 
 }

@@ -41,6 +41,11 @@ public class Codon extends ArrayGenomicRegion {
 		return getStart()<0;
 	}
 	
+	public Codon(GenomicRegion region, double[] activities) {
+		super(region);
+		this.activity = activities;
+		totalActivity = ArrayUtils.sum(activities);
+	}
 	
 	public Codon(GenomicRegion region, double total) {
 		super(region);

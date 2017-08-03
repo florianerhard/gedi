@@ -53,6 +53,7 @@ public class EmInferCodon implements GenomicRegionDataMapper<IntervalTree<Genomi
 	
 	private Strand fixedStrand;
 	private double lambda = Double.NaN;
+	private double rho = Double.NaN;
 	
 	
 	public EmInferCodon(String path, Strand strand) throws IOException {
@@ -72,6 +73,10 @@ public class EmInferCodon implements GenomicRegionDataMapper<IntervalTree<Genomi
 	
 	public void setRegularization(double lambda) {
 		this.lambda = lambda;
+	}
+	
+	public void setPrior(double rho) {
+		this.rho = rho;
 	}
 			
 	private void setMerge(boolean merge, AlignedReadsData data){
@@ -111,7 +116,6 @@ public class EmInferCodon implements GenomicRegionDataMapper<IntervalTree<Genomi
 		
 		if (strand==null) strand = reference.getStrand();
 		
-		
 		PixelBlockToValuesMap re = new PixelBlockToValuesMap(pixelMapping, 3*mapping.getNumMergedConditions(), NumericArrayType.Double);
 
 		MutableReferenceGenomicRegion<AlignedReadsData> rgr = new MutableReferenceGenomicRegion<AlignedReadsData>();
@@ -120,6 +124,10 @@ public class EmInferCodon implements GenomicRegionDataMapper<IntervalTree<Genomi
 			CodonInference inf = new CodonInference(models);
 			if (!Double.isNaN(lambda))
 				inf.setRegularization(lambda);
+//			if (!Double.isNaN(rho))
+//				inf.setRho(rho);
+			
+			
 			ContrastMapping mmapping = new ContrastMapping();
 			for (int o : mapping.getMergeConditions(c))
 				mmapping.addMapping(o, 0);

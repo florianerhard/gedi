@@ -42,6 +42,7 @@ import gedi.util.FunctorUtils.ToIntMappedIterator;
 import gedi.util.FunctorUtils.UnifySequentialIterator;
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.collections.bitcollections.BitList;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
@@ -82,6 +83,8 @@ import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.UnaryOperator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public interface ExtendedIterator<T> extends Iterator<T> {
@@ -198,7 +201,7 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	}
 	
 	default <O> ExtendedIterator<O> parallelized(int threads, int blocksize, Function<ExtendedIterator<T>,ExtendedIterator<O>> sub) {
-		if (threads==0) return sub.apply(this);
+		if (threads<=0) return sub.apply(this);
 		return new ParallelizedIterator<T, O,Void>(this, threads, blocksize, null, sub);
 	}
 
@@ -218,6 +221,11 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	default ExtendedIterator<T> progress() {
 		return progress(new ConsoleProgress(),-1,(t)->t.toString());
 	}
+
+	default ExtendedIterator<T> progress(Function<T,String> description) {
+		return progress(new ConsoleProgress(),-1,description);
+	}
+
 	
 	default ExtendedIterator<T> progress(int count) {
 		return progress(new ConsoleProgress(),count,(t)->t.toString());
@@ -416,6 +424,11 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	
 	default void print() {
 		print(System.out);
+	}
+	
+	default void log(Logger log, Level level) {
+		while (hasNext())
+			log.log(level,StringUtils.toString(next()));
 	}
 	
 //	default Table<T> toRTable() {
@@ -651,6 +664,10 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 				r[index++] = t;
 		}
 		return r;
+	}
+	
+	default NumericArray toNumericArray() {
+		return NumericArray.wrap(toDoubleArray());
 	}
 	
 	default double[] toDoubleArray() {
@@ -902,6 +919,18 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 					throw new RuntimeException("Cannot create exception!",new RuntimeException(String.format(format,o)));
 				}
 		}
+	}
+
+	default String toString(int maxLength) {
+		maxLength = Math.max(maxLength, 3);
+		StringBuilder sb = new StringBuilder();
+		while (hasNext()) {
+			sb.append(StringUtils.toString(next()));
+			if (sb.length()>maxLength) 
+				return sb.delete(maxLength-3, sb.length()).append("...").toString();
+		}
+		return sb.toString();
+			
 	}
 
 	

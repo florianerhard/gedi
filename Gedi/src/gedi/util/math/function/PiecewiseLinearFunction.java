@@ -56,5 +56,12 @@ public class PiecewiseLinearFunction extends KnotFunction {
         return fx;
     }
     
+	@Override
+	protected double noKnotBetweenintegral(double from, double to) {
+		double y1 = applyAsDouble(from);
+		double y2 = applyAsDouble(to);
+		
+		return (to-from)*Math.min(y1, y2)+0.5*(to-from)*Math.abs(y1-y2);
+	}
        
 }

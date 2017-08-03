@@ -14,7 +14,7 @@ output.setExecutable(true);
 reads = new File(reads).getAbsolutePath();
 
 	var tokens;
-	var genomes;
+	var genomes = "";
 	if (typeof references === 'string' || references instanceof String)
 		genomes= references;
 	else {

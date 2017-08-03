@@ -1161,7 +1161,7 @@ public class OrfFinder {
 		}
 		double sum = EI.wrap(alpha).sum();
 		
-		
+		// TODO not quite right, divide by effective lengths, then go through all equiv classes and sum the weighted alphas
 		llUnique = new EquivalenceClassCountEM<OrfWithCodons>(E, alpha, orf->orf.getEffectiveLength()).compute(miniter, maxiter, (orf,pi)->orf.setEstimatedTotalActivity(pi*sum,pi));
 		
 		for (int c=0; c<numCond; c++) {

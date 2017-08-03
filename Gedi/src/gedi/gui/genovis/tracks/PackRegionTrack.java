@@ -107,7 +107,7 @@ public class PackRegionTrack<D> extends VisualizationTrackAdapter<IntervalTree<G
 			if (pi.getType()==TrackEventType.EnteredObject && pi.getData()!=null && pi.getData().getData()!=null) {
 				String text = pi.getData().getData().toString();
 				text = text.replace("\t", " ");
-				text = "<html>"+text.replace("\n", "<br>")+"</html>";
+				text = "<html>"+pi.getData().toLocationString()+"<br>"+text.replace("\n", "<br>")+"</html>";
 				viewer.showToolTip(text);
 			} else {
 				viewer.showToolTip(null);

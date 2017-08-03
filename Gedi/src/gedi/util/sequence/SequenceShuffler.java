@@ -53,7 +53,7 @@ public class SequenceShuffler implements Supplier<String> {
 		this.s = ori.toCharArray();
 		this.k = k;
 		
-		if (k>2)
+		if (k>2 || k<1)
 			throw new RuntimeException("Not supported!");
 		if (k>1)
 			createGraphAndLists(s);

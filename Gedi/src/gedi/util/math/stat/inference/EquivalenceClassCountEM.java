@@ -37,7 +37,7 @@ import java.util.function.ToDoubleFunction;
  * \alpha_e is the total expression value for the equivalence class (i.e. the sufficient statistics for this model)
  * l_i is the effective length of the object i \in e
  * 
- * The parameters \pi_i are inferred (the proportion of object i from the total expression)
+ * The parameters \pi_i are inferred (the probability of getting a read from object i),i.e. to obtain relative expression values, divide by effective lengths and renormalize! 
  * 
  * @author erhard
  *

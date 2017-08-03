@@ -18,7 +18,6 @@
 
 package gedi.util.userInteraction.progress;
 
-import java.time.Duration;
 import java.util.function.Supplier;
 
 import gedi.util.StringUtils;
@@ -30,19 +29,48 @@ public abstract class AbstractProgress implements Progress {
 	private Supplier<CharSequence> descriptionFactory;
 	protected int progress;
 	
-	protected long minimumTimeBetweenUpdates = 100;
 	
 	protected long lastUpdate = 0;
 	protected long start = 0;
+	protected boolean running = false;
+	
+	ProgressManager manager = new ProgressManager();
 	
 	@Override
 	public Progress init() {
 		start = System.currentTimeMillis();
+		running = true;
 		count = -1;
 		progress = 0;
 		lastUpdate = 0;
-		start();
+		manager.started(this);
 		return this;
+	}
+	
+	@Override
+	public boolean isRunning() {
+		return running;
+	}
+	
+	@Override
+	public void firstView(int total) {
+	}
+	@Override
+	public void updateView(int index, int total) {
+	}
+	@Override
+	public void lastView(int total) {
+	}
+	
+	@Override
+	public ProgressManager getManager() {
+		return manager;
+	}
+	
+	@Override
+	public void setManager(ProgressManager man) {
+		if (isRunning()) throw new RuntimeException("Cannot switch manager for a running progress!");
+		this.manager = man;
 	}
 	
 	@Override
@@ -64,11 +92,6 @@ public abstract class AbstractProgress implements Progress {
 		return System.currentTimeMillis()-start;
 	}
 
-	@Override
-	public Progress setMinimumTimeBetweenUpdates(long milli) {
-		this.minimumTimeBetweenUpdates = milli;
-		return this;
-	}
 
 	@Override
 	public Progress setCount(int count) {
@@ -84,43 +107,28 @@ public abstract class AbstractProgress implements Progress {
 	@Override
 	public Progress setProgress(int count) {
 		this.progress = count;
-		if (System.currentTimeMillis()-lastUpdate>minimumTimeBetweenUpdates) {
-			update();
-			lastUpdate = System.currentTimeMillis();
-		}
 		return this;
 	}
 	
 	@Override
 	public Progress incrementProgress() {
 		this.progress++;
-		if (System.currentTimeMillis()-lastUpdate>minimumTimeBetweenUpdates) {
-			update();
-			lastUpdate = System.currentTimeMillis();
-		}
 		return this;
 	}
 
-	protected abstract void start();
-	protected abstract void update();
 
-	@Override
-	public boolean isUserCanceled() {
-		return false;
-	}
 
 	@Override
 	public void finish() {
+		running=false;
+		if (manager!=null)
+			manager.finished(this);
 	}
 
 	@Override
 	public Progress setDescription(CharSequence message) {
 		this.descriptionFactory = null;
 		this.description = message;
-		if (System.currentTimeMillis()-lastUpdate>minimumTimeBetweenUpdates) {
-			update();
-			lastUpdate = System.currentTimeMillis();
-		}
 		return this;
 	}
 	
@@ -128,10 +136,6 @@ public abstract class AbstractProgress implements Progress {
 	public Progress setDescription(Supplier<CharSequence> message) {
 		this.description = null;
 		this.descriptionFactory = message;
-		if (System.currentTimeMillis()-lastUpdate>minimumTimeBetweenUpdates) {
-			update();
-			lastUpdate = System.currentTimeMillis();
-		}
 		return this;
 	}
 	

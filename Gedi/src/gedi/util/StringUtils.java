@@ -649,6 +649,28 @@ public class StringUtils {
 		}
 	}
 	
+	public static String getShortHumanReadableMemory(long memory) {
+		String[] s = {"B","KB","MB","GB","TB"};
+		String[] re = new String[s.length];
+		Arrays.fill(re, "");
+		long m = (long)Math.pow(2,10);
+		
+		String unit = "";
+		int i;
+		for (i=0; i<s.length && memory>0; i++) {
+			if(i==s.length-1)
+				m=1;
+			re[i] = memory%m+"";
+			memory/=m;
+			unit = s[i];
+		}
+		if (i==0)
+			return "0B";
+		if (i==1)
+			return re[i-1]+unit;
+		return re[i-1]+"."+re[i-2]+unit;
+	}
+	
 	public static String getHumanReadableMemory(long memory) {
 		String[] s = {"B","KB","MB","GB","TB"};
 		String[] re = new String[s.length];

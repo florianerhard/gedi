@@ -1,0 +1,441 @@
+<Pipeline>
+
+	
+	<MemoryIntervalTreeStorage id="annotator" cls="NameAnnotation" />
+	<StorageSource id="+.anno" filter="+">
+		<add st="annotator" />
+	</StorageSource>
+	<StorageSource id="-.anno" filter="-">
+		<add st="annotator" />
+	</StorageSource>
+
+
+	<StorageSource id="+.trans" filter="+">
+		<Transcripts st="genomic" />
+	</StorageSource>
+	<StorageSource id="-.trans" filter="-">
+		<Transcripts st="genomic" />
+	</StorageSource>
+
+	<ToGeneMapper id="+.uniontrans" input="+.trans" />
+	<ToGeneMapper id="-.uniontrans" input="-.trans" />
+
+	<ToGeneMapper id="+.genes" input="+.trans" >
+		<RemoveIntrons r="true" />
+		<Symbol st="genomic" />
+	</ToGeneMapper>
+	<ToGeneMapper id="-.genes" input="-.trans" >
+		<RemoveIntrons r="true" />
+		<Symbol st="genomic" />
+	</ToGeneMapper>
+
+
+
+	<?JS for (var e=0; e<tracks.length; e++) { ?>
+	<StorageSource id="+.<?JS print(tracks[e]) ?>.data" filter="+">
+		<add st="tracks<?JS print(new Integer(e)) ?>" />
+	</StorageSource>
+	<StorageSource id="-.<?JS print(tracks[e]) ?>.data" filter="-">
+		<add st="tracks<?JS print(new Integer(e)) ?>" />
+	</StorageSource>
+	<?JS } ?>
+
+	<?JS for (var e=0; e<experimentNames.length; e++) { ?>
+
+	<StorageSource id="+.<?JS print(experimentNames[e]) ?>.orfs" filter="+">
+		<add file="orfs<?JS print(new Integer(e)) ?>" />
+	</StorageSource>
+	<StorageSource id="-.<?JS print(experimentNames[e]) ?>.orfs" filter="-">
+		<add file="orfs<?JS print(new Integer(e)) ?>" />
+	</StorageSource>
+
+	<StorageSource id="+.<?JS print(experimentNames[e]) ?>.reads" filter="+">
+		<add file="reads<?JS print(new Integer(e)) ?>" />
+	</StorageSource>
+	<StorageSource id="-.<?JS print(experimentNames[e]) ?>.reads" filter="-">
+		<add file="reads<?JS print(new Integer(e)) ?>" />
+	</StorageSource>
+
+	<PatternMatrix min="20" max="40" id="+.<?JS print(experimentNames[e]) ?>.matrix5p" input="+.<?JS print(experimentNames[e]) ?>.reads" strand="+">
+		<ReadPosition pos="FivePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+	<PatternMatrix min="20" max="40" id="-.<?JS print(experimentNames[e]) ?>.matrix5p" input="-.<?JS print(experimentNames[e]) ?>.reads" strand="-">
+		<ReadPosition pos="FivePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+	<PatternMatrix min="20" max="40" id="+.<?JS print(experimentNames[e]) ?>.matrix3p" input="+.<?JS print(experimentNames[e]) ?>.reads" strand="+">
+		<ReadPosition pos="ThreePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+	<PatternMatrix min="20" max="40" id="-.<?JS print(experimentNames[e]) ?>.matrix3p" input="-.<?JS print(experimentNames[e]) ?>.reads" strand="-">
+		<ReadPosition pos="ThreePrime" Offset="0" />
+		<ValueFunction><TotalCountFunction/></ValueFunction> 
+	</PatternMatrix>
+
+	<MemoryIntervalTreeStorage id="<?JS print(experimentNames[e]) ?>.orfdetailstorage" cls="Orf" />
+	<StorageSource id="+.<?JS print(experimentNames[e]) ?>.orfdetails" filter="+">
+		<add st="<?JS print(experimentNames[e]) ?>.orfdetailstorage" />
+	</StorageSource>
+	<StorageSource id="-.<?JS print(experimentNames[e]) ?>.orfdetails" filter="-">
+		<add st="<?JS print(experimentNames[e]) ?>.orfdetailstorage" />
+	</StorageSource>
+	
+	<PriceOrfStartScore id="+.<?JS print(experimentNames[e]) ?>.startscore" input="+.<?JS print(experimentNames[e]) ?>.orfdetails" strand="+" />
+	<PriceOrfStartScore id="-.<?JS print(experimentNames[e]) ?>.startscore" input="-.<?JS print(experimentNames[e]) ?>.orfdetails" strand="-" />
+	<PriceOrfStartRangeScore id="+.<?JS print(experimentNames[e]) ?>.rangescore" input="+.<?JS print(experimentNames[e]) ?>.orfdetails" strand="+" />
+	<PriceOrfStartRangeScore id="-.<?JS print(experimentNames[e]) ?>.rangescore" input="-.<?JS print(experimentNames[e]) ?>.orfdetails" strand="-" />
+	
+<!--	<NnlsInferCodon id="+.<?JS print(experimentNames[e]) ?>.nnls" input="+.<?JS print(experimentNames[e]) ?>.reads" model="<?JS print(models[e]) ?>" strand="+" >
+		<Merge m="true"/>
+	</NnlsInferCodon>
+
+	<NnlsInferCodon id="-.<?JS print(experimentNames[e]) ?>.nnls" input="-.<?JS print(experimentNames[e]) ?>.reads" model="<?JS print(models[e]) ?>" strand="-" >
+		<Merge m="true"/>
+	</NnlsInferCodon>
+-->
+
+	<NumericSource id="+.<?JS print(experimentNames[e]) ?>.cod" strand="+">
+		<Rmq file="<?JS print(mergedrmq[e]) ?>" agg="Max"/>
+	</NumericSource>
+	<NumericSource id="-.<?JS print(experimentNames[e]) ?>.cod" strand="-">
+		<Rmq file="<?JS print(mergedrmq[e]) ?>" agg="Max"/>
+	</NumericSource>
+	<?JS  
+		for (var i=0; i<names[e].length; i++) {
+	?>
+	<NumericSource id="+.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" strand="+">
+		<Rmq file="<?JS print(conditionrmq[e][i]) ?>" agg="Max"/>
+	</NumericSource>
+	<NumericNormalize id="+.<?JS print(experimentNames[e]) ?>.cod.<?JS print(names[e][i]); ?>" input="+.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" totals="<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>" />
+	<NumericSource id="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" strand="-">
+		<Rmq file="<?JS print(conditionrmq[e][i]) ?>" agg="Max"/>
+	</NumericSource>
+	<NumericNormalize id="-.<?JS print(experimentNames[e]) ?>.cod.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" totals="<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>" />
+	<?JS  }} ?>
+
+	
+
+	<SequenceSource id="seq">
+		<Genomic g="genomic" />
+	</SequenceSource>
+
+	<ChromosomesTrack suffix="+" id="+.Chromosomes" >
+		<Height h="25" />
+		<Font name="Arial" size="20" bold="true" italic="false" />
+	</ChromosomesTrack>
+	<PositionTrack id="+.Positions" >
+		<Height h="20" />
+		<Font name="Arial" size="15" bold="false" italic="false" />
+	</PositionTrack>	
+
+	<AnnotateRegionsTrack input="+.anno" id="+.Editor" st="annotator" strand="+" >
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<BoxRenderer>
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="2" />
+				<Background c="white" />
+			</BoxRenderer>
+		</BoxRenderer>
+	</AnnotateRegionsTrack>
+
+	<PackRegionTrack input="+.genes" id="+.Gene region" >
+		<Hspace space="0" />
+		<Background c="#777777" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+	<PackRegionTrack input="+.uniontrans" id="+.Genes" >
+		<Hspace space="0" />
+		<Background c="#AAAAAA" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+	<PackRegionTrack input="+.trans" id="+.Transcripts" >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+
+
+	<?JS for (var e=0; e<experimentNames.length; e++) { ?>
+
+	<HeatmapTrack id="+.<?JS print(experimentNames[e]) ?>.Heatmap.5p" input="+.<?JS print(experimentNames[e]) ?>.matrix5p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Logscale base="10"/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+	<HeatmapTrack id="+.<?JS print(experimentNames[e]) ?>.Heatmap.3p" input="+.<?JS print(experimentNames[e]) ?>.matrix3p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Logscale base="10"/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+<!--
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.nnls" class="codon" id="+.<?JS print(experimentNames[e]) ?>.NNLS" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+-->
+
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.cod" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Codons" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+	<ScaleLimitLinker id="+.<?JS print(experimentNames[e]) ?>.linker" />
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.cod.<?JS print(names[e][i]); ?>" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Codons.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+		<LimitLinker l="+.<?JS print(experimentNames[e]) ?>.linker" />
+	</LinesTrack>
+	<?JS  } ?>
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" class="codon" id="+.<?JS print(experimentNames[e]) ?>.CodonsRaw.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<?JS  } ?>
+
+	<StackedBoxesTrack input="+.<?JS print(experimentNames[e]) ?>.startscore" id="+.<?JS print(experimentNames[e]) ?>.Orfs Start score" >
+		<FixedMax m="1" />
+		<FixedMin m="0" />
+	</StackedBoxesTrack>
+
+	<StackedBoxesTrack input="+.<?JS print(experimentNames[e]) ?>.rangescore" id="+.<?JS print(experimentNames[e]) ?>.Orfs Range score" >
+		<FixedMax m="1" />
+		<FixedMin m="0" />
+	</StackedBoxesTrack>
+	
+
+
+	<PackRegionTrack input="+.<?JS print(experimentNames[e]) ?>.orfs" id="+.<?JS print(experimentNames[e]) ?>.Orfs"  >
+		<Hspace space="0" />
+		<Vspace space="6" />
+		<Background c="#e5efff" />
+		<BoxRenderer>
+			<PriceOrfRenderer class="codon">
+				<Height h="20" />
+			</PriceOrfRenderer>
+		</BoxRenderer>
+		<Strand s="+" />
+		<CopyToStorage st="<?JS print(experimentNames[e]) ?>.orfdetailstorage" unique="true" />
+		<ToolTip />
+		<ViewDoubleClick />
+	</PackRegionTrack>
+
+	<PackRegionTrack input="+.<?JS print(experimentNames[e]) ?>.reads" id="+.<?JS print(experimentNames[e]) ?>.Reads"  >
+		<Hspace space="0" />
+		<Vspace space="0" />
+		<Background c="#ffe5ef" />
+		<Strand strand="+"/>
+		<BoxRenderer>
+			<AlignedReadsDataBoxRenderer />
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<Hidden h="true" />
+	</PackRegionTrack>
+	<?JS  } ?>
+
+	<?JS for (var e=0; e<tracks.length; e++) { ?>
+	<PackRegionTrack input="+.<?JS print(tracks[e]) ?>.data" id="+.<?JS print(tracks[e]) ?>"  >
+		<Hspace space="0" />
+		<Vspace space="6" />
+		<Background c="#fff7bc" />
+		<?JS if (tracks[e].startsWith("Pept") || tracks[e].startsWith("Orf") || tracks[e].endsWith("ORF-RATER") || tracks[e].endsWith("RPBP")) { ?>
+		<BoxRenderer>
+			<PeptideRenderer class="codon">
+				<Height h="20" />
+			</PeptideRenderer>
+		</BoxRenderer>
+		<?JS } ?>
+		<Strand s="-" />
+		<ToolTip />
+		<ViewDoubleClick />
+	</PackRegionTrack>
+	<?JS } ?>
+
+	<AminoAcidsTrack input="seq" class="aminotrypto" id="+.Sequence (aa)" />
+	<SequenceTrack input="seq" id="+.Sequence (dna)"/>
+
+
+
+
+
+	<ChromosomesTrack suffix="-" id="-.Chromosomes" >
+		<Height h="25" />
+		<Font name="Arial" size="20" bold="true" italic="false" />
+	</ChromosomesTrack>
+	<PositionTrack id="-.Positions">
+		<Height h="20" />
+		<Font name="Arial" size="15" bold="false" italic="false" />
+	</PositionTrack>	
+
+	<AnnotateRegionsTrack input="-.anno" id="-.Editor" st="annotator" strand="-">
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<BoxRenderer>
+				<Height h="20" />
+				<Font name="Arial" size="25" bold="true" italic="false" />
+				<Border c="black" w="2" />
+				<Background c="white" />
+			</BoxRenderer>
+		</BoxRenderer>
+	</AnnotateRegionsTrack>
+
+	<PackRegionTrack input="-.genes" id="-.Gene region" >
+		<Hspace space="0" />
+		<Background c="#777777" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+	<PackRegionTrack input="-.uniontrans" id="-.Genes" >
+		<Hspace space="0" />
+		<Background c="#AAAAAA" />
+		<BoxRenderer>
+			<AnnotationRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+	<PackRegionTrack input="-.trans" id="-.Transcripts" >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+	</PackRegionTrack>
+
+
+	<?JS for (var e=0; e<experimentNames.length; e++) { ?>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.cod" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Codons" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+
+	<HeatmapTrack id="-.<?JS print(experimentNames[e]) ?>.Heatmap.5p" input="-.<?JS print(experimentNames[e]) ?>.matrix5p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Logscale base="10"/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+	<HeatmapTrack id="-.<?JS print(experimentNames[e]) ?>.Heatmap.3p" input="-.<?JS print(experimentNames[e]) ?>.matrix3p">
+		<MaxBasePairsPerPixel ppbp="5" />
+		<AutoHeight h="5" />
+		<BottomUp/>
+		<Logscale base="10"/>
+		<Hidden h="true" />
+	</HeatmapTrack>
+<!--
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.nnls" class="codon" id="-.<?JS print(experimentNames[e]) ?>.NNLS" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+-->
+
+	<ScaleLimitLinker id="-.<?JS print(experimentNames[e]) ?>.linker" />
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.cod.<?JS print(names[e][i]); ?>" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Codons.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+		<LimitLinker l="-.<?JS print(experimentNames[e]) ?>.linker" />
+	</LinesTrack>
+	<?JS  } ?>
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" class="codon" id="-.<?JS print(experimentNames[e]) ?>.CodonsRaw.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<?JS  } ?>
+
+
+
+	<StackedBoxesTrack input="-.<?JS print(experimentNames[e]) ?>.startscore" id="-.<?JS print(experimentNames[e]) ?>.Orfs Start score" >
+		<FixedMax m="1" />
+		<FixedMin m="0" />
+	</StackedBoxesTrack>
+
+	<StackedBoxesTrack input="-.<?JS print(experimentNames[e]) ?>.rangescore" id="-.<?JS print(experimentNames[e]) ?>.Orfs Range score" >
+		<FixedMax m="1" />
+		<FixedMin m="0" />
+	</StackedBoxesTrack>
+
+
+	<PackRegionTrack input="-.<?JS print(experimentNames[e]) ?>.orfs" id="-.<?JS print(experimentNames[e]) ?>.Orfs"  >
+		<Hspace space="0" />
+		<Vspace space="6" />
+		<Background c="#e5efff" />
+		<BoxRenderer>
+			<PriceOrfRenderer class="codon">
+				<Height h="20" />
+			</PriceOrfRenderer>
+		</BoxRenderer>
+		<Strand s="-" />
+		<ToolTip />
+		<CopyToStorage st="<?JS print(experimentNames[e]) ?>.orfdetailstorage" unique="true" />
+		<ViewDoubleClick />
+	</PackRegionTrack>
+
+	<PackRegionTrack input="-.<?JS print(experimentNames[e]) ?>.reads" id="-.<?JS print(experimentNames[e]) ?>.Reads"  >
+		<Hspace space="0" />
+		<Vspace space="0" />
+		<Background c="#ffe5ef" />
+		<Strand strand="-"/>
+		<BoxRenderer>
+			<AlignedReadsDataBoxRenderer />
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<Hidden h="true" />
+	</PackRegionTrack>
+
+	<?JS  } ?>
+
+	<?JS for (var e=0; e<tracks.length; e++) { ?>
+	<PackRegionTrack input="-.<?JS print(tracks[e]) ?>.data" id="-.<?JS print(tracks[e]) ?>"  >
+		<Hspace space="0" />
+		<Vspace space="6" />
+		<Background c="#fff7bc" />
+		<?JS if (tracks[e].startsWith("Pept") || tracks[e].startsWith("Orf") || tracks[e].endsWith("ORF-RATER") || tracks[e].endsWith("RPBP")) { ?>
+		<BoxRenderer>
+			<PeptideRenderer class="codon">
+				<Height h="20" />
+			</PeptideRenderer>
+		</BoxRenderer>
+		<?JS } ?>
+		<Strand s="-" />
+		<ToolTip />
+		<ViewDoubleClick />
+	</PackRegionTrack>
+	<?JS } ?>
+
+	<AminoAcidsTrack input="seq" class="aminotrypto"  complement="true" id="-.Sequence (aa)" />
+	<SequenceTrack input="seq" complement="true" id="-.Sequence (dna)" />
+
+</Pipeline>

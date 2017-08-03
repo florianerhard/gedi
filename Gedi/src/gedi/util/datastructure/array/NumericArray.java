@@ -20,6 +20,7 @@ package gedi.util.datastructure.array;
 
 import gedi.util.datastructure.array.decorators.NumericArraySlice;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
+import gedi.util.datastructure.array.functions.NumericArrayTransformation;
 import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.collections.intcollections.IntIterator;
 import gedi.util.functions.ExtendedIterator;
@@ -243,6 +244,18 @@ public interface NumericArray extends BinarySerializable {
 		return sb.toString();
 	}
 	
+	default NumericArray transform(NumericArrayTransformation fun) {
+		return fun.apply(this);
+	}
+	
+	default NumericArray transform(NumericArrayTransformation... fun) {
+		NumericArray re = this;
+		for (NumericArrayTransformation t : fun)
+			re = t.apply(re);
+		return re;
+	}
+	
+	
 	default double evaluate(NumericArrayFunction fun) {
 		return fun.applyAsDouble(this);
 	}
@@ -367,6 +380,10 @@ public interface NumericArray extends BinarySerializable {
 
 	default NumericArraySlice slice(int start, int end) {
 		return new NumericArraySlice(this,start,end);
+	}
+
+	default NumericArraySlice slice(int start) {
+		return new NumericArraySlice(this,start,length());
 	}
 
 	default int binarySearch(NumericArray a, int index) {

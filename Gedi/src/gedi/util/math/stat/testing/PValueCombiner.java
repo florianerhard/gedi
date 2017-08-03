@@ -52,10 +52,15 @@ public class PValueCombiner {
 	}
 	public static double combineFisher(double[] pvals, int start, int length) {
 		double x = 0;
-		for (int i=start+length-1; i>=start; i--)
-			x+=Math.log(pvals[i]);
+		int nonnan = 0;
+		for (int i=start+length-1; i>=start; i--) {
+			if (!Double.isNaN(pvals[i])) {
+				x+=Math.log(pvals[i]);
+				nonnan++;
+			}
+		}
 		if (Double.isInfinite(x) && x<0) return 0;
-		return ChiSquare.cumulative(-2*x, 2*length, false, false);
+		return ChiSquare.cumulative(-2*x, 2*nonnan, false, false);
 	}
 	
 }

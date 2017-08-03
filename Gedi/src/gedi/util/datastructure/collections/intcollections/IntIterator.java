@@ -20,6 +20,7 @@ package gedi.util.datastructure.collections.intcollections;
 
 import gedi.util.FunctorUtils.FilteredIntIterator;
 import gedi.util.FunctorUtils.PeekIntIterator;
+import gedi.util.datastructure.array.NumericArray;
 import gedi.util.functions.ExtendedIterator;
 
 import java.util.function.IntBinaryOperator;
@@ -42,6 +43,11 @@ public interface IntIterator extends ExtendedIterator<Integer> {
 	}
 	
 	public int nextInt();
+	
+
+	default NumericArray toNumericArray() {
+		return NumericArray.wrap(toIntArray());
+	}
 
 	public static class EmptyIntIterator implements IntIterator {
 		@Override

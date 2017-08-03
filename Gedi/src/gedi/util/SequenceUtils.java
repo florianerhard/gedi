@@ -18,8 +18,13 @@
 
 package gedi.util;
 
+import gedi.core.data.annotation.Transcript;
+import gedi.core.genomic.Genomic;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
+import gedi.core.region.MutableReferenceGenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
 import gedi.util.datastructure.tree.Trie;
 import gedi.util.io.text.fasta.index.FastaIndexFile.FastaIndexEntry;
@@ -388,6 +393,22 @@ public class SequenceUtils {
 	
 	public static ArrayGenomicRegion getAlignedRegion(String aliLine) {
 		return MaskedCharSequence.maskChars(aliLine,'-','-').getUnmaskedRegion();
+	}
+
+
+	/**
+	 * Many transcripts in ensembl are not complete...
+	 * @param genomic
+	 * @param t
+	 * @return
+	 */
+	public static boolean checkCompleteCodingTranscript(Genomic genomic,
+			ReferenceGenomicRegion<Transcript> t) {
+		if (!t.getData().isCoding()) return false;
+		MutableReferenceGenomicRegion<Transcript> cds = t.getData().getCds(t);
+		if (cds.getRegion().getTotalLength()%3!=0) return false;
+		GenomicRegion stop = cds.map(new ArrayGenomicRegion(cds.getRegion().getTotalLength()-3,cds.getRegion().getTotalLength()));
+		return translate(genomic.getSequence(t.getReference(), stop)).equals("*");
 	}
 	
 }

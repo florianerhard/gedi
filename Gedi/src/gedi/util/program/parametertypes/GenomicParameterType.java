@@ -16,17 +16,27 @@
  * 
  */
 
-package gedi.util.math.stat.testing.multipleTesting;
+package gedi.util.program.parametertypes;
 
-public interface MultipleTestingCorrectionMethod {
 
-	public int addPvalue(double pvalue, CorrectPvalueCallback callback);
-	public int addInsignificant();
+import gedi.core.genomic.Genomic;
+import gedi.util.functions.EI;
+
+public class GenomicParameterType implements GediParameterType<Genomic> {
+
+	@Override
+	public Genomic parse(String s) {
+		return Genomic.get(EI.split(s, ' '));
+	}
+
+	@Override
+	public Class<Genomic> getType() {
+		return Genomic.class;
+	}
 	
-	/**
-	 * Corrects all previously added pvalues and clears this correction of them!
-	 */
-	public void correct();
-	
-	
+	@Override
+	public boolean parsesMulti() {
+		return true;
+	}
+
 }

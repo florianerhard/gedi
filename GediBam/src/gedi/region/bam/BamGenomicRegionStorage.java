@@ -1278,6 +1278,10 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 		throw new UnsupportedOperationException();
 	}
 
-	
+
+	@Override
+	public String toString() {
+		return getName();
+	}
 	
 }

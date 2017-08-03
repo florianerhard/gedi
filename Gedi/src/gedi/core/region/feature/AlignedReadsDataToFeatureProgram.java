@@ -39,6 +39,7 @@ import gedi.util.userInteraction.progress.Progress;
 
 import java.util.Iterator;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenomicRegion<AlignedReadsData>> {
 
@@ -48,6 +49,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	private Progress progress = new NoProgress();
 
 	private ReadCountMode readCountMode = ReadCountMode.Weight;
+	private Supplier<CharSequence> descr;
 	
 	public AlignedReadsDataToFeatureProgram(
 			GenomicRegionFeatureProgram<AlignedReadsData> program) {
@@ -84,6 +86,12 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	
 	public AlignedReadsDataToFeatureProgram setProgress(Progress progress) {
 		this.progress = progress;
+		return this;
+	}
+
+	public AlignedReadsDataToFeatureProgram setProgress(Progress progress, Supplier<CharSequence> descr) {
+		this.progress = progress;
+		this.descr = descr;
 		return this;
 	}
 
@@ -129,6 +137,8 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 		for (int d=0; d<r.getData().getDistinctSequences(); d++) {
 			program.accept(mut.set(r.getReference(),r.getRegion(),new OneDistinctSequenceAlignedReadsData(r.getData(),d)));
 		}
+		if (descr!=null)
+			progress.setDescription(descr);
 		progress.incrementProgress();
 	}
 	

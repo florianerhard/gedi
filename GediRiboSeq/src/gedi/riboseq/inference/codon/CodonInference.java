@@ -62,6 +62,7 @@ public class CodonInference {
 	private SequenceProvider sequence;
 	private double lambda = 1;
 	private Predicate<ReferenceGenomicRegion<AlignedReadsData>> filter;
+//	private double rho;
 	
 	
 	public CodonInference(RiboModel[] models) {
@@ -86,6 +87,11 @@ public class CodonInference {
 	public void setMaxIter(int maxIter) {
 		this.maxIter = maxIter;
 	}
+	
+//	public CodonInference setRho(double rho) {
+//		this.rho = rho;
+//		return this;
+//	}
 	
 	public CodonInference setRegularization(double lambda) {
 		this.lambda = lambda;
@@ -222,7 +228,6 @@ public class CodonInference {
 			return inferSimple(reads, model.getSimple());
 		}
 		
-		
 		ReadsXCodonMatrix m = new ReadsXCodonMatrix(model, condition);
 		int readcount = m.addAll(reads);
 		m.finishReads();
@@ -235,6 +240,7 @@ public class CodonInference {
 			return new HashSet<Codon>();
 		
 		if (cond<0) throw new RuntimeException("Inconsistent conditions!");
+		double[] act = null;
 		
 		iters = 0;
 		do  {
@@ -242,7 +248,13 @@ public class CodonInference {
 			m.computePriorReadProbabilities();
 			m.computeExpectedCodonPerRead();
 			iters++;
+//			if (rho>0)
+//				act = m.getCurrentActivities(act);
 			lastDifference = m.computeExpectedCodons();
+			
+//			if (rho>0)
+//				lastDifference = m.applyPrior(rho,act);
+			
 //			System.out.println(m.computeLogLikelihood());
 		} while (lastDifference>threshold && iters<maxIter);
 		

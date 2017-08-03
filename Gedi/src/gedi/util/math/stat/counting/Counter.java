@@ -239,6 +239,16 @@ public class Counter<T>  {
 		return sb.toString();
 	}
 	
+	public String toSingleLine() {
+		if (map.isEmpty()) return "";
+		
+		StringBuilder sb = new StringBuilder();
+		for (T e : map.keySet())
+			sb.append(e.toString()).append(":").append(StringUtils.concat(",",map.get(e))).append(" ");
+		sb.deleteCharAt(sb.length()-1);
+		return sb.toString();
+	}
+	
 	public int[] total() {
 		return total;
 	}
