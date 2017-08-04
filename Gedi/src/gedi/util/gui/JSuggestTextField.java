@@ -77,7 +77,7 @@ public class JSuggestTextField extends JComboBox<String> {
 	private boolean hide_flag = false;
 	private void setModel(DefaultComboBoxModel<String> mdl, String str) {
 		setModel(mdl);
-		setSelectedIndex(-1);
+//		setSelectedIndex(-1);
 		tf.setText(str);
 	}
 	private static DefaultComboBoxModel<String> getSuggestedModel(Trie<?> trie, String text) {
