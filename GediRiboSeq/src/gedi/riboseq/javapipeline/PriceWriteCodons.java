@@ -105,7 +105,7 @@ public class PriceWriteCodons extends GediProgram {
 					GenomicRegion codReg = r.map(codon);
 					SparseMemoryFloatArray a = new SparseMemoryFloatArray(codon.activity.length);
 					for (int c=0; c<a.length(); c++)
-						if (codon.activity[c]<minActi)
+						if (codon.activity[c]>=minActi)
 							a.setFloat(c, (float) codon.activity[c]);
 					
 					return new ImmutableReferenceGenomicRegion<SparseMemoryFloatArray>(r.getReference(), codReg,a);
