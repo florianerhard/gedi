@@ -391,11 +391,11 @@ public class BamUtils {
 				p+=e.getLength();
 				break;
 			case I:
+			case S:
 				p+=e.getLength();
 				break;
 			case D:
 			case N:
-			case S:
 				break;
 			default:
 				throw new RuntimeException("CIGAR operator "+e.getOperator()+" not supported!");

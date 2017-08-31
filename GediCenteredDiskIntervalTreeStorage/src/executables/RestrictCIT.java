@@ -76,7 +76,8 @@ public class RestrictCIT {
 		out.fill(in.ei()
 				.iff(progress, e->e.progress(new ConsoleProgress(System.err),(int)in.size(),rgr->rgr.toLocationStringRemovedIntrons()))
 				.map(rgr->rgr.toMutable().transformData(ard->restrict(ard,mapping)))
-				.filter(rgr->rgr.getData()!=null)
+				.filter(rgr->rgr.getData()!=null),
+				new ConsoleProgress(System.err)
 				);
 		
 		

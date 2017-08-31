@@ -35,6 +35,7 @@ import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.LazyGenome;
 import gedi.core.reference.ReferenceSequence;
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.workspace.loader.PreloadInfo;
@@ -252,8 +253,12 @@ public class Display {
 		pipeline.sortPlusMinusTracks();
 		
 		if (loc==null || !loc.contains(":")) {
-			ReferenceSequence ref = loc==null?EI.wrap(g.getTranscripts().getReferenceSequences()).filter(r->r.isStandard()).first():Chromosome.obtain(loc);
-			GenomicRegion reg = g.getTranscripts().getTree(ref).getRoot().getKey().removeIntrons();
+			ReferenceSequence ref = loc==null?EI.wrap(g.getSequenceNames()).map(s->Chromosome.obtain(s,true)).filter(r->r.isStandard()).first():Chromosome.obtain(loc);
+			GenomicRegion reg;
+			if (g.getTranscripts().getTree(ref)==null || g.getTranscripts().getTree(ref).isEmpty()) 
+				reg = new ArrayGenomicRegion(g.getLength(ref.getName())/2-100,g.getLength(ref.getName())/2+100);
+			else
+				reg = g.getTranscripts().getTree(ref).getRoot().getKey().removeIntrons();
 			reg = reg.extendAll(reg.getTotalLength()/3, reg.getTotalLength()/3);
 			loc = ref.toPlusMinusString()+":"+reg.toRegionString();
 		}

@@ -45,6 +45,10 @@ public class SequenceSource implements GenomicRegionDataSource<CharSequence>{
 		prov.add(g);
 	}
 	
+	public void addGenomic(String g) throws IOException {
+		prov.add(Genomic.get(g));
+	}
+	
 	@Override
 	public CharSequence get(ReferenceSequence reference, GenomicRegion region,PixelLocationMapping pixelMapping) {
 		return prov.getSequence(reference, region);

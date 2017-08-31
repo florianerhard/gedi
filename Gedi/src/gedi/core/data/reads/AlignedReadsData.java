@@ -23,10 +23,13 @@ import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.util.FunctorUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.dynamic.DynamicObject;
+import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
 import gedi.util.math.stat.Ranking;
@@ -946,5 +949,13 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	}
 	
 	
+	default ExtendedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>> iterateDistinct(ImmutableReferenceGenomicRegion<?> rgr) {
+		return EI.seq(0, getDistinctSequences()).map(d->new ImmutableReferenceGenomicRegion<>(rgr.getReference(),rgr.getRegion(),new OneDistinctSequenceAlignedReadsData(this, d)));
+	}
+
+	default ExtendedIterator<AlignedReadsData> iterateDistinct() {
+		return EI.seq(0, getDistinctSequences()).map(d->new OneDistinctSequenceAlignedReadsData(this, d));
+	}
+
 }
 

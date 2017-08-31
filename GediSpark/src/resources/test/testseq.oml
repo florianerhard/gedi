@@ -1,0 +1,11 @@
+<Pipeline>
+
+
+	<SequenceSource id="sequence">
+		<Genomic file="h.ens86" />
+	</SequenceSource>
+	
+	<SequenceGTrack input="sequence" id="+.Sequence (dna)" class="basecolors">
+	</SequenceGTrack>
+
+</Pipeline>

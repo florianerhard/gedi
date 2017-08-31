@@ -56,7 +56,7 @@ public class Receiver extends ChannelInboundHandlerAdapter implements DisablingG
 	}
 	
 	@Override
-	public boolean isDisabled() {
+	public boolean isDisabled(ReferenceSequence reference, GenomicRegion region, PixelLocationMapping pixelMapping) {
 		return disabled;
 	}
 	

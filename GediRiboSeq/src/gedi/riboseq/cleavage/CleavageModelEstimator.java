@@ -319,8 +319,12 @@ public class CleavageModelEstimator {
 							if (lastCand<firstCand || (lastCand-firstCand)%3!=0
 									|| (firstCand>2 && lastCand<mread.getTotalLength()-5)
 									|| firstCand<0 || firstCand>mread.getTotalLength()-3 
-									|| lastCand<0 || lastCand>mread.getTotalLength()-3)
-								throw new RuntimeException(mread.getTotalLength()+": "+firstCand+"-"+lastCand);
+									|| lastCand<0 || lastCand>mread.getTotalLength()-3) {
+//								throw new RuntimeException(transRgr+" "+read+" "+mread.getTotalLength()+": "+firstCand+"-"+lastCand);
+								// very short cds can lead to this!
+								first = last = -2;
+								continue;
+							}
 							
 							if (transRgr.getReference().getStrand()==Strand.Minus) {
 								int tmp = firstCand;

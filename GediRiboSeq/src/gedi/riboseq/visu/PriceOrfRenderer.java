@@ -20,6 +20,7 @@ package gedi.riboseq.visu;
 
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.gui.genovis.style.StyleObject;
@@ -40,6 +41,9 @@ public class PriceOrfRenderer extends PeptideRenderer<PriceOrf> {
 	
 	
 	private Color[] white = {Color.WHITE,Color.WHITE,Color.WHITE};
+	private Color[] black = {Color.black,Color.black,Color.black};
+	private Color[] fnull = {null,null,null};
+	private Color[] gray = {Color.gray,Color.gray,Color.gray};
 	private Color[] brighterframeColors = {Color.WHITE,Color.WHITE,Color.WHITE};
 	private Color[] save = {Color.WHITE,Color.WHITE,Color.WHITE};
 
@@ -62,27 +66,49 @@ public class PriceOrfRenderer extends PeptideRenderer<PriceOrf> {
 			PriceOrf data, double xOffset, double y, double h) {
 
 		setStringer(o->"");
+		frameColors = save;
+		GenomicRegion codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),0,true).getRegion();
+		super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
+
 		
-		frameColors = white;
-		super.renderBox(g2, locationMapper, reference, strand, region, data, xOffset, y, h);
+//		frameColors = white;
+//		super.renderBox(g2, locationMapper, reference, strand, region, data, xOffset, y, h);
 		
-		TriFunction<ReferenceSequence, GenomicRegion, PriceOrf, Paint> oldBorder = border;
+//		TriFunction<ReferenceSequence, GenomicRegion, PriceOrf, Paint> oldBorder = border;
 		
-		frameColors = brighterframeColors;
+//		frameColors = brighterframeColors;
 		for (int a=0; a<data.getNumAlternativeStartCodons(); a++) {
-			if (!data.isPredictedStartIndex(a)) {
-				GenomicRegion codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),a,true).getRegion();
-				super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
-			}
+			
+			codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),a,true).getRegion();
+			GenomicRegion atg = new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),codingRegion).map(new ArrayGenomicRegion(0,3));
+			
+			if (data.isPredictedStartIndex(a)) 
+				frameColors = black;
+			else
+				frameColors = gray;
+			super.renderBox(g2, locationMapper, reference, strand, atg, data, xOffset, y, h);
+			
+//			}
 		}
+		
+		TriFunction<ReferenceSequence, GenomicRegion, PriceOrf, Paint> borderSave = this.border;
+		TriFunction<ReferenceSequence, GenomicRegion, PriceOrf, Paint> backgroundSave = this.background;
+		
+		this.border = null;
+		frameColors = fnull;
+		setStringer(o->o.getTranscript());
+		codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),0,true).getRegion();
+		super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
+		
+		this.border = borderSave;
 		
 		frameColors = save;
 		
-		setStringer(o->o.getTranscript());
-		GenomicRegion codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),true).getRegion();
-		super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
+//		setStringer(o->o.getTranscript());
+//		GenomicRegion codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),true).getRegion();
+//		super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
 		
-		border = oldBorder;
+//		border = oldBorder;
 		
 		return region;
 	}

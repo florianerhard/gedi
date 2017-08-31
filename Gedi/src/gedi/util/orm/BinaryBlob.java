@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.sql.Blob;
 import java.sql.SQLException;
 
@@ -43,6 +44,7 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
 
 	public BinaryBlob(int size) {
 		buffer = ByteBuffer.allocate(size);
+		buffer.order(ByteOrder.BIG_ENDIAN);
 	}
 	
 	public BinaryBlob(BinarySerializable data)  {
@@ -119,6 +121,10 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
     	data.serialize(this);
 		buffer.flip();
     }
+    
+    public ByteBuffer getByteBuffer() {
+    	return buffer;
+	}
     
     public byte[] toArray() {
     	byte[] re = new byte[buffer.limit()];
@@ -262,12 +268,12 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
 	}
 
 	@Override
-	public void truncate(long len) throws SQLException {
+	public void truncate(long len) {
 		buffer.limit((int) len);
 	}
 
 	@Override
-	public void free() throws SQLException {
+	public void free() {
 		buffer.clear();
 	}
 
@@ -617,5 +623,6 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
 		position(pos);
 		return this;
 	}
+
 
 }

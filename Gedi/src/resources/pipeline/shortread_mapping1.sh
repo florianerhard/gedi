@@ -13,6 +13,7 @@ varin("minlength","Minimal length of reads to keep (default: 18)",false);
 varin("adapter","Adapter sequence (default: infer with minion)",false);
 varin("trimmed","Whether data is already adapter trimmed",false);
 varin("barcodes","Json describing barcodes (Default: undef)",false);
+varin("keepUnmapped","Keep the unmapped reads in a fasta file",false);
 
 varout("reads","File name containing read mappings");
 
@@ -21,6 +22,7 @@ varout("reads","File name containing read mappings");
 ?>
 
 <?JS
+var keepUnmapped;
 var minlength=minlength?minlength:18;
 var nthreads = nthreads?nthreads:Math.min(8,Runtime.getRuntime().availableProcessors());
 var barcodes;
@@ -110,7 +112,7 @@ mv <?JS name ?>.collapsed.png <?JS name ?>.collapsed.R <?JS name ?>.collapsed.re
 
 <?JS for (var i=0; i<infos.length; i++)  
 if (infos[i].priority==1) {
-	println(infos[i].mapper.getShortReadCommand(infos[i],name+".fastq","/dev/null",name+"_unmapped.fastq",nthreads));
+	println(ReadMapper.bowtie.getShortReadCommand(infos[i],name+".fastq","/dev/null",name+"_unmapped.fastq",nthreads));
 ?>
 mv <?JS name ?>_unmapped.fastq <?JS name ?>.fastq
 echo -ne "rRNA removal\t" >> <?JS name ?>.reads.tsv
@@ -140,10 +142,10 @@ var png = output.file.getParentFile().getParentFile()+"/report/"+name+".barcodec
 var table = output.file.getParentFile().getParentFile()+"/report/"+name+".barcodecorrection.tsv"
 processTemplate("plot_barcodes.R",output.file.getParentFile().getParentFile()+"/report/"+name+".barcodecorrection.R");
 ?>
-gedi -t . -e MergeSam -D -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit -bcjson <?JS print(new File(output.file.getParent()+"/"+name+".barcodes.json")) ?> -bcfile <?JS name ?>.collapsed.barcodes
+gedi -t . -e MergeSam -D -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit -bcjson <?JS print(new File(output.file.getParent()+"/"+name+".barcodes.json")) ?> -bcfile <?JS name ?>.collapsed.barcodes  <?JS if (keepUnmapped) { print("-unmapped");} ?>
 cp <?JS name ?>.barcodecorrection.* <?JS wd ?>/report
 <?JS } else { ?>
-gedi -t . -e MergeSam -D -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit
+gedi -t . -e MergeSam -D -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit  <?JS if (keepUnmapped) { print("-unmapped");} ?>
 <?JS } ?>
 echo -ne "Merged\t" >> <?JS name ?>.reads.tsv
 gedi Nashorn -e "println(EI.wrap(DynamicObject.parseJson(FileUtils.readAllText(new File('<?JS name ?>.cit.metadata.json'))).getEntry('conditions').asArray()).mapToDouble(function(d) d.getEntry('total').asDouble()).sum())" >> <?JS name ?>.reads.tsv
@@ -154,6 +156,9 @@ mv <?JS name ?>.reads.tsv <?JS wd ?>/report
 
 if [ -f <?JS name ?>.cit ]; then
    mv <?JS name ?>.cit* <?JS wd ?>
+<?JS if (keepUnmapped) { ?>
+   mv <?JS name ?>.unmapped.fasta <?JS wd ?>
+<?JS } ?>
 <?JS 
 var keeptrimmed;
 if (keeptrimmed) { ?>
@@ -174,5 +179,7 @@ processTemplate("plot_mappingstatistics.R",output.file.getParentFile().getParent
 Rscript report/<?JS name ?>.reads.R
 echo '{"plots":[{"section":"Mapping statistics","id":"mapping<? print(StringUtils.toJavaIdentifier(name)) ?>","title":"<? name ?>","description":"How many reads are removed by adapter trimming and rRNA mapping, how many are mapped to which reference and retained overall.","img":"<? name ?>.reads.png","script":"<? name ?>.reads.R","csv":"<? name ?>.reads.tsv"}]}' > report/<? name ?>.reads.report.json 
 
+<?JS if (barcodes) { ?>
 Rscript report/<?JS name ?>.barcodecorrection.R
 echo '{"plots":[{"section":"Barcodes","id":"barcodes<? print(StringUtils.toJavaIdentifier(name)) ?>","title":"<? name ?>","description":"How many original reads correspond to the retained mappings, how many distict random barcodes, how many corrected barcodes and how many corrected barcodes mapping to one of the library barcodes.","img":"<? name ?>.barcodecorrection.png","script":"<? name ?>.barcodecorrection.R","csv":"<? name ?>.barcodecorrection.tsv"}]}' > report/<? name ?>.barcodecorrection.report.json 
+<?JS } ?>

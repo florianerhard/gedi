@@ -26,11 +26,19 @@ import gedi.core.region.feature.output.PlotReport;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.functions.NumericArrayFunction;
+import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
+import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.datastructure.dataframe.IntegerDataColumn;
 import gedi.util.dynamic.DynamicObject;
+import gedi.util.functions.EI;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.math.stat.binning.IntegerBinning;
 import gedi.util.math.stat.counting.Counter;
+import gedi.util.math.stat.counting.ItemCount;
+import gedi.util.math.stat.factor.Factor;
 import gedi.util.nashorn.JS;
 import gedi.util.plotting.Aes;
 import gedi.util.plotting.GGPlot;
@@ -154,7 +162,16 @@ public class FastqFilter {
 			FileUtils.writeAllText(histo.toString(),new File(ld));
 			String png = FileUtils.getExtensionSibling(ld,"png");
 			String title = FileUtils.getNameWithoutExtension(inp);
-			histo.toDataFrame().ggplot(Aes.x(histo.getElementName()),Aes.y(histo.getName(0))).geom_barxy().rotateLabelsX().png(png);
+			DataFrame df = histo.toDataFrame();
+			if (df.getIntegerColumn(1).apply(NumericArrayFunction.Max)<10*df.rows()){
+				int from = histo.first();
+				int to = histo.last();
+				IntegerBinning binning = new IntegerBinning(EI.seq(from,to+1,(to-from)/25).iff((to-from+1%25)!=0, ei->ei.chain(EI.wrap(to+1))).toIntArray());
+				Counter<Factor> binned = histo.bin(ll->binning.apply(ll.doubleValue()));
+				df = binned.toDataFrame();
+				df.ggplot(Aes.x(df.getColumn(0).name())).geom_ecdf().rotateLabelsX().png(png);
+			}
+			df.ggplot(Aes.x(df.getColumn(0).name()),Aes.y(df.getColumn(1).name())).geom_barxy().rotateLabelsX().png(png);
 			PlotReport pr = new PlotReport("Trimmed reads", StringUtils.toJavaIdentifier(inp+"_fastqfilter"), title, "Distribution of read lengths after adapter trimming", png, null, ld);
 			FileUtils.writeAllText(DynamicObject.from("plots",new Object[] {pr}).toJson(), new File(FileUtils.getExtensionSibling(ld,"report.json")));
 		}

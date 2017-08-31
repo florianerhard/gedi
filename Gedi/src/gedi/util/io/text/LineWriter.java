@@ -105,4 +105,21 @@ public interface LineWriter extends AutoCloseable {
 	void close() throws IOException;
 	
 	
+	public static LineWriter dummy() {
+		return new LineWriter() {
+			
+			@Override
+			public void write(String line) throws IOException {
+			}
+			
+			@Override
+			public void flush() throws IOException {
+			}
+			
+			@Override
+			public void close() throws IOException {
+			}
+		};
+	}
+	
 }

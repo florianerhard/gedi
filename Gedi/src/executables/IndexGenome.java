@@ -641,22 +641,23 @@ public class IndexGenome {
 						new FastaIndexFile(seqpath).open().getFastaFile().getPath(),
 						indout
 				);
+				System.err.println("Calling "+EI.wrap(pb.command()).concat(" "));
 				pb.redirectError(Redirect.INHERIT);
 				pb.redirectOutput(Redirect.INHERIT);
 				pb.start().waitFor();
 				progress.finish();
 			}
-			out.write("\t<Info name=\"bowtie-genomic\" info=\""+new File(indout).getAbsolutePath()+"\" />\n");
+			out.write("\n\t<Info name=\"bowtie-genomic\" info=\""+new File(indout).getAbsolutePath()+"\" />\n");
 			if (transcriptome) {
 				indout = prefix+".transcriptomic";
 				if (!new File(indout+".1.ebwt").exists()) {
 						progress.init().setDescription("Creating genomic bowtie index "+indout);
 					ProcessBuilder pb = new ProcessBuilder(
 							"bowtie-build",
-							FileUtils.getFullNameWithoutExtension(seqpath)+".transcripts.fasta",
+							prefix+".transcripts.fasta",
 							indout
 					);
-
+					System.err.println("Calling "+EI.wrap(pb.command()).concat(" "));
 					pb.redirectError(Redirect.INHERIT);
 					pb.redirectOutput(Redirect.INHERIT);
 					pb.start().waitFor();
@@ -680,7 +681,11 @@ public class IndexGenome {
 		
 		if (star) {
 			//STAR --runThreadN 24 --runMode genomeGenerate --genomeDir . --genomeFastaFiles Homo_sapiens.GRCh38.dna.primary_assembly.fa --sjdbGTFfile Homo_sapiens.GRCh38.86.gtf
-			String fasta = new FastaIndexFile(seqpath).open().getFastaFile().getPath();
+			FastaIndexFile ff = new FastaIndexFile(seqpath).open();
+			int len = EI.wrap(ff.getEntryNames()).mapToInt(n->ff.getLength(n)).sum();
+			int nbases = (int)Math.ceil(Math.min(14, Math.log(len)/Math.log(2)/2-1));
+			
+			String fasta =ff.getFastaFile().getPath();
 			String index = new File(new File(fasta).getParentFile(),"STAR-index").getPath();
 			if (!new File(index+"/SAindex").exists()) {
 				new File(index).mkdirs();
@@ -689,18 +694,23 @@ public class IndexGenome {
 						"STAR","--runThreadN",Math.max(1, Runtime.getRuntime().availableProcessors()/2)+"",
 						"--runMode","genomeGenerate","--genomeDir",
 						index,"--genomeFastaFiles",fasta,
-						"--sjdbGTFfile",annotPath
+						"--genomeSAindexNbases",""+nbases
 				);
+				if (annotPath!=null)
+					pb.command().addAll(Arrays.asList("--sjdbGTFfile",annotPath));
+				
+				System.err.println("Calling "+EI.wrap(pb.command()).concat(" "));
 				pb.redirectError(Redirect.INHERIT);
 				pb.redirectOutput(Redirect.INHERIT);
 				pb.start().waitFor();
+				
 				progress.finish();
 			}
 			out.write("\t<Info name=\"STAR\" info=\""+index+"\" />\n");
 		}
 		
 		
-		out.write("</Genomic>");
+		out.write("</Genomic>\n");
 		out.close();
 		
 		

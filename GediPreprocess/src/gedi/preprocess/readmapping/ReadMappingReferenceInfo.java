@@ -85,20 +85,24 @@ public class ReadMappingReferenceInfo {
 			DynamicObject val = descriptor.getEntry(r);
 			if (val.isString()) {
 				ReferenceType type = ParseUtils.parseEnumNameByPrefix(val.asString(), true, ReferenceType.class);
-				ReadMapper cmapper = type==ReferenceType.rRNA?ReadMapper.bowtie:mapper;
 				
-				if (type==ReferenceType.Both && !cmapper.isInherentGenomicTranscriptomicMapper()) {
-					ReadMappingReferenceInfo ri = new ReadMappingReferenceInfo(ReferenceType.Genomic,genomic,cmapper);
+				if (type==ReferenceType.Both && !mapper.isInherentGenomicTranscriptomicMapper()) {
+					ReadMappingReferenceInfo ri = new ReadMappingReferenceInfo(ReferenceType.Genomic,genomic,mapper);
 					if (ri.index!=null)
 						infos.add(ri);
-					ri = new ReadMappingReferenceInfo(ReferenceType.Transcriptomic,genomic,cmapper);
+					else
+						throw new RuntimeException(mapper+" does not have a genomic index for "+r);
+					ri = new ReadMappingReferenceInfo(ReferenceType.Transcriptomic,genomic,mapper);
 					if (ri.index!=null)
 						infos.add(ri);
-					
+					else
+						throw new RuntimeException(mapper+" does not have a transcriptomic index for "+r);
 				} else {
-					ReadMappingReferenceInfo ri = new ReadMappingReferenceInfo(type,genomic,cmapper);
+					ReadMappingReferenceInfo ri = new ReadMappingReferenceInfo(type,genomic,mapper);
 					if (ri.index!=null)
 						infos.add(ri);
+					else
+						throw new RuntimeException(mapper+" does not have an index for "+r);
 				}
 			}
 			else if (val.isObject()){

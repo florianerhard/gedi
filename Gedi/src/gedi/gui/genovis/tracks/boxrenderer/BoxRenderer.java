@@ -64,8 +64,8 @@ public class BoxRenderer<D> {
 	public TriFunction<ReferenceSequence,GenomicRegion,D,Paint> border = (ref,reg,c)->Color.darkGray;
 	public TriFunction<ReferenceSequence,GenomicRegion,D,Font> font = (ref,reg,c)->null;
 	public TriFunction<ReferenceSequence,GenomicRegion,D,Stroke> borderStroke = (ref,reg,c)->SOLID;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Paint> intronPaint = (ref,reg,c)->Color.lightGray;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Stroke> intronStroke = (ref,reg,c)->SOLID;
+	public TriFunction<ReferenceSequence,GenomicRegion,D,Paint> intronPaint = (ref,reg,c)->Color.gray;
+	public TriFunction<ReferenceSequence,GenomicRegion,D,Stroke> intronStroke = (ref,reg,c)->DOTTED;
 	public TriFunction<ReferenceSequence,GenomicRegion,D,Stroke> missingInformationStroke = (ref,reg,c)->DOTTED;
 	public TriFunction<ReferenceSequence,GenomicRegion,D,Double> height = (ref,reg,c)->15.0;
 	
@@ -74,8 +74,6 @@ public class BoxRenderer<D> {
 	public void setForceLabel(boolean forceLabel) {
 		this.forceLabel = forceLabel;
 	}
-	
-	
 	
 	public TriFunction<ReferenceSequence, GenomicRegion, D, Paint> getBackground() {
 		return background;
@@ -154,6 +152,15 @@ public class BoxRenderer<D> {
 	public void setIntronStroke(Function<D, Stroke> intronStroke) {
 		this.intronStroke = (ref,reg,c)->intronStroke.apply(c);
 	}
+	
+	public void setIntronColor(Color col) {
+		this.intronPaint = (ref,reg,c)->col;
+	}
+	public void setIntronSize(float h) {
+		BasicStroke re = new BasicStroke(h);
+		this.intronStroke = (ref,reg,c)->re;
+	}
+	
 	public void setMissingInformationStroke(
 			Function<D, Stroke> missingInformationStroke) {
 		this.missingInformationStroke = (ref,reg,c)->missingInformationStroke.apply(c);

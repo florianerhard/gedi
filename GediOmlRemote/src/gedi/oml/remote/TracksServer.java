@@ -116,7 +116,7 @@ public class TracksServer extends ChannelInboundHandlerAdapter {
 			}
 			else if (msg instanceof RemotePipelineData) {
 				RemotePipelineData data = (RemotePipelineData) msg;
-				dataManager.setLocation((PixelBasepairMapper)data.getData().getData(), data.getData().getReference(), data.getData().getRegion(), ()->{});
+				dataManager.setLocation((PixelBasepairMapper)data.getData().getData(), data.getData().getReference(), data.getData().getRegion(), (x)->{});
 				release = true;
 			}
 			else {

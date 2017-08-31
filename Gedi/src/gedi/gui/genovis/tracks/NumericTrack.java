@@ -278,10 +278,7 @@ public abstract class NumericTrack<T> extends VisualizationTrackAdapter<T,Double
 
 
 	protected Rectangle2D paintLabel(Graphics2D g2, double right, double width, double v, double y) {
-		double stringHeight = g2.getFont().getSize2D();
-		Rectangle2D legend = new Rectangle2D.Double(right-width,y-stringHeight/2,width,stringHeight);
-		Rectangle2D re = PaintUtils.paintString(String.format(Locale.US,labelFormat,v), g2, legend,1 ,0);
-		return re;
+		return paintLabel(g2, right, width, String.format(Locale.US,labelFormat,v), y);
 	}
 	
 	protected Rectangle2D paintLabel(Graphics2D g2, double right, double width, double v, double y, int digits) {

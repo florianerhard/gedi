@@ -22,6 +22,7 @@ import gedi.util.FileUtils;
 import gedi.util.datastructure.array.IntegerArray;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
+import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
@@ -78,6 +79,10 @@ public class IntegerDataColumn implements DataColumn<IntegerArray> {
 		else
 			value = 0;
 		data.setInt(row, value);
+	}
+	
+	public double apply(NumericArrayFunction fun) {
+		return data.evaluate(fun);
 	}
 	
 	@Override

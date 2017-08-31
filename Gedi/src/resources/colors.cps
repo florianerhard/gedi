@@ -1,9 +1,9 @@
 .basecolors {
 	"styles": [
-			{ "name": "A", "color": "#FF8888"},
-			{ "name": "C", "color": "#88FF88"},
-			{ "name": "G", "color": "#8888FF"},
-			{ "name": "T", "color": "#FFDD88"}
+			{ "name": "A", "fill": "#FF8888"},
+			{ "name": "C", "fill": "#88FF88"},
+			{ "name": "G", "fill": "#8888FF"},
+			{ "name": "T", "fill": "#FFDD88"}
 		]
 }
 

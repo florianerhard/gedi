@@ -18,6 +18,7 @@
 
 package gedi.util.job;
 
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.mutable.MutableTuple;
 
 
@@ -32,7 +33,11 @@ public interface Job<T> {
 	Class[] getInputClasses();
 	Class<T> getOutputClass();
 	
-	boolean isDisabled();
+	boolean isDisabled(ExecutionContext context);
+	
+	default DynamicObject meta(DynamicObject meta) {
+		return meta;
+	}
 	
 	T execute(ExecutionContext context,MutableTuple input);
 	String getId();

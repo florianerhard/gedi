@@ -257,6 +257,13 @@ public class ExtensionContext {
 		if (cls==null) return null;
 		
 		T re = (T) map.get(cls);
+		Class<T> box = ReflectionUtils.toBoxClass(cls);
+		if (box!=cls && re==null)
+			re = (T) map.get(box);
+		Class<T> primi = ReflectionUtils.toPrimitveClass(cls);
+		if (primi!=cls && re==null)
+			re = (T) map.get(primi);
+		
 		if (re==null) {
 			// look for something more special
 			for (Class<?> k : map.keySet())

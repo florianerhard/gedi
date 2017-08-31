@@ -102,7 +102,7 @@ public class MergeCIT {
 		ParallellIterator<ImmutableReferenceGenomicRegion<? extends AlignedReadsData>> pit = (ParallellIterator<ImmutableReferenceGenomicRegion<? extends AlignedReadsData>>) FunctorUtils.parallellIterator((Iterator[])iterators, FunctorUtils.naturalComparator(), ImmutableReferenceGenomicRegion.class);
 		
 		CenteredDiskIntervalTreeStorage<DefaultAlignedReadsData> outCit = new CenteredDiskIntervalTreeStorage<DefaultAlignedReadsData>(out, DefaultAlignedReadsData.class);
-		outCit.fill(pit.map(merger::merge).iff(progress, ei->ei.progress(new ConsoleProgress(System.err),-1,e->e.toLocationString())));
+		outCit.fill(pit.map(merger::merge).iff(progress, ei->ei.progress(new ConsoleProgress(System.err),-1,e->e.toLocationString())),new ConsoleProgress(System.err));
 		if (!meta.isNull())
 			outCit.setMetaData(meta);
 		

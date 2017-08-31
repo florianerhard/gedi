@@ -24,6 +24,7 @@ import gedi.core.data.mapper.MutableDemultiplexMapper;
 import gedi.gui.genovis.VisualizationTrack;
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
+import gedi.util.io.text.LineIterator;
 import gedi.util.job.PetriNet;
 import gedi.util.job.Place;
 import gedi.util.job.Transition;
@@ -31,13 +32,22 @@ import gedi.util.mutable.Mutable;
 import gedi.util.oml.OmlInterceptor;
 import gedi.util.oml.OmlNode;
 import gedi.util.oml.OmlNodeExecutor;
+import gedi.util.oml.OmlReader;
+import gedi.util.oml.cps.CpsReader;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+
+import org.xml.sax.InputSource;
+
+import executables.Template;
 
 @SuppressWarnings({"unchecked","rawtypes"})
 public class Pipeline implements OmlInterceptor {
@@ -206,7 +216,19 @@ public class Pipeline implements OmlInterceptor {
 	}
 
 	
-
+	public static Pipeline fromOml(String fileResourceOrSource) throws IOException {
+		String cps = new LineIterator(Pipeline.class.getResourceAsStream("/resources/colors.cps")).concat("\n");
+		OmlNodeExecutor oml = new OmlNodeExecutor()
+				.addInterceptor(new CpsReader().parse(cps));
+		
+		if (new File(fileResourceOrSource).exists())
+			return (Pipeline)oml.execute(new OmlReader().parse(new File(fileResourceOrSource)));
+		InputStream res = Pipeline.class.getResourceAsStream(fileResourceOrSource);
+		if (res!=null)
+			return (Pipeline)oml.execute(new OmlReader().parse(new InputSource(res)));
+		
+		return (Pipeline)oml.execute(new OmlReader().parse(fileResourceOrSource));
+	}
 	
 		
 		

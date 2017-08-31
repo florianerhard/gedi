@@ -57,10 +57,10 @@ public abstract class JobAdapter<TO> implements Job<TO> {
 		return id;
 	}
 
-	
 	@Override
-	public boolean isDisabled() {
+	public boolean isDisabled(ExecutionContext context) {
 		return false;
 	}
+	
 
 }

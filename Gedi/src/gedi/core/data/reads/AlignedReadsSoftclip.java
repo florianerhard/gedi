@@ -69,7 +69,7 @@ public class AlignedReadsSoftclip implements AlignedReadsVariation {
 	
 	@Override
 	public String toString() {
-		return (position==0?"5p":"3p")+position+read;
+		return (position==0?"5p":"3p")+read;
 	}
 
 	@Override

@@ -39,6 +39,7 @@ import gedi.util.ArrayUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.math.stat.kernel.Kernel;
 import gedi.util.mutable.MutablePair;
 import gedi.util.mutable.MutableTuple;
@@ -92,6 +93,12 @@ public class DirichletTest implements GenomicRegionDataSink<PixelBlockToValuesMa
 			gsum+=Gamma.logGamma(alpha[i]);
 		}
 		return re+Gamma.logGamma(asum)-gsum;
+	}
+
+
+
+	@Override
+	public void acceptMeta(DynamicObject meta) {
 	}
 	
 	

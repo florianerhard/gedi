@@ -33,6 +33,7 @@ import gedi.util.io.randomaccess.ConcurrentPageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.userInteraction.progress.ConsoleProgress;
+import gedi.util.userInteraction.progress.Progress;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,11 +70,17 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 	private DynamicObject meta;
 	private String extendedJson;
 	
+	private boolean compression;
+	
 	public CenteredDiskIntervalTreeStorage(String file, Class<D> dataClass) throws IOException {
+		this(file,dataClass,false);
+	}
+	public CenteredDiskIntervalTreeStorage(String file, Class<D> dataClass, boolean compression) throws IOException {
 		if (!file.endsWith(".cit"))
 			file = file+".cit";
 		this.path = file;
 		this.dataClass = dataClass;
+		this.compression = compression;
 		if (new File(path).exists()) {
 			readHeader();
 		}
@@ -181,7 +188,8 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 	public void setMetaData(DynamicObject meta) {
 		this.meta = meta;
 		try {
-			FileUtils.writeAllText(meta.toJson(),new File(path+".metadata.json"));
+			if (!meta.isNull())
+				FileUtils.writeAllText(meta.toJson(),new File(path+".metadata.json"));
 		} catch (IOException e) {
 			throw new RuntimeException("Could not write metadata file "+path+".metadata.json",e);
 		}
@@ -267,7 +275,7 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 	}
 	
 	@Override
-	public void fill(Iterator<? extends ReferenceGenomicRegion<D>> it)  {
+	public void fill(Iterator<? extends ReferenceGenomicRegion<D>> it, final Progress progress)  {
 		if (file!=null) throw new RuntimeException("File "+file+" already exists!");
 		
 		DynamicObject globalInfo = null;
@@ -289,7 +297,9 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 						globalInfo = ((GlobalInfoProvider)rgr.getData()).getGlobalInfo();
 					else 
 						globalInfo = DynamicObject.getEmpty();
+					globalInfo = globalInfo.merge(DynamicObject.from("compress", compression));
 				}
+				
 				
 				if (rgr.getReference().equals(last)) count++;
 				else if (last!=null) {
@@ -305,6 +315,7 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 				InternalCenteredDiskIntervalTreeBuilder<D> builder = references.get(rgr.getReference());
 				if (builder==null) references.put(rgr.getReference(), builder = new InternalCenteredDiskIntervalTreeBuilder<D>(new File(path).getAbsoluteFile().getParent(),new File(path).getName()+"."+rgr.getReference().toPlusMinusString(),globalInfo));
 				builder.add(rgr.getRegion(), rgr.getData());
+				re++;
 //				if (++re%10000==0) {
 //					System.out.println(re+" regions");
 //				}
@@ -326,15 +337,25 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 				globalInfo = DynamicObject.getEmpty();
 			out.putString(globalInfo.toJson()); // newnew!
 			
+			if (progress!=null)
+				progress.init().setCount(re);
+			
 			long[] offset = new long[refs.length+1];
 			for (int i=0; i<refs.length; i++) {
 //				System.out.println("Output "+refs[i]);
+				ReferenceSequence rr = refs[i];
+				if (progress!=null)
+					progress.setDescription(()->"Writing "+rr);
+				
 				offset[i] = out.position();
 				InternalCenteredDiskIntervalTreeBuilder<D> builder = references.get(refs[i]);
 				builder.build(out);
 //				System.out.println("Finished "+refs[i]+" @"+out.position());
 			}
 			offset[refs.length] = out.position();
+			
+			if (progress!=null)
+				progress.finish();
 			
 			out.position(EXT_MAGIC.length()+Integer.BYTES);
 			for (int i=0; i<refs.length; i++) {
@@ -353,10 +374,11 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 	}
 	
 	@Override
-	public <O> void fill(GenomicRegionStorage<O> storage, Function<MutableReferenceGenomicRegion<O>,MutableReferenceGenomicRegion<D>> mapper)  {
+	public <O> void fill(GenomicRegionStorage<O> storage, Function<MutableReferenceGenomicRegion<O>,MutableReferenceGenomicRegion<D>> mapper, final Progress progress)  {
 		if (file!=null) throw new RuntimeException("File "+file+" already exists!");
 		
 		DynamicObject globalInfo = storage.getRandomRecord() instanceof GlobalInfoProvider ? ((GlobalInfoProvider)storage.getRandomRecord()).getGlobalInfo(): DynamicObject.getEmpty();
+		globalInfo = globalInfo.merge(DynamicObject.from("compress", compression));
 		
 		try {
 		
@@ -381,11 +403,15 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 			
 //			ConsoleProgress pr = new ConsoleProgress();
 			
+			if (progress!=null)
+				progress.init();
+			
 			long[] offset = new long[refs.length+1];
 			int[] re = {0};
 			for (int i=0; i<refs.length; i++) {
 //				System.out.println("Starting "+refs[i]);
-//				pr.init().setDescriptionf("Processing %s", mappedRefs[i]);
+				if (progress!=null)
+					progress.setDescriptionf("Processing %s", mappedRefs[i]);
 				offset[i] = out.position();
 				InternalCenteredDiskIntervalTreeBuilder<D> builder = new InternalCenteredDiskIntervalTreeBuilder<D>(new File(path).getAbsoluteFile().getParent(),new File(path).getName(), globalInfo);
 //				ReferenceSequence ref = refs[i];
@@ -397,18 +423,21 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 						if (r2!=null) {
 							builder.add(r2.getRegion(), r2.getData());
 							re[0]++;
-//							pr.incrementProgress();
+							if (progress!=null)
+								progress.incrementProgress();
 						}
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
 					});
 //				}
-//				pr.finish();
+				
 //				pr.out.printf("Writing CIT for %s\n", mappedRefs[i]);
 				builder.build(out);
 //				System.out.println("Finished "+refs[i]+" @"+re[0]);
 			}
+			if (progress!=null)
+				progress.finish();
 			offset[refs.length] = out.position();
 			
 			out.position(MAGIC.length()+Integer.BYTES);

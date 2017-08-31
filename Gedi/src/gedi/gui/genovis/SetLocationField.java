@@ -48,7 +48,7 @@ public class SetLocationField extends JPanel {
 	}
 	
 	public SetLocationField(SwingGenoVisViewer viewer, boolean toIndependent, Genomic genomic) {
-		this(viewer,toIndependent,genomic.getTranscriptMapping(),genomic.getNameIndex());
+		this(viewer,toIndependent,genomic.hasTranscripts()?genomic.getTranscriptMapping():null,genomic.getNameIndex());
 	}
 	public SetLocationField(SwingGenoVisViewer viewer, boolean toIndependent, Function<String,? extends ReferenceGenomicRegion<?>> direct, Trie<? extends ReferenceGenomicRegion<?>> index) {
 		super(new BorderLayout());

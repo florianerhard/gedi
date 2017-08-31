@@ -33,6 +33,7 @@ public class InternalCenteredDiskIntervalTreeBuilder<D> extends CenteredDiskInte
 	
 	private PageFileWriter data;
 	
+	
 	public InternalCenteredDiskIntervalTreeBuilder(String prefix, DynamicObject globalInfo) throws IOException {
 		this(System.getProperty("java.io.tmpdir"),prefix, globalInfo);
 	}

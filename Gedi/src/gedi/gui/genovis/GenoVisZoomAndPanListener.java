@@ -194,13 +194,13 @@ public class GenoVisZoomAndPanListener implements MouseListener, MouseMotionList
 			if (reg[0].getStart()-left<0) {
 				// either take the next ref left of that or decrease addLeft
 				ReferenceSequence before = genome.getReferenceSequenceBefore(refs[0]);
+				left-=reg[0].getStart();
 				reg[0] = reg[0].extendFront(reg[0].getStart());
 				if (before==null) {
 					left = 0;
 				} else {
-					left-=reg[0].getStart();
 					refs = ArrayUtils.insertItemToArray(refs, 0, before);
-					int end = genome.getLength(refs[0].getName());
+					int end = genome.getLength(before.getName());
 					int start = Math.max(0,GeneralUtils.checkedLongToInt(end-left));
 					reg = ArrayUtils.insertItemToArray(reg, 0, new ArrayGenomicRegion(start,end));
 					left-=end-start;
@@ -272,7 +272,7 @@ public class GenoVisZoomAndPanListener implements MouseListener, MouseMotionList
 			long newTotal = (long) (total/zoomMultiplicationFactor);
 			if (newTotal==0) return;
 
-			int newStart = (int) (f*(total-newTotal+1));
+			int newStart = (int) (f*(total-newTotal));
 
 
 			long removeLeft = newStart;

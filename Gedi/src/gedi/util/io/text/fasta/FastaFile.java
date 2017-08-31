@@ -96,6 +96,9 @@ public class FastaFile extends LineOrientedFile {
 	}
 	
 	
+	public ExtendedIterator<FastaEntry> entryIterator() throws IOException {
+		return entryIterator(false);
+	}
 	public ExtendedIterator<FastaEntry> entryIterator(boolean reUseEntry) throws IOException {
 		if (entries==null)
 			return new EntryIterator(createReader(),reUseEntry);

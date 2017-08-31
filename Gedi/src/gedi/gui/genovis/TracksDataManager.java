@@ -25,8 +25,10 @@ import gedi.gui.genovis.pixelMapping.PixelLocationMapping;
 import gedi.util.gui.PixelBasepairMapper;
 import gedi.util.job.ExecutionContext;
 import gedi.util.job.PetriNet;
+import gedi.util.job.Place;
 import gedi.util.job.Transition;
 import gedi.util.job.schedule.DefaultPetriNetScheduler;
+import gedi.util.job.schedule.MetaDataPetriNetScheduler;
 import gedi.util.job.schedule.PetriNetListener;
 
 import java.util.ArrayList;
@@ -36,6 +38,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class TracksDataManager {
@@ -65,17 +71,36 @@ public class TracksDataManager {
 //			.newContext(GenomicRegionDataMappingJob.REGION, GenomicRegion.class)
 //			.newContext(GenomicRegionDataMappingJob.PIXELMAPPING, PixelLocationMapping.class);
 //		scheduler = new DefaultPetriNetScheduler(context, pool);
+		
+		setupMetadata();
 	}
 	
+	private void setupMetadata() {
+		ExecutionContext context = dataPipeline.createExecutionContext()
+				.newContext(ExecutionContext.UID, String.class);
+		MetaDataPetriNetScheduler scheduler = new MetaDataPetriNetScheduler(context);
+		
+		context.reset();
+		scheduler.run();
+	}
+
 	public void setHysteresis(long hysteresis) {
 		this.hysteresis = hysteresis;
 	}
 	
-	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence reference, GenomicRegion region, Runnable finishAction) {
-		setLocation(xmapper, new ReferenceSequence[] {reference}, new GenomicRegion[] {region}, finishAction);
+	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence reference, GenomicRegion region, Consumer<ExecutionContext> finishAction) {
+		setLocation(xmapper, reference, region, finishAction, null);
 	}
 	
-	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence[] reference, GenomicRegion[] region, Runnable finishAction) {
+	
+	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence reference, GenomicRegion region, Consumer<ExecutionContext> finishAction, BiConsumer<ExecutionContext, Place> newTokenObserver) {
+		setLocation(xmapper, new ReferenceSequence[] {reference}, new GenomicRegion[] {region}, finishAction, newTokenObserver);
+	}
+	
+	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence[] reference, GenomicRegion[] region, Consumer<ExecutionContext> finishAction) {
+		setLocation(xmapper, reference, region, finishAction, null);
+	}
+	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence[] reference, GenomicRegion[] region, Consumer<ExecutionContext> finishAction, BiConsumer<ExecutionContext, Place> newTokenObserver) {
 		if (!currentSchedulers.isEmpty()) {
 			for (Future<?> f : currentSchedulers)
 				f.cancel(true);
@@ -127,7 +152,7 @@ public class TracksDataManager {
 				//			}
 				//		}
 						for (Transition t : dataPipeline.getTransitions()) {
-							if (t.getJob().isDisabled())
+							if (t.getJob().isDisabled(context))
 								context.setDisabled(t, true);
 							
 						}
@@ -135,7 +160,7 @@ public class TracksDataManager {
 						
 						log.fine("Disabled Transition: "+context.getDisabledTransitions().size()+"/"+ context.getPetrNet().getTransitions().size()+" (Thread="+Thread.currentThread().getName()+")");
 						
-						
+						scheduler.setNewTokenAction(newTokenObserver);
 						scheduler.setFinishAction(finishAction);
 						log.fine("Scheduling job for reference "+reference[i]+" ("+(i+1)+"/"+reference.length+" Thread="+Thread.currentThread().getName()+")");
 						currentSchedulers.add(pool.submit(scheduler));

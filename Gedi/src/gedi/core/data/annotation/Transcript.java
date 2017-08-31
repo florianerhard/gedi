@@ -170,12 +170,12 @@ public class Transcript implements BinarySerializable, GenomicRegionMappable<Tra
 	@Override
 	public Transcript map(ReferenceGenomicRegion<?> mapper) {
 		if (!isCoding()) return this;
-		int s = mapper.map(codingStart);
+		int s = mapper.getRegion().map(codingStart);
 		int e;
 		if (codingEnd==mapper.getRegion().getTotalLength())
-			e = mapper.map(codingEnd-1)+(mapper.getReference().isPlus()?1:-1);
+			e = mapper.getRegion().map(codingEnd-1)+(mapper.getReference().isPlus()?1:-1);
 		else
-			e = mapper.map(codingEnd);
+			e = mapper.getRegion().map(codingEnd);
 		if (mapper.getReference().isMinus()) {
 			int tmp = s;
 			s = e;
@@ -188,12 +188,12 @@ public class Transcript implements BinarySerializable, GenomicRegionMappable<Tra
 	public Transcript induce(ReferenceGenomicRegion<?> mapper) {
 		if (!isCoding()) return this;
 		
-		int s = mapper.induce(codingStart);
+		int s = mapper.getRegion().induce(codingStart);
 		int e;
 		if (mapper.getRegion().contains(codingEnd))
-			e = mapper.induce(codingEnd);
+			e = mapper.getRegion().induce(codingEnd);
 		else
-			e = mapper.induce(codingEnd-1)+(mapper.getReference().isPlus()?1:-1);
+			e = mapper.getRegion().induce(codingEnd-1)+(mapper.getReference().isPlus()?1:-1);
 		
 		if (mapper.getReference().isMinus()) {
 			int tmp = s;

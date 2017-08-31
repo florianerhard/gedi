@@ -20,8 +20,10 @@ var genomes = "";
 if (typeof references === 'string' || references instanceof String)
 	genomes= references;
 else {
-	for (var r in references) 
-		genomes = genomes+" "+r;
+	for (var r in references) {
+		if (references[r]!="rRNA")
+			genomes = genomes+" "+r;
+	}
 }
 	
 
@@ -29,7 +31,7 @@ else {
 
 ?>
 
-<?JS prerunner(id+"price",tokens) ?>gedi -t <?JS tmp ?> -e Price -reads <?JS reads ?> -genomic <?JS genomes ?> -prefix <?JS wd ?>/price/<?JS name ?> -D <?JS var price = postrunner(id+"price") ?> 
+<?JS prerunner(id+".price",tokens) ?>gedi -t <?JS tmp ?> -e Price -reads <?JS reads ?> -genomic <?JS genomes ?> -prefix <?JS wd ?>/price/<?JS name ?> -D <?JS var price = postrunner(id+".price") ?> 
 
 
 <?JS

@@ -23,6 +23,7 @@ import gedi.util.datastructure.array.DoubleArray;
 import gedi.util.datastructure.array.IntegerArray;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
+import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
@@ -70,6 +71,10 @@ public class DoubleDataColumn implements DataColumn<DoubleArray> {
 	@Override
 	public void copyValueTo(int fromIndex, DataColumn to, int toIndex) {
 		to.setDoubleValue(toIndex, getDoubleValue(fromIndex));
+	}
+	
+	public double apply(NumericArrayFunction fun) {
+		return data.evaluate(fun);
 	}
 	
 	/**

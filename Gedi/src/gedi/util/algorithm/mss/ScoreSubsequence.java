@@ -39,7 +39,7 @@ public class ScoreSubsequence implements Interval {
 		if (Double.isNaN(sum)) {
 			sum = 0;
 			for (int i=0; i<length; i++)
-				sum=+get(i);
+				sum+=get(i);
 		}
 		return sum;
 	}

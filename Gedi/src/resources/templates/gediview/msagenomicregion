@@ -1,0 +1,19 @@
+<?JS0
+varin("id","Track id",true);
+varin("path","File path",true);
+varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
+?>
+<?JS
+var id = id?id:"Editor";
+var mbppp = mbppp?mbppp:Infinity;
+?>
+	<MsaSource id="<?JS id ?>.msa">
+		<CenteredDiskIntervalTreeStorage path="<?JS path ?>" />
+	</MsaSource>
+	
+	<MsaTrack input="genomic.sequence,<?JS id ?>.msa" id="<?JS id ?>"  >
+	</MsaTrack>
+	
+	
+	
+	

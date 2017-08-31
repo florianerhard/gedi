@@ -20,6 +20,7 @@ package gedi.core.data.reads;
 
 import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 
@@ -124,6 +125,13 @@ public class AlignedReadsDataFactory {
 	public AlignedReadsDataFactory incrementCount(int condition, int count) {
 		checkDistinct();
 		this.count.get(currentDistinct)[condition]+=count;
+		return this;
+	}
+	
+	public AlignedReadsDataFactory incrementCount(NumericArray a) {
+		checkDistinct();
+		for (int i=0; i<getNumConditions(); i++)
+			this.count.get(currentDistinct)[i]+=a.getInt(i);
 		return this;
 	}
 	

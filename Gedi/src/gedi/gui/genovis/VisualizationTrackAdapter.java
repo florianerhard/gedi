@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 
@@ -80,6 +81,8 @@ public abstract class VisualizationTrackAdapter<D,P> implements VisualizationTra
 	
 	private Paint background;
 	private boolean autohide = true;
+	
+	protected DynamicObject meta;
 
 	
 	public VisualizationTrackAdapter(Class<D> dataClass) {
@@ -98,12 +101,19 @@ public abstract class VisualizationTrackAdapter<D,P> implements VisualizationTra
 		return false;
 	}
 	
+	
+	
 	@Override
 	public boolean isDataEmpty() {
 		for (MutableReferenceGenomicRegion<D> r : this.data.values())
 			if (!isEmptyData(r.getData()))
 				return false;
 		return true;
+	}
+	
+	@Override
+	public void acceptMeta(DynamicObject meta) {
+		this.meta = meta;
 	}
 	
 	@Override
@@ -324,7 +334,7 @@ public abstract class VisualizationTrackAdapter<D,P> implements VisualizationTra
 		
 	
 	@Override
-	public boolean isDisabled() {
+	public boolean isDisabled(ReferenceSequence ref, GenomicRegion reg, PixelLocationMapping pixelMapping) {
 		return !isVisible() || isHidden();
 	}
 
@@ -486,9 +496,9 @@ public abstract class VisualizationTrackAdapter<D,P> implements VisualizationTra
 			
 			renderReference(reference);
 		}
+		renderMargin(context);
 		renderEnd(context.set(g2, null, null, null, null, null));
 		
-		renderMargin(context);
 		
 		if (renderLabels)
 			renderLabel(context);
@@ -544,6 +554,13 @@ public abstract class VisualizationTrackAdapter<D,P> implements VisualizationTra
 		extend(rect,-inmar,-inmar,-inmar,-inmar);
 		PaintUtils.paintString(name, context.g2, rect, 0, 0);
 		return context;
+	}
+	
+	protected Rectangle2D paintLabel(Graphics2D g2, double right, double width, String label, double y) {
+		double stringHeight = g2.getFont().getSize2D();
+		Rectangle2D legend = new Rectangle2D.Double(right-width,y-stringHeight/2,width,stringHeight);
+		Rectangle2D re = PaintUtils.paintString(label, g2, legend,1 ,0);
+		return re;
 	}
 	
 	private Rectangle2D getLabelRect() {

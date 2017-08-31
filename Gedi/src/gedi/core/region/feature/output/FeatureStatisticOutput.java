@@ -313,10 +313,12 @@ public class FeatureStatisticOutput extends AbstractFeature<Void> {
 				}
 				for (MutableTuple key : tuples) {
 					NumericArray ot = x.counter.get(key);
-					NumericArray mi = counter.get(key);
-					if (mi==null) 
-						counter.put(newKey(key),mi = NumericArray.createMemory(ot.length(), ot.getType()));
-					mi.add(ot);
+					if (ot!=null){
+						NumericArray mi = counter.get(key);
+						if (mi==null) 
+							counter.put(newKey(key),mi = NumericArray.createMemory(ot.length(), ot.getType()));
+						mi.add(ot);
+					}
 				}
 				if (x.total!=null) {
 					if (total==null) total = NumericArray.createMemory(x.total.length(), x.total.getType());

@@ -1478,6 +1478,9 @@ public class StringUtils {
 
 	public static String saveSubstring(String s, int start, int end,
 			char c) {
+		if (end<0 || start>=s.length())
+			return repeat(c, end-start);
+		
 		StringBuilder sb = new StringBuilder();
 		for (int i=0; i<-start; i++)
 			sb.append(c);

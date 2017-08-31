@@ -182,8 +182,10 @@ public abstract class GediProgram {
 		
 		try {
 			
-			parameterFile.getFile().getAbsoluteFile().getParentFile().mkdirs();
-			program.inputSpec.writeParameterFile(parameterFile.getFile());
+			if (parameterFile!=null) {
+				parameterFile.getFile().getAbsoluteFile().getParentFile().mkdirs();
+				program.inputSpec.writeParameterFile(parameterFile.getFile());
+			}
 			
 			ProgressManager man = new ProgressManager();
 			program.getParameter("progress");
@@ -332,7 +334,7 @@ public abstract class GediProgram {
 				econtext.setContext("context", context);
 				DefaultPetriNetScheduler scheduler = new DefaultPetriNetScheduler(econtext, pool);
 				for (Transition t : pn.getTransitions()) {
-					if (t.getJob().isDisabled())
+					if (t.getJob().isDisabled(econtext))
 						econtext.setDisabled(t, true);
 				}
 				econtext.disableUnneccessary();
@@ -383,7 +385,7 @@ public abstract class GediProgram {
 		}
 
 		@Override
-		public boolean isDisabled() {
+		public boolean isDisabled(ExecutionContext context) {
 			return input.get()==null && !input.isOptional();
 		}
 

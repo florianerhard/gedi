@@ -34,6 +34,10 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,7 +47,8 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 	
 	protected ExecutionContext context;
 	protected ExecutorService threadpool;
-	protected Runnable finishAction;
+	protected Consumer<ExecutionContext> finishAction;
+	protected BiConsumer<ExecutionContext, Place> newTokenObserver;
 	
 //	private long hysteresis = 200;
 	
@@ -66,9 +71,14 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 		listeners.remove(rg);
 	}
 	
-	public void setFinishAction(Runnable finishAction) {
+	public void setFinishAction(Consumer<ExecutionContext> finishAction) {
 		this.finishAction = finishAction;
 	}
+	
+	public void setNewTokenAction(BiConsumer<ExecutionContext, Place> newTokenObserver) {
+		this.newTokenObserver = newTokenObserver;
+	}
+
 	
 	public void setLogging(boolean logging) {
 		this.logging = logging;
@@ -165,6 +175,8 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 								context.putToken(n.getOutput(), ft.getResult());
 								if (logging) log.log(Level.FINER,()->"Finished "+n+" (id="+uid+") after "+ft.getTime()+"ns");
 								total.N+=ft.getTime();
+								if (newTokenObserver!=null)
+									newTokenObserver.accept(context, n.getOutput());
 								synchronized (lock) {
 									addReadyConsumers(n.getOutput(), ready);
 									runnings.remove(n);
@@ -188,7 +200,7 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 			
 			
 			if (finishAction!=null)
-				finishAction.run();
+				finishAction.accept(context);
 			
 		} catch (Throwable e) {
 			log.log(Level.SEVERE,"Uncaught exception!",e);
@@ -212,6 +224,8 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 		return threadpool;
 	}
 
+
+	
 	
 	
 	

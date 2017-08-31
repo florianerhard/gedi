@@ -56,6 +56,10 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 		return new ImmutableReferenceGenomicRegion<D>(getReference(), getRegion(), dataToImmutable.apply(getData()));
 	}
 	
+	default <T> ImmutableReferenceGenomicRegion<T> toImmutable(T data) {
+		return new ImmutableReferenceGenomicRegion<T>(getReference(), getRegion(), data);
+	}
+	
 	default int compareTo(ReferenceGenomicRegion<D> o) {
 		int re = getReference().compareTo(o.getReference());
 		if (re==0)
@@ -212,6 +216,7 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	default String toString2() {
 		return getData()==null?getReference()+":"+getRegion():getReference()+":"+getRegion()+"\t"+StringUtils.toString(getData());
 	}
+	
 	
 
 }

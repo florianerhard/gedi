@@ -31,6 +31,7 @@ import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.orm.BinaryBlob;
 import gedi.util.orm.Orm;
 import gedi.util.orm.OrmSerializer;
 import gedi.util.userInteraction.progress.Progress;
@@ -439,20 +440,64 @@ public class FileUtils {
 	}
 
 	public static <D> D deserialize(D obj, BinaryReader in) throws IOException {
-		if (obj instanceof BinarySerializable) {
-			((BinarySerializable) obj).deserialize(in);
-			return obj;
-		} else
-			return Orm.fromBinaryReader(in, obj);
+		
+		if (in.getContext().getGlobalInfo().getEntry("compress").asBoolean()) {
+			BinaryBlob blob = new BinaryBlob();
+			
+			int size = in.getCInt();
+			int rsize = in.getCInt();
+			
+			byte[] buff = new byte[rsize];
+			byte[] cbuff = new byte[size];
+			in.get(buff,0,rsize);
+			ArrayUtils.decompress(buff, 0, cbuff, 0, size);
+			
+			blob.put(cbuff, 0, cbuff.length);
+			blob.finish(false);
+			
+			if (obj instanceof BinarySerializable) {
+				((BinarySerializable) obj).deserialize(blob);
+				return obj;
+			} else
+				return Orm.fromBinaryReader(blob, obj);
+			
+		} else {
+			if (obj instanceof BinarySerializable) {
+				((BinarySerializable) obj).deserialize(in);
+				return obj;
+			} else
+				return Orm.fromBinaryReader(in, obj);
+		}
 	}
 
 	
 	public static <D> D serialize(D obj, BinaryWriter out) throws IOException {
-		if (obj instanceof BinarySerializable) {
-			((BinarySerializable) obj).serialize(out);
+		
+		if (out.getContext().getGlobalInfo().getEntry("compress").asBoolean()) {
+			BinaryBlob blob = new BinaryBlob();
+			if (obj instanceof BinarySerializable) {
+				((BinarySerializable) obj).serialize(blob);
+			} else
+				Orm.toBinaryWriter(obj, blob);
+			
+			blob.finish(false);
+			
+			byte[] buff = blob.toArray();
+			out.putCInt(buff.length);
+			byte[] cbuffer = new byte[ArrayUtils.getSaveCompressedSize(buff.length)];
+			int len = ArrayUtils.compress(buff.clone(), 0, buff.length, cbuffer, 0);
+			out.putCInt(len);
+			out.put(cbuffer, 0, len);
 			return obj;
-		} else
-			return Orm.toBinaryWriter(obj, out);
+					
+		} else {
+		
+			if (obj instanceof BinarySerializable) {
+				((BinarySerializable) obj).serialize(out);
+				return obj;
+			} else
+				return Orm.toBinaryWriter(obj, out);
+		}
 	}
 
 	

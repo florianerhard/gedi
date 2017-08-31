@@ -22,15 +22,19 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import cern.colt.bitvector.BitVector;
+import gedi.util.SequenceUtils;
+import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 
 public class Alphabet {
 	
 	private BitVector contains = new BitVector(256);
+	private char[] chars;
 	
 	public Alphabet(char... chars) {
 		for (char c : chars)
 			contains.putQuick(c, true);
+		this.chars = chars;
 	}
 
 	
@@ -44,6 +48,10 @@ public class Alphabet {
 	
 	public final boolean isValid(char c) {
 		return contains.getQuick(c);
+	}
+	
+	public char[] getChars() {
+		return chars;
 	}
 	
 	public boolean isValid(CharSequence s) {
@@ -219,6 +227,13 @@ public class Alphabet {
 		if (dna==null)
 			dna = new Alphabet("ACGT".toCharArray());
 		return dna;
+	}
+	
+	private static Alphabet amino;
+	public static Alphabet getProtein() {
+		if (amino==null)
+			amino = new Alphabet(EI.wrap(SequenceUtils.code.values()).unique(false).concat("").toCharArray());
+		return amino;
 	}
 	
 	public static Alphabet buildAlphabet(CharSequence sequence) {

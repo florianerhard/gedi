@@ -18,6 +18,7 @@
 
 package gedi.util.job;
 
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.mutable.MutableTuple;
 
 import java.util.Collections;
@@ -151,6 +152,14 @@ public class ExecutionContext {
 		MutableTuple re = new MutableTuple(transition.getJob().getInputClasses());
 		for (int i=0; i<re.size(); i++) 
 			re.set(i, getToken(transition.getInput(i)));
+		return re;
+	}
+	
+	public DynamicObject createMeta(Transition transition) {
+		if (!executing) throw new RuntimeException("Call startExecution first!");
+		DynamicObject re = DynamicObject.getEmpty();
+		for (int i=0; i<transition.getJob().getInputClasses().length; i++) 
+			re = re.cascade(this.<DynamicObject>getToken(transition.getInput(i)));
 		return re;
 	}
 	

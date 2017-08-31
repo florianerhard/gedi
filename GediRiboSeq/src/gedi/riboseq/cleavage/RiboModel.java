@@ -269,7 +269,7 @@ public class RiboModel implements BinarySerializable {
 		rank.sort(false);
 		minReadLength = maxReadLength = rank.getOriginalIndex(0);
 		int ind=0;
-		for (double sum = 0; sum<0.99; sum+=rank.getValue(ind++)) {
+		for (double sum = 0; sum<0.99 && ind<ltoTotalPosterior.length; sum+=rank.getValue(ind++)) {
 			minReadLength = Math.min(minReadLength,rank.getOriginalIndex(ind));
 			maxReadLength = Math.max(maxReadLength,rank.getOriginalIndex(ind));
 		}

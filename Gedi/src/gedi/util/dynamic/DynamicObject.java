@@ -25,8 +25,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import javax.json.Json;
 import javax.lang.model.type.NullType;
@@ -238,12 +241,41 @@ public interface DynamicObject {
 		return re;
 	}
 	
+	default LinkedHashMap<String,DynamicObject> asMap() {
+		LinkedHashMap<String,DynamicObject> re = new LinkedHashMap<>();
+		for (String n : getProperties())
+			re.put(n,getEntry(n));
+		return re;
+	}
+	
+	
+	default <T> T[] asArray(Class<T> cls, Function<DynamicObject,T> elementMapper) {
+		T[] re = (T[]) Array.newInstance(cls, length());
+		for (int i=0; i<re.length; i++)
+			re[i] = elementMapper.apply(getEntry(i));
+		return re;
+	}
+	
+	default <T> LinkedHashMap<String,T> asMap(BiFunction<String,DynamicObject,T> elementMapper) {
+		LinkedHashMap<String,T> re = new LinkedHashMap<>();
+		for (String n : getProperties())
+			re.put(n,elementMapper.apply(n,getEntry(n)));
+		return re;
+	}
+	
 	public static DynamicObject from(Map<String,?> map) {
 		return new MapDynamicObject(map);
 	}
 	
 	public static DynamicObject from(Object[] arr) {
 		return new ArrayDynamicObject(arr);
+	}
+	
+	public static DynamicObject fromMap(Object... keyValue) {
+		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+		for (int i=0; i<keyValue.length; i+=2)
+			map.put((String)keyValue[i], keyValue[i+1]);
+		return from(map);
 	}
 	
 	public static DynamicObject from(List<?> list) {

@@ -365,13 +365,13 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 			Object lock = new Object();
 			synchronized (lock) {
 				if (smartLayoutTracks.size()>0)
-					dataManager.setLocation(xMapper,reference, region,()->dataManager.setLocation(xMapper,reference, region,()->{
+					dataManager.setLocation(xMapper,reference, region,(c)->dataManager.setLocation(xMapper,reference, region,(cc)->{
 						synchronized (lock) {
 							lock.notify();
 						}
 					}));
 				else
-					dataManager.setLocation(xMapper,reference, region,()->{
+					dataManager.setLocation(xMapper,reference, region,(c)->{
 						synchronized (lock) {
 							lock.notify();
 						}
@@ -397,9 +397,9 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 		doLayout();
 		
 		if (smartLayoutTracks.size()>0)
-			dataManager.setLocation(xMapper,reference, region,()->dataManager.setLocation(xMapper,reference, region,()->relayout()));
+			dataManager.setLocation(xMapper,reference, region,(cc)->dataManager.setLocation(xMapper,reference, region,(c)->relayout()));
 		else
-			dataManager.setLocation(xMapper,reference, region,()->relayout());
+			dataManager.setLocation(xMapper,reference, region,(c)->relayout());
 		repaint();
 		for (Consumer<GenoVisViewer> l : reloadListener)
 			l.accept(this);

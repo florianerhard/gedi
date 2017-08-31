@@ -180,6 +180,12 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 		return (MemoryIntervalTreeStorage<Transcript>) annotations.get(AnnotationType.MajorTranscripts.name()).get();
 	}
 
+	public boolean hasTranscripts() {
+		return annotations.get(AnnotationType.Transcripts.name())!=null;
+	}
+
+	
+	
 	@SuppressWarnings("unchecked")
 	public MemoryIntervalTreeStorage<Transcript> getTranscripts() {
 		Annotation<?> a = annotations.get(AnnotationType.Transcripts.name());
@@ -422,7 +428,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 			if (path!=null && path.toFile().exists()) {
 				try {
 					g = Oml.create(path.toString());
-					g.id = FileUtils.getNameWithoutExtension(path.toFile());
+					g.id = name;
 					if (caching)
 						cache.put(name, g);
 					return g;

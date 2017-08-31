@@ -383,6 +383,16 @@ public class SequenceUtils {
 			sb.append(seq.subSequence(coord.getStart(i), coord.getEnd(i)));
 		return sb.toString();
 	}
+	public static char[] extractSequence(GenomicRegion coord,
+			char[] seq) {
+		char[] re = new char[coord.getTotalLength()];
+		int off = 0;
+		for (int i=0; i<coord.getNumParts(); i++) {
+			System.arraycopy(seq, coord.getStart(i), re, off, coord.getLength(i));
+			off+=coord.getLength(i);
+		}
+		return re;
+	}
 	public static String extractSequenceSave(GenomicRegion coord,
 			String seq, char r) {
 		StringBuilder sb = new StringBuilder();

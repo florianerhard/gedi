@@ -800,6 +800,15 @@ public class PaintUtils {
 	    SAXSVGDocumentFactory f = new SAXSVGDocumentFactory(parser);
 	    return (SVGDocument) f.createDocument(new File(path).toURI().toString());
 	}
+
+
+	public static BufferedImage resize(BufferedImage img, int nw, int nh) {
+		BufferedImage re = new BufferedImage(nw, nh, img.getType());
+		Graphics2D g2 = re.createGraphics();
+	    g2.drawImage(img, 0, 0, null);
+	    g2.dispose();
+		return re;
+	}
 	
 }
 

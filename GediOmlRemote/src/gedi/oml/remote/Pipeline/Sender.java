@@ -58,7 +58,7 @@ public class Sender implements DisablingGenomicRegionDataMapper<Object,Void> {
 	}
 	
 	@Override
-	public boolean isDisabled() {
+	public boolean isDisabled(ReferenceSequence reference, GenomicRegion region, PixelLocationMapping pixelMapping) {
 		return disabled;
 	}
 	

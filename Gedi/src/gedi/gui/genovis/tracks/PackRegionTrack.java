@@ -92,6 +92,10 @@ public class PackRegionTrack<D> extends VisualizationTrackAdapter<IntervalTree<G
 		this.selection = track.selection;
 	}
 	
+	public void setMaxTracks(int maxTracks) {
+		this.maxTracks = maxTracks;
+	}
+	
 	public void addViewDoubleClick() {
 		addListener(pi->{
 			if (pi==null || pi.getData()==null || pi.getData().getRegion()==null) return;

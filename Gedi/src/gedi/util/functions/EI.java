@@ -81,18 +81,20 @@ public interface EI {
 		return seq(0,a.length);
 	}
 	public static IntIterator seq(int start, int end, int step) {
+		if (step==0) step = end>=start?1:-1;
+		int ustep = step;
 		return new IntIterator() {
 			int c = start;
 			@Override
 			public int nextInt() {
 				int re = c;
-				c+=step;
+				c+=ustep;
 				return re;
 			}
 			
 			@Override
 			public boolean hasNext() {
-				return step>0?c<end:c>end;
+				return ustep>0?c<end:c>end;
 			}
 		};
 	}

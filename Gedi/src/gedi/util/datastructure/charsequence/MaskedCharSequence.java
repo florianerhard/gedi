@@ -67,7 +67,7 @@ public class MaskedCharSequence implements CharSequence {
 		for (int i=1; i<length(); i++) {
 			if (i!=0 && masked.get(i)!=masked.get(i-1)) re.add(i);
 		}
-		if (!masked.get(length()-1)) re.add(length()-1);
+		if (!masked.get(length()-1)) re.add(length());
 		return new ArrayGenomicRegion(re);
 	}
 	

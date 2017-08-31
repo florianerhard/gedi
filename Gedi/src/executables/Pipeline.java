@@ -70,8 +70,9 @@ public class Pipeline {
 		System.out.println("Takes one or more templates (either file names or labelled names from the resources), and executes them, thereby replacing values from json-files or given by --var=val.");
 		System.err.println();
 		System.err.println("	Options:");
+		System.err.println("	-e 				Execute immediately");
 		System.err.println("	-n [name]		Specify name (Default: Name of the last -j parameter, or the last template)");
-		System.err.println("	-o [file]		Specify output file (Default: $name/scripts/start.bash)");
+		System.err.println("	-o [file]		Specify output file (Default: $wd/scripts/start.bash)");
 		System.err.println("	-wd [folder]	Specify working directory (Default: `pwd`/$name)");
 		System.err.println("	-log [folder]	Specify log folder (Default $wd/log)");
 		System.err.println("	-r [runner]		Specify runner method (serial/parallel/cluster(<clustername>)); see gedi -e Cluster for details about clusternames)");
@@ -129,7 +130,7 @@ public class Pipeline {
 	
 	
 	
-	private static void start(String[] args) throws UsageException, IOException, ScriptException {
+	private static void start(String[] args) throws UsageException, IOException, ScriptException, InterruptedException {
 		String out = null;
 		String wd = null;
 		String name = null;
@@ -137,6 +138,7 @@ public class Pipeline {
 		String logfolder = null;
 		String runner = "serial";
 		DynamicObject param = DynamicObject.getEmpty();
+		boolean exec = false;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -165,6 +167,9 @@ public class Pipeline {
 			}
 			else if (args[i].equals("-n")) {
 				name = checkParam(args, ++i);
+			}
+			else if (args[i].equals("-e")) {
+				exec = true;
 			}
 			else if (args[i].equals("-r")) {
 				runner = checkParam(args, ++i);
@@ -198,7 +203,8 @@ public class Pipeline {
 		if (name==null) throw new UsageException("No name given (either -n or by using the name of the last -j parameter)");
 		
 //		if (wd==null && lastJsonName!=null) wd = new File(StringUtils.removeFooter(lastJsonName, ".json")).getAbsolutePath();
-		if (wd==null) wd = new File("./"+name).getAbsolutePath();
+		if (wd==null) wd = "./"+name;
+		wd = new File(wd).getAbsolutePath();
 		
 		HashMap<String,Object> defaults = new HashMap<>();
 		defaults.put("wd", wd);
@@ -253,6 +259,10 @@ public class Pipeline {
 			}
 		}
 		proc.finish();
+		
+		
+		if (exec)
+			Runtime.getRuntime().exec(out).waitFor();
 	}
 	
 	public static class PipelineFileProcessor {
@@ -311,6 +321,7 @@ public class Pipeline {
 			}).writer;
 			
 			writer.writeLine(jhp.apply(readSrc(name)));
+			options.setExecutable(name.endsWith(".sh"));
 			
 			jhp.getJs().putSystemVariable("output", old);
 			

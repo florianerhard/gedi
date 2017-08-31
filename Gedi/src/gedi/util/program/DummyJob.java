@@ -20,6 +20,7 @@ package gedi.util.program;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.job.ExecutionContext;
 import gedi.util.job.Job;
 import gedi.util.mutable.MutableTuple;
@@ -52,19 +53,20 @@ public class DummyJob implements Job<Boolean> {
 		return Boolean.class;
 	}
 
-	@Override
-	public boolean isDisabled() {
-		return false;
-	}
 
 	@Override
 	public Boolean execute(ExecutionContext context, MutableTuple input) {
 		return true;
 	}
+	
 
 	@Override
 	public String getId() {
 		return "Dummy"+ind;
+	}
+	@Override
+	public boolean isDisabled(ExecutionContext context) {
+		return false;
 	}
 
 }

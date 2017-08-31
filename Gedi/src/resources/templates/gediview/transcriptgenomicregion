@@ -1,0 +1,44 @@
+<?JS0
+varin("id","Track id",true);
+varin("paths","File paths",true);
+varin("background","Background color of track",false);
+varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
+?>
+<?JS
+var id = id?id:"Editor";
+var background = background?background:"#ffffff";
+var mbppp = mbppp?mbppp:Infinity;
+?>
+	<StorageSource id="+.<?JS id ?>.data" filter="+">
+		<?JS for each (var path in paths) { ?>
+		<File path="<?JS path ?>" />
+		<?JS } ?>
+	</StorageSource>
+	<StorageSource id="-.<?JS id ?>.data" filter="-">
+		<?JS for each (var path in paths) { ?>
+		<File path="<?JS path ?>" />
+		<?JS } ?>
+	</StorageSource>
+	
+	<PackRegionTrack input="+.<?JS id ?>.data" id="+.<?JS id ?>"  >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS mbppp ?>"/>
+	</PackRegionTrack>
+	<PackRegionTrack input="-.<?JS id ?>.data" id="-.<?JS id ?>"  >
+		<Hspace space="0" />
+		<Background c="#CCCCCC" />
+		<BoxRenderer>
+			<TranscriptRenderer/>
+		</BoxRenderer>
+		<ViewDoubleClick />
+		<MaxBasePairsPerPixel v="<?JS mbppp ?>"/>
+	</PackRegionTrack>
+	
+	
+	
+	

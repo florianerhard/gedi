@@ -301,6 +301,13 @@ public class GGPlot {
 		re.cmd.append(" + geom_bar(stat=\"identity\")");
 		return re;
 	}
+	
+	public GGPlot geom_ecdf() {
+		GGPlot re = copy();
+		re.cmd.append(" + geom_line(stat=\"ecdf\")");
+		return re;
+	}
+	
 	public GGPlot geom_barxy(String position) {
 		GGPlot re = copy();
 		re.cmd.append(" + geom_bar(stat=\"identity\", position=\"").append(position).append("\")");

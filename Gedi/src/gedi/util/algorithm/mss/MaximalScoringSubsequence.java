@@ -44,7 +44,7 @@ public class MaximalScoringSubsequence {
 				r = i;
 			}
 		}
-		return new ScoreSubsequence(a, l, r+1);
+		return new ScoreSubsequence(a, l+1, r+1);
 	}
 	
 }

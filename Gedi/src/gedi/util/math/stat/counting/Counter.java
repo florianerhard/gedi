@@ -20,6 +20,7 @@ package gedi.util.math.stat.counting;
 
 import gedi.util.ArrayUtils;
 import gedi.util.FunctorUtils;
+import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.dataframe.DataColumn;
 import gedi.util.datastructure.dataframe.DataFrame;
@@ -27,19 +28,21 @@ import gedi.util.datastructure.dataframe.DataFrameBuilder;
 import gedi.util.datastructure.dataframe.IntegerDataColumn;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.math.stat.binning.IntegerBinning;
 
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 
 public class Counter<T>  {
 
 	private LinkedHashMap<T,int[]> map = new LinkedHashMap<T, int[]>();
 	private int[] total;
-	private Comparator<T> sorted = null;
 	
 	private int dim;
 	private String[] dimNames = null;
@@ -58,6 +61,12 @@ public class Counter<T>  {
 		this.elementName = elementName;
 		this.dim = dimNames.length;
 		this.total = new int[dim];
+	}
+	
+	public void clear() {
+		Arrays.fill(total, 0);
+		for (int[] v : map.values())
+			Arrays.fill(v, 0);
 	}
 	
 	/**
@@ -79,26 +88,10 @@ public class Counter<T>  {
 			init(o.next());
 	}
 	
-	/**
-	 * The iterator will return elements in sorted order
-	 * @return
-	 */
-	public Counter<T> sorted() {
-		this.sorted = (Comparator<T>)FunctorUtils.naturalComparator();
-		return this;
-	}
 	
 	public String getName(int d) {
 		if (dimNames==null && dim==1) return "Count";
 		return dimNames==null?"Count "+d:dimNames[d];
-	}
-	/**
-	 * The iterator will return elements in sorted order
-	 * @return
-	 */
-	public Counter<T> sorted(Comparator<T> comparator) {
-		this.sorted = comparator;
-		return this;
 	}
 	
 	public Counter<T> sortByCount() {
@@ -116,6 +109,39 @@ public class Counter<T>  {
 			map2.put(k, map.get(k));
 		map = map2;
 		return this;
+	}
+	
+	public void cum() {
+		int[] last = null;
+		for (int[] c : map.values()) {
+			if (last!=null)
+				ArrayUtils.add(c, last);
+			last = c;
+		}
+	}
+	
+	public Set<T> elements() {
+		return map.keySet();
+	}
+	
+	public T first() {
+		Map.Entry<T, int[]> head;
+		try {
+			head = ReflectionUtils.get(map, "head");
+		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+			throw new RuntimeException("Cannot get head from map!");
+		}
+		return head.getKey();
+	}
+	
+	public T last() {
+		Map.Entry<T, int[]> tail;
+		try {
+			tail = ReflectionUtils.get(map, "tail");
+		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+			throw new RuntimeException("Cannot get tail from map!");
+		}
+		return tail.getKey();
 	}
 	
 	/**
@@ -257,8 +283,6 @@ public class Counter<T>  {
 	}
 	public ExtendedIterator<ItemCount<T>> iterator() {
 		ExtendedIterator<T> it = EI.wrap(map.keySet());
-		if (sorted!=null)
-			it = it.sort(sorted);
 		return it.map(item->new ItemCount<T>(item,map.get(item)));
 	}
 	
@@ -274,6 +298,36 @@ public class Counter<T>  {
 	public String getElementName() {
 		return elementName;
 	}
+	public <K> Counter<K> bin(Function<T,K> binner) {
+		Counter<K> re = new Counter<>(elementName, dim);
+		for (T k : map.keySet()) 
+			re.add(binner.apply(k), map.get(k));
+		return re;
+	}
 	
+	public double entropy(int dim) {
+		double sum = 0;
+		for (int[] s : map.values()) {
+			if (s[dim]>0) {
+				double p = s[dim]/(double)total[dim];
+				sum+=p*Math.log(p);
+			}
+		}
+		return -sum/Math.log(2);
+	}
+	
+	/**
+	 * Just as for sequence logos (2 is max, 0 is no information)
+	 * @param dim
+	 * @return
+	 */
+	public double informationContent(int dim) {
+		double corr = 1/Math.log(2)*(map.values().size()-1)/(2*total[dim]);
+		return Math.log(map.values().size())/Math.log(2)-(entropy(dim)+corr);
+	}
+	
+	public double uncorrectedInformationContent(int dim) {
+		return Math.log(map.values().size())/Math.log(2)-(entropy(dim));
+	}
 	
 }

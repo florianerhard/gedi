@@ -24,6 +24,7 @@ import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.gui.genovis.pixelMapping.PixelLocationMapping;
 import gedi.util.ReflectionUtils;
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.job.ExecutionContext;
 import gedi.util.job.Job;
 import gedi.util.mutable.MutableHeptuple;
@@ -108,9 +109,13 @@ public class GenomicRegionDataMappingJob<FROM,TO> implements Job<TO> {
 	}
 	
 	@Override
-	public boolean isDisabled() {
+	public boolean isDisabled(ExecutionContext context) {
 		if (mapper instanceof DisablingGenomicRegionDataMapper)
-			return ((DisablingGenomicRegionDataMapper<?,?>)mapper).isDisabled();
+			return ((DisablingGenomicRegionDataMapper<?,?>)mapper).isDisabled(
+					context.getContext(GenomicRegionDataMappingJob.REFERENCE),
+					context.getContext(GenomicRegionDataMappingJob.REGION),
+					context.getContext(GenomicRegionDataMappingJob.PIXELMAPPING)
+					);
 		if (!mapper.hasSideEffect() && outputs==0)
 			return true;
 		return false;
@@ -127,6 +132,11 @@ public class GenomicRegionDataMappingJob<FROM,TO> implements Job<TO> {
 		FROM data  = this.input.apply(input);
 		TO re = mapper.map(context.getContext(REFERENCE), context.getContext(REGION),context.getContext(PIXELMAPPING), data);
 		return re;
+	}
+	
+	@Override
+	public DynamicObject meta(DynamicObject meta) {
+		return mapper.mapMeta(meta);
 	}
 
 	@Override

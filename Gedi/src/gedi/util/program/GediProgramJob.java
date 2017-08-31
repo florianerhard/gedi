@@ -74,10 +74,10 @@ public class GediProgramJob extends DummyJob {
 	private boolean disabled = false;
 	
 	@Override
-	public boolean isDisabled() {
+	public boolean isDisabled(ExecutionContext context) {
 		return disabled;
 	}
-
+	
 	public void disable() {
 		this.disabled = true;
 	}

@@ -43,6 +43,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,7 +52,7 @@ public class SingleThreadPetriNetScheduler implements PetriNetScheduler {
 	private static final Logger log = Logger.getLogger( PetriNetScheduler.class.getName() );
 	
 	protected ExecutionContext context;
-	protected Runnable finishAction;
+	protected Consumer<ExecutionContext> finishAction;
 	
 	private boolean logging = true;
 	private ArrayList<PetriNetListener> listeners = new ArrayList<PetriNetListener>();
@@ -72,7 +73,7 @@ public class SingleThreadPetriNetScheduler implements PetriNetScheduler {
 	}
 	
 	@Override
-	public void setFinishAction(Runnable finishAction) {
+	public void setFinishAction(Consumer<ExecutionContext> finishAction) {
 		this.finishAction = finishAction;
 	}
 	
@@ -150,7 +151,7 @@ public class SingleThreadPetriNetScheduler implements PetriNetScheduler {
 				l.petriNetExecutionFinished(event);
 			
 			if (finishAction!=null)
-				finishAction.run();
+				finishAction.accept(context);
 			
 		} catch (Throwable e) {
 			log.log(Level.SEVERE,"Uncaught exception!",e);

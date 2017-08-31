@@ -37,6 +37,9 @@ public interface Interval {
 		return getStop()+1;
 	}
 	
+	default int length() {
+		return getEnd()-getStart();
+	}
 	
 	
 	default GenomicRegion asRegion() {

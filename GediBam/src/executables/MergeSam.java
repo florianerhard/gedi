@@ -48,6 +48,7 @@ import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializer;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.io.text.LineWriter;
 import gedi.util.io.text.jhp.Jhp;
 import gedi.util.io.text.tsv.formats.CsvReaderFactory;
 import gedi.util.mutable.MutableDouble;
@@ -139,6 +140,7 @@ public class MergeSam {
 		HashMap<String, Object> param = JS.parseParameter(args, false);
 		String prioPipeline = null;
 		boolean removeNonStandard = true;
+		boolean unmapped = false;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -185,6 +187,9 @@ public class MergeSam {
 			}
 			else if (args[i].equals("-o")) {
 				output = checkParam(args,++i);
+			}
+			else if (args[i].equals("-unmapped")) {
+				unmapped = true;
 			}
 			// other parameters may be replacements for the table!
 		}
@@ -253,6 +258,8 @@ public class MergeSam {
 						.iff(uremoveNonStandard, ei->ei.filter(rgr->rgr.getReference().isStandard()))
 						).toArray(new ExtendedIterator[0]);
 		
+		LineWriter unmappedOut = unmapped?new LineOrientedFile(FileUtils.getFullNameWithoutExtension(output)+".unmapped.fasta").write():null;
+		
 		MutableMonad<NumericArray> total = new MutableMonad<>();
 		int ufilterPrio = filterPrio;
 		SamMismatchCorrectionBarcodeAnnotator ubca = bca;
@@ -262,6 +269,11 @@ public class MergeSam {
 			.iff(check, ite->ite.parallelizedSideEffect(a->checkSequence(g,errors,a, correctM),1000))
 			.progress(progress, -1, r->"Read id: "+r.getData().getId()+" Mem="+StringUtils.getHumanReadableMemory(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()))
 			.multiplex(byId, ReferenceGenomicRegion.class)
+				.iff(unmappedOut!=null, ite->ite.sideEffect(a->{
+					if (EI.wrap(a).filter(r->!r.getReference().equals(Chromosome.UNMAPPED)).count()==0) {
+						unmappedOut.writeLine2(a[0].getData().getFasta());					
+					}
+				}))
 				.map(r->retainMinMismatchByPriority(ufilterPrio, r,uprioPipeline))
 				.sideEffect(MergeSam::annotateMultiplicity)
 			.demultiplex(EI::wrap)
@@ -269,16 +281,19 @@ public class MergeSam {
 			.progress(progress, -1, r->"Location: "+r.toLocationString())
 			.multiplex(MergeSam::compareWoUnmapped, MergeSam::mergeRegions)
 			.iff(bca!=null,ite->ite.map(ubca::transform).removeNulls())
+			
 			.filter(r->!r.getReference().equals(Chromosome.UNMAPPED) && r.getRegion().getTotalLength()>=18)
 			.sideEffect(r->{
 				total.Item = r.getData().addTotalCountsForConditions(total.Item, ReadCountMode.Weight);
 			})
 			;
 
+		if (unmapped)
+			unmappedOut.close();
 		
 		GenomicRegionStorage p = GenomicRegionStorageExtensionPoint.getInstance().get(DefaultAlignedReadsData.class,output, GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
 		p.fill(it);
-		
+	
 		if (bca!=null) {
 			bca.finishPrograms();
 			bca.finish();
@@ -549,6 +564,10 @@ public class MergeSam {
 			this.readSequence = readSequence;
 			this.priority = priorityFromFile;
 			if (this.priority==Integer.MAX_VALUE) throw new RuntimeException("Use smaller priorities than "+Integer.MAX_VALUE);
+		}
+
+		public String getFasta() {
+			return ">"+ard.getId(0)+"\n"+readSequence;
 		}
 
 		public int getPriority(ReferenceGenomicRegion<MergeData> r) {

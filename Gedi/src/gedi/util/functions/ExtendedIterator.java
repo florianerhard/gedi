@@ -165,6 +165,12 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 			next();
 	}
 	
+	default <R> R drain(R re) {
+		while (hasNext()) 
+			next();
+		return re;
+	}
+	
 	
 	/**
 	 * Only the ones with pred.test(?)=true remain!

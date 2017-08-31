@@ -162,13 +162,16 @@ public class GenomicExonsTsvFileReader<D> extends BaseTsvFileReader<D> {
 			it = it.progress(progress, -1, s->"Reading "+path);
 		
 		HeaderLine header = this.header?new HeaderLine(it.next()):null;
-		init.accept(header);
+		if (init!=null)
+			init.accept(header);
 
 		ExtendedIterator<String[]> mit = FunctorUtils.mappedIterator(it, l -> StringUtils.split(l, sep));
 		if (lineChecker!=null) {
 			mit = mit.sideEffect(f->{
-				String err = lineChecker.apply(header, f);
-				if (err!=null) throw new RuntimeException("Error in line \n"+StringUtils.concat(sep, f)+"\n"+err);
+				if (readCoordinates==null || readCoordinates.test(header, f)) {
+					String err = lineChecker.apply(header, f);
+					if (err!=null) throw new RuntimeException("Error in line \n"+StringUtils.concat(sep, f)+"\n"+err);
+				}
 			});
 		}
 		Iterator<String[][]> tit;

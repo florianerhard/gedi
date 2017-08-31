@@ -29,6 +29,7 @@ import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.functions.MappedSpliterator;
 import gedi.util.functions.SpliteratorArraySpliterator;
+import gedi.util.userInteraction.progress.Progress;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -177,18 +178,30 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 	}
 	
 	default void fill(Iterator<? extends ReferenceGenomicRegion<D>> it) {
+		fill(it,null);
+	}
+
+	default void fill(GenomicRegionStorage<D> storage) {
+		fill(storage,(Progress)null);
+	}
+	
+	default <O> void fill(GenomicRegionStorage<O> storage, Function<MutableReferenceGenomicRegion<O>,MutableReferenceGenomicRegion<D>> mapper) {
+		fill(storage,mapper,null);
+	}
+	
+	default void fill(Iterator<? extends ReferenceGenomicRegion<D>> it, Progress p) {
 		while (it.hasNext()) {
 			ReferenceGenomicRegion<D> rgr = it.next();
 			add(rgr.getReference(),rgr.getRegion(),rgr.getData());
 		}
 	}
 
-	default void fill(GenomicRegionStorage<D> storage) {
-		fill(storage,t->t);
+	default void fill(GenomicRegionStorage<D> storage, Progress p) {
+		fill(storage,t->t,null);
 	}
 	
-	default <O> void fill(GenomicRegionStorage<O> storage, Function<MutableReferenceGenomicRegion<O>,MutableReferenceGenomicRegion<D>> mapper) {
-		fill(EI.wrap(Spliterators.iterator(storage.iterateMutableReferenceGenomicRegions())).map(mapper));
+	default <O> void fill(GenomicRegionStorage<O> storage, Function<MutableReferenceGenomicRegion<O>,MutableReferenceGenomicRegion<D>> mapper, Progress p) {
+		fill(EI.wrap(Spliterators.iterator(storage.iterateMutableReferenceGenomicRegions())).map(mapper),null);
 	}
 
 	/**

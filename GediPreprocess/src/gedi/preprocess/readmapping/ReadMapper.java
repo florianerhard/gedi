@@ -40,6 +40,11 @@ public enum ReadMapper {
 				nthreads,info.norc?"--norc":"",unmapped!=null?"--un "+unmapped:"",info.index,input,output);
 		}
 		
+		@Override
+		public String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
+			throw new RuntimeException("bowtie does not support PacBio reads!");
+		}
+		
 	},
 	
 	STAR {
@@ -56,14 +61,24 @@ public enum ReadMapper {
 		
 		@Override
 		public String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
-			if (unmapped!=null) throw new RuntimeException("STAR does not support output of unmapped reads in fastq!");
-			return String.format("STAR --runMode alignReads --runThreadN %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType EndToEnd  --outSAMattributes nM MD\n"
-					+ "mv Aligned.out.sam %s",
-				nthreads,info.index,input,output);
+			return String.format("STAR --runMode alignReads --runThreadN %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType EndToEnd  --outSAMattributes nM MD  %s\n"
+					+ "mv Aligned.out.sam %s %s",
+				nthreads,info.index,input,unmapped!=null?"--outReadsUnmapped Fastx":"",output,unmapped!=null?"\nmv Unmapped.out.mate1 "+unmapped:"");
+		}
+		
+		@Override
+		public String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
+			return String.format("STARlong --runMode alignReads --runThreadN %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType Local  --outSAMattributes nM MD "
+					+ "--readNameSeparator space --outFilterMultimapScoreRange 1 --outFilterMismatchNmax 2000 --scoreGapNoncan -20 --scoreGapGCAG -4 --scoreGapATAC -8 --scoreDelOpen -1 --scoreDelBase -1 "
+					+ "--scoreInsOpen -1 --scoreInsBase -1 --seedSearchStartLmax 50 --seedPerReadNmax 100000 --alignSJoverhangMin 25"
+					+ "--seedPerWindowNmax 1000 --alignTranscriptsPerReadNmax 100000 --alignTranscriptsPerWindowNmax 10000 %s\n"
+					+ "mv Aligned.out.sam %s %s",
+				nthreads,info.index,input,unmapped!=null?"--outReadsUnmapped Fastx":"",output,unmapped!=null?"\nmv Unmapped.out.mate1 "+unmapped:"");
 		}
 	};
 
 	public abstract String getIndex(Genomic genomic, ReferenceType t);
 	public abstract boolean isInherentGenomicTranscriptomicMapper();
 	public abstract String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads);
+	public abstract String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads);
 }
