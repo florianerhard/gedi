@@ -45,8 +45,8 @@ public class SequenceSource implements GenomicRegionDataSource<CharSequence>{
 		prov.add(g);
 	}
 	
-	public void addGenomic(String g) throws IOException {
-		prov.add(Genomic.get(g));
+	public void addName(String name) throws IOException {
+		prov.add(Genomic.get(name));
 	}
 	
 	@Override

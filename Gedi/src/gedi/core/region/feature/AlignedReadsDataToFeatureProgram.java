@@ -32,6 +32,8 @@ import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.index.WriteCoverageRmq;
 import gedi.core.region.feature.index.WriteJunctionCit;
+import gedi.core.region.feature.output.FeatureListOutput;
+import gedi.core.region.feature.output.FeatureStatisticOutput;
 import gedi.util.functions.EI;
 import gedi.util.userInteraction.progress.ConsoleProgress;
 import gedi.util.userInteraction.progress.NoProgress;
@@ -57,13 +59,28 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 		
 	}
 	
-
-	public AlignedReadsDataToFeatureProgram(String coverageRmq, String junctionCoverage) {
-		this(createProgram(coverageRmq,junctionCoverage));
-	}
 	
-	private static GenomicRegionFeatureProgram<AlignedReadsData> createProgram(String coverageRmq,
-			String junctionCoverage) {
+	public static AlignedReadsDataToFeatureProgram getSimpleProgram(String statistic, String list, GenomicRegionFeature...features) {
+		GenomicRegionFeatureProgram<AlignedReadsData> re = new GenomicRegionFeatureProgram<>();
+		
+		for (GenomicRegionFeature f : features) {
+			if (f.getId()==null)
+				f.setId(f.getClass().getSimpleName().replaceAll("Feature$", ""));
+			re.add(f);
+		}
+		
+		
+		if (statistic!=null)
+			re.add(new FeatureStatisticOutput(statistic), EI.wrap(features).map(f->f.getId()).toArray(String.class));
+		if (list!=null)
+			re.add(new FeatureListOutput(list), EI.wrap(features).map(f->f.getId()).toArray(String.class));
+		re.setThreads(2);
+		
+		return new AlignedReadsDataToFeatureProgram(re);
+	}
+
+
+	public static AlignedReadsDataToFeatureProgram getCoverageProgram(String coverageRmq, String junctionCoverage) {
 		GenomicRegionFeatureProgram<AlignedReadsData> re = new GenomicRegionFeatureProgram<>();
 		if (coverageRmq!=null) {
 			WriteCoverageRmq f = new WriteCoverageRmq(coverageRmq);
@@ -76,7 +93,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 			re.add(f);
 		}
 		re.setThreads(1);
-		return re;
+		return new AlignedReadsDataToFeatureProgram(re);
 	}
 
 

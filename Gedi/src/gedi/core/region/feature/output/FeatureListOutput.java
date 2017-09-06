@@ -21,10 +21,12 @@ package gedi.core.region.feature.output;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
 import gedi.core.region.feature.features.AbstractFeature;
+import gedi.core.region.feature.special.UnfoldGenomicRegionStatistics;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.mutable.MutableTuple;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +35,7 @@ import java.util.function.BiFunction;
 
 
 @GenomicRegionFeatureDescription(toType=Void.class)
-public class FeatureListOutput extends AbstractFeature<Void> {
+public class FeatureListOutput extends OutputFeature {
 
 	private String multiSeparator = ",";
 	private BiFunction<Object,NumericArray,NumericArray> dataToCounts;
@@ -92,20 +94,30 @@ public class FeatureListOutput extends AbstractFeature<Void> {
 		this.dataToCounts = dataToCounts;
 	}
 	
+	
 	@Override
 	public void produceResults(GenomicRegionFeature<Void>[] o){
 	
 		if (program.isRunning()) return;
 		
 		try {
+			if (o==null) o = new GenomicRegionFeature[] {this};
+			
 			out = new LineOrientedFile(getId());
 			out.startWriting();
-			writeHeader(out);
+			for (int i=0; i<o.length; i++)
+				if (((FeatureListOutput) o[i]).buffer!=null) {
+					((FeatureListOutput) o[0]).writeHeader(out);
+					break;
+				}
+			
 			for (GenomicRegionFeature<Void> a :o) {
 				FeatureListOutput x = (FeatureListOutput) a;
-				LineIterator it = x.out.lineIterator();
-				while (it.hasNext()) 
-					out.writeLine(it.next());
+				if (x.out!=null) { 
+					LineIterator it = x.out.lineIterator();
+					while (it.hasNext()) 
+						out.writeLine(it.next());
+				}
 			}
 			out.finishWriting();
 		} catch (IOException e) {
@@ -129,15 +141,15 @@ public class FeatureListOutput extends AbstractFeature<Void> {
 			}
 			
 			if (isOutput(buffer)) {
-				out.writef("%s:%s",referenceRegion.getReference().toPlusMinusString(),referenceRegion.getRegion().toRegionString());
-				for (int i=0; i<inputs.length; i++) {
-					Set<?> s = getInput(i);
-					out.writef("\t%s",StringUtils.concat(multiSeparator, s));
-				}
-				for (int i=0; i<buffer.length(); i++)
-					out.writef("\t%s",buffer.formatDecimals(i,decimals));
 				
-				out.writeLine();
+				if (mustUnfold(key)) {
+					unfold(key).forEachRemaining(this::write);
+				}
+				else 
+					write(key);
+
+				
+				
 			}
 			
 		} catch (IOException e) {
@@ -145,6 +157,23 @@ public class FeatureListOutput extends AbstractFeature<Void> {
 		}
 	}
 	
+	private void write(MutableTuple key) {
+		try {
+			out.writef("%s:%s",referenceRegion.getReference().toPlusMinusString(),referenceRegion.getRegion().toRegionString());
+			for (int i=0; i<key.size(); i++) {
+				Set<?> s = key.get(i);
+				out.writef("\t%s",StringUtils.concat(multiSeparator, s));
+			}
+			for (int i=0; i<buffer.length(); i++)
+				out.writef("\t%s",buffer.formatDecimals(i,decimals));
+			
+			out.writeLine();
+		} catch (IOException e) {
+			throw new RuntimeException("Could not write to output file!",e);
+		}
+		
+	}
+
 	private void writeHeader(LineOrientedFile out) throws IOException {
 		out.writef("Genomic position");
 		for (int i=0; i<inputs.length; i++) 
@@ -175,7 +204,8 @@ public class FeatureListOutput extends AbstractFeature<Void> {
 		super.end();
 
 		try {
-			out.finishWriting();
+			if (out!=null) 
+				out.finishWriting();
 		} catch (IOException e) {
 			throw new RuntimeException("Cannot write output file!",e);
 		}

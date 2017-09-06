@@ -89,6 +89,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	private boolean forceIntersectionMates = false;
 	private boolean reportWithMissingMates = true;
 	private boolean keepReadNames = false;
+	private boolean onlyPrimary = true;
 	
 	private int minaqual = 0;
 
@@ -226,6 +227,10 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	
 	public BamGenomicRegionStorage setIgnoreVariations(boolean ignore) {
 		this.ignoreVariations = ignore;
+		return this;
+	}
+	public BamGenomicRegionStorage setOnlyPrimary(boolean onlyPrimary) {
+		this.onlyPrimary = onlyPrimary;
 		return this;
 	}
 	
@@ -1100,6 +1105,9 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 
 		private void processRecord(boolean fillMateBuffer, SAMRecord rec, PeekIterator<SAMRecord> iterator, HashMap<FactoryGenomicRegion, FactoryGenomicRegion> map) {
 //			System.out.print(rec.getSAMString());
+			if (rec.getNotPrimaryAlignmentFlag() && onlyPrimary)
+				return;
+			
 			if (rec.getReadPairedFlag() && !ignorePairedEnd ) {
 				// paired end is super inefficient (stupid samtools!)
 				if (!ignoreProperPair && !rec.getProperPairFlag()) return;
@@ -1123,6 +1131,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 					SAMRecord second = rec.getFirstOfPairFlag()?mate:rec;
 					if (!BamUtils.isValidStrand(ref.getStrand(), strandness[file], first,second))
 						return;
+					rec = first;
+					mate = second;
 				}
 					
 				

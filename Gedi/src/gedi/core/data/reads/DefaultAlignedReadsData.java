@@ -266,6 +266,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	
 	static short encodeMismatch(int pos, char genomic, char read) {
+		if (pos>=1<<12) throw new RuntimeException("Cannot encode positions >"+(1<<12));
 		return (short) (TYPE_MISMATCH<<13 | pos);
 	}
 	static CharSequence encodeMismatchIndel(int pos, char genomic, char read) {
@@ -274,6 +275,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	
 	static short encodeDeletion(int pos, CharSequence genomic) {
+		if (pos>=1<<12) throw new RuntimeException("Cannot encode positions >"+(1<<12));
 		return (short) (TYPE_DELETION<<13 | pos);
 	}
 	static CharSequence encodeDeletionIndel(int pos, CharSequence genomic) {
@@ -281,6 +283,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	
 	static short encodeInsertion(int pos, CharSequence read) {
+		if (pos>=1<<12) throw new RuntimeException("Cannot encode positions >"+(1<<12));
 		return (short) (TYPE_INSERTION<<13 | pos);
 	}
 	static CharSequence encodeInsertionIndel(int pos, CharSequence read) {
@@ -288,6 +291,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	
 	static short encodeSoftclip(int pos, CharSequence read) {
+		if (pos>=1<<12) throw new RuntimeException("Cannot encode positions >"+(1<<12));
 		return (short) (TYPE_SOFTCLIP<<13 | pos);
 	}
 	static CharSequence encodeSoftclipIndel(int pos, CharSequence read) {

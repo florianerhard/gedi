@@ -163,13 +163,14 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 	 * @param file
 	 */
 	public void addRecord(SAMRecord record1, SAMRecord record2, int file) {
-		if (record1.getAlignmentStart()>record2.getAlignmentStart() ||
-				(record1.getAlignmentStart()==record2.getAlignmentStart() && record1.getAlignmentEnd()>record2.getAlignmentEnd())
-				) {
-			SAMRecord d = record2;
-			record2 = record1;
-			record1 = d;
-		}
+//		if (record1.getAlignmentStart()>record2.getAlignmentStart() ||
+//				(record1.getAlignmentStart()==record2.getAlignmentStart() && record1.getAlignmentEnd()>record2.getAlignmentEnd())
+//				) {
+//			SAMRecord d = record2;
+//			record2 = record1;
+//			record1 = d;
+//		}
+		// this would break the calculation of the mismatch positions; this was here for the key (now handled below!)
 		
 		GenomicRegion reg1 = minIntronLength>=0?BamUtils.getArrayGenomicRegionByBlocks(record1,minIntronLength):BamUtils.getArrayGenomicRegion(record1);
 		GenomicRegion reg2 = minIntronLength>=0?BamUtils.getArrayGenomicRegionByBlocks(record2,minIntronLength):BamUtils.getArrayGenomicRegion(record2);
@@ -183,6 +184,12 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 					+"Record2: "+reg2+"\t"+record2.getSAMString());
 		
 		String key = getKey(record1)+getKey(record2);
+		if (record1.getAlignmentStart()>record2.getAlignmentStart() ||
+				(record1.getAlignmentStart()==record2.getAlignmentStart() && record1.getAlignmentEnd()>record2.getAlignmentEnd())
+				) {
+			key = getKey(record2)+getKey(record1);
+		}
+		
 		Integer s = map.get(key);
 		if (s==null) {
 			// start a new distinct
@@ -202,12 +209,13 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				GenomicRegion overlap = region.induce(reg1.intersect(reg2));
 				if (overlap.getNumParts()!=1)
 					throw new RuntimeException("Cannot be!");
+				GenomicRegion off = region.induce(reg1.subtract(reg2));
 
 				if (!ignoreVariation) {
 					ArrayList<VarIndel> buffer1 = new ArrayList<VarIndel>();
 					ArrayList<VarIndel> buffer2 = new ArrayList<VarIndel>();
 					addVariations(record1,record1.getReadNegativeStrandFlag(),0,buffer1);
-					addVariations(record2,record1.getReadNegativeStrandFlag(),region.induce(reg2.getStart()),buffer2);
+					addVariations(record2,record2.getReadNegativeStrandFlag(),off.getTotalLength(),buffer2);
 					buffer1.sort(FunctorUtils.naturalComparator());
 					buffer2.sort(FunctorUtils.naturalComparator());
 					
@@ -236,7 +244,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 			} else {
 				if (!ignoreVariation) {
 					addVariations(record1,record1.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
-					addVariations(record2,record1.getReadNegativeStrandFlag(),region.induce(reg2.getStart()),getCurrentVariationBuffer());
+					addVariations(record2,record2.getReadNegativeStrandFlag(),reg1.getTotalLength(),getCurrentVariationBuffer());
 				}
 				else
 					setMultiplicity(s, 0);

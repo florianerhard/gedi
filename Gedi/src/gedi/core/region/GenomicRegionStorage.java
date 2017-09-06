@@ -24,6 +24,7 @@ import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
+import gedi.util.StringUtils;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -256,15 +257,16 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 	default ExtendedIterator<ImmutableReferenceGenomicRegion<D>> ei(String location) {
 		if (location==null)
 			return ei();
+		location = StringUtils.trim(location);
 		if (!location.contains(":")) {
 			Chromosome ref = Chromosome.obtain(location);
 			if (getReferenceSequences().contains(ref) || !ref.getStrand().equals(Strand.Independent))
 				return ei(ref);
 			return ei(ref.toPlusStrand()).chain(ei(ref.toMinusStrand()));
 		}
-		if (!location.contains(","))
+		if (!location.contains(",") && !location.contains(";"))
 			return ei(ImmutableReferenceGenomicRegion.parse(location));
-		return EI.split(location, ',').unfold(loc->ei(loc));
+		return EI.split(location, ';').unfold(loc->ei(loc));
 	}
 	
 	default ExtendedIterator<ImmutableReferenceGenomicRegion<D>> ei(String...location) {

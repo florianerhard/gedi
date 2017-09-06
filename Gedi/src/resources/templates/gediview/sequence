@@ -11,7 +11,7 @@ var hideaa = hideaa?hideaa:true;
 var aaclass = aaclass?aaclass:"aminotrypto";
 ?>
 	<SequenceSource id="<?JS id ?>.sequence">
-		<Genomic file="<?JS id ?>" />
+		<Genomic g="<?JS id ?>" />
 	</SequenceSource>
 	
 	<AminoAcidsTrack input="<?JS id ?>.sequence" class="<?JS aaclass ?>" id="+.Sequence (aa)">
