@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Gedi"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediCore"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry exported="true" kind="lib" path="lib/htsjdk-2.2.1.jar" sourcepath="/home/users/erhard/java/lib/htsjdk/htsjdk-2.2.1/src/java"/>
 	<classpathentry kind="output" path="bin"/>

@@ -75,6 +75,7 @@ public class GTracksServer {
         staticFiles.location("/resources/test"); //index.html is served at localhost:4567 (default port)
         staticFiles.expireTime(600);
         webSocket("/test", new GTracksWebSocketHandler(new GTracksServer()));
+        webSocket("/test2", new TestWebSocketHandler());
         init();
     }
 

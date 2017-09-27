@@ -96,7 +96,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				setMultiplicity(s, 0);
 			
 			if (!ignoreVariation)
-				addVariations(record,record.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
+				addVariations(record,record.getReadNegativeStrandFlag(),record.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
 			else
 				setMultiplicity(s, 0);
 			
@@ -212,10 +212,15 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				GenomicRegion off = region.induce(reg1.subtract(reg2));
 
 				if (!ignoreVariation) {
+					addVariations(record1,record1.getReadNegativeStrandFlag(),record1.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
+					addVariations(record2,record1.getReadNegativeStrandFlag(),record2.getReadNegativeStrandFlag(),off.getTotalLength(),getCurrentVariationBuffer());
+					
+					// to merge variations in the overlap;
+					/*
 					ArrayList<VarIndel> buffer1 = new ArrayList<VarIndel>();
 					ArrayList<VarIndel> buffer2 = new ArrayList<VarIndel>();
-					addVariations(record1,record1.getReadNegativeStrandFlag(),0,buffer1);
-					addVariations(record2,record2.getReadNegativeStrandFlag(),off.getTotalLength(),buffer2);
+					addVariations(record1,record1.getReadNegativeStrandFlag(),record1.getReadNegativeStrandFlag(),0,buffer1);
+					addVariations(record2,record1.getReadNegativeStrandFlag(),record2.getReadNegativeStrandFlag(),off.getTotalLength(),buffer2);
 					buffer1.sort(FunctorUtils.naturalComparator());
 					buffer2.sort(FunctorUtils.naturalComparator());
 					
@@ -238,13 +243,14 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 							i2++;
 						}
 					}
+					*/
 				}
 				else
 					setMultiplicity(s, 0);
 			} else {
 				if (!ignoreVariation) {
-					addVariations(record1,record1.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
-					addVariations(record2,record2.getReadNegativeStrandFlag(),reg1.getTotalLength(),getCurrentVariationBuffer());
+					addVariations(record1,record1.getReadNegativeStrandFlag(),record1.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
+					addVariations(record2,record1.getReadNegativeStrandFlag(),record2.getReadNegativeStrandFlag(),reg1.getTotalLength(),getCurrentVariationBuffer());
 				}
 				else
 					setMultiplicity(s, 0);
@@ -284,7 +290,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 	 * @param record
 	 * @param offset
 	 */
-	private void addVariations(SAMRecord record, boolean invert, int offset, Collection<VarIndel> to) {
+	private void addVariations(SAMRecord record, boolean invertPos, boolean complement, int offset, Collection<VarIndel> to) {
 		
 		String xv = record.getStringAttribute("XV");
 		if (xv!=null) {
@@ -303,15 +309,15 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 		for (CigarElement e : record.getCigar().getCigarElements()) {
 			switch (e.getOperator()){
 			case I: 
-				pos = (invert?coveredGenomic-lr:lr);
-				vread = invert?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
+				pos = (invertPos?coveredGenomic-lr:lr);
+				vread = complement?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
 				ls+=e.getLength(); 
-				to.add(createInsertion(pos+offset, vread));
+				to.add(createInsertion(pos+offset, vread, record.getSecondOfPairFlag()));
 				break;
 			case D:
-				pos = (invert?coveredGenomic-lr-e.getLength():lr);
-				vread = invert?SequenceUtils.getDnaReverseComplement(getReferenceSequence(record,lr,lr+e.getLength())):getReferenceSequence(record,lr,lr+e.getLength());;
-				to.add(createDeletion(pos+offset, vread));
+				pos = (invertPos?coveredGenomic-lr-e.getLength():lr);
+				vread = complement?SequenceUtils.getDnaReverseComplement(getReferenceSequence(record,lr,lr+e.getLength())):getReferenceSequence(record,lr,lr+e.getLength());;
+				to.add(createDeletion(pos+offset, vread, record.getSecondOfPairFlag()));
 				lr+=e.getLength(); 
 				break;
 			case M: 
@@ -319,18 +325,18 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				CharSequence ref = getReferenceSequence(record,lr,lr+e.getLength());
 				for (int i=0; i<read.length(); i++)
 					if (read.charAt(i)!=ref.charAt(i)) {
-						pos = (invert?coveredGenomic-1-lr-i:lr+i);
-						char g = invert?SequenceUtils.getDnaComplement(ref.charAt(i)):ref.charAt(i);
-						char r = invert?SequenceUtils.getDnaComplement(read.charAt(i)):read.charAt(i);
-						to.add(createMismatch(pos+offset, g, r));
+						pos = (invertPos?coveredGenomic-1-lr-i:lr+i);
+						char g = complement?SequenceUtils.getDnaComplement(ref.charAt(i)):ref.charAt(i);
+						char r = complement?SequenceUtils.getDnaComplement(read.charAt(i)):read.charAt(i);
+						to.add(createMismatch(pos+offset, g, r, record.getSecondOfPairFlag()));
 					}
 				ls+=e.getLength();
 				lr+=e.getLength();
 				break;
 			case S:
-				pos = (invert?coveredGenomic-lr:lr);
-				vread = invert?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
-				to.add(createSoftclip(pos+offset, vread));
+				pos = (invertPos?coveredGenomic-lr:lr);
+				vread = complement?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
+				to.add(createSoftclip(pos+offset, vread, record.getSecondOfPairFlag()));
 				
 				ls+=e.getLength();
 				

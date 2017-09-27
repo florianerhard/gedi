@@ -218,7 +218,7 @@ public class OrmSerializeTest {
 	@Test
 	public void testRgr() throws IOException {
 		
-		ImmutableReferenceGenomicRegion<AlignedReadsData> o = new ImmutableReferenceGenomicRegion<AlignedReadsData>(Chromosome.obtain("chr1+"), new ArrayGenomicRegion(4000,4002,50032,50100), new AlignedReadsDataFactory(1).start().newDistinctSequence().addMismatch(4, 'C', 'G').setCount(new int[]{5}).create());
+		ImmutableReferenceGenomicRegion<AlignedReadsData> o = new ImmutableReferenceGenomicRegion<AlignedReadsData>(Chromosome.obtain("chr1+"), new ArrayGenomicRegion(4000,4002,50032,50100), new AlignedReadsDataFactory(1).start().newDistinctSequence().addMismatch(4, 'C', 'G',false).setCount(new int[]{5}).create());
 				
 		OrmSerializer s = new OrmSerializer(true,false);
 		

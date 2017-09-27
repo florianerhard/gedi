@@ -3,7 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/junit-benchmarks-0.7.2.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Gedi"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediCore"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediBam"/>
 	<classpathentry kind="src" path="/GediEnsembl"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediDiskIntervalTree"/>

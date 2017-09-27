@@ -72,6 +72,15 @@ import java.util.function.Supplier;
 
 
 public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedReadsData> {
+	
+	
+	public enum PairedEndHandling {
+		AsMissingInformationIntron,JoinMates,IgnorePairedEnd,DropSecondRead,DropFirstRead
+	}
+	
+	public enum PairedEndNoMateInRegionHandling {
+		Drop,ReportSingle,Query
+	}
 
 	private Strandness[] strandness = null;
 	private String[] fileNames;
@@ -81,13 +90,20 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	private ContrastMapping mapping;
 
 	private boolean ignoreVariations = false;
-
-	private boolean joinMates = false;
-	private boolean ignorePairedEnd = false;
 	private boolean removeMultiMapping = false;
 	private boolean ignoreProperPair = false;
-	private boolean forceIntersectionMates = false;
-	private boolean reportWithMissingMates = true;
+	
+	
+//	private boolean joinMates = false;
+//	private boolean ignorePairedEnd = false;
+//	
+//	private boolean forceIntersectionMates = false;
+//	private boolean reportWithMissingMates = true;
+	
+
+	private PairedEndHandling pairedEndHandling = PairedEndHandling.AsMissingInformationIntron;
+	private PairedEndNoMateInRegionHandling pairedEndNoMateInRegionHandling = PairedEndNoMateInRegionHandling.ReportSingle;
+	
 	private boolean keepReadNames = false;
 	private boolean onlyPrimary = true;
 	
@@ -225,6 +241,16 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	}
 
 	
+	public BamGenomicRegionStorage setPairedEndHandling(PairedEndHandling pairedEndHandling) {
+		this.pairedEndHandling = pairedEndHandling;
+		return this;
+	}
+	
+	public BamGenomicRegionStorage setPairedEndNoMateInRegionHandling(PairedEndNoMateInRegionHandling pairedEndNoMateInRegionHandling) {
+		this.pairedEndNoMateInRegionHandling = pairedEndNoMateInRegionHandling;
+		return this;
+	}
+	
 	public BamGenomicRegionStorage setIgnoreVariations(boolean ignore) {
 		this.ignoreVariations = ignore;
 		return this;
@@ -240,12 +266,15 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	}
 
 	public BamGenomicRegionStorage setReportWithMissingMates(boolean reportWithMissingMates) {
-		this.reportWithMissingMates = reportWithMissingMates;
+//		this.reportWithMissingMates = reportWithMissingMates;
+		this.pairedEndNoMateInRegionHandling = reportWithMissingMates?PairedEndNoMateInRegionHandling.ReportSingle:PairedEndNoMateInRegionHandling.Drop;
 		return this;
 	}
 	
 	public BamGenomicRegionStorage setForceIntersectionMates(boolean forceIntersectionMates) {
-		this.forceIntersectionMates = forceIntersectionMates;
+//		this.forceIntersectionMates = forceIntersectionMates;
+		this.pairedEndNoMateInRegionHandling = forceIntersectionMates?PairedEndNoMateInRegionHandling.Query:PairedEndNoMateInRegionHandling.Drop;
+
 		return this;
 	}
 	
@@ -266,12 +295,14 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	
 	
 	public BamGenomicRegionStorage setJoinMates(boolean join) {
-		this.joinMates = join;
+//		this.joinMates = join;
+		this.pairedEndHandling = join?PairedEndHandling.JoinMates:PairedEndHandling.AsMissingInformationIntron;
 		return this;
 	}
 
 	public BamGenomicRegionStorage setIgnorePairedEnd(boolean ignoreMates) {
-		this.ignorePairedEnd = ignoreMates;
+//		this.ignorePairedEnd = ignoreMates;
+		this.pairedEndHandling = ignoreMates?PairedEndHandling.IgnorePairedEnd:PairedEndHandling.AsMissingInformationIntron;
 		return this;
 	}
 	
@@ -1015,7 +1046,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 			// query mates that are not within pos-end
 			int min = -1;
 			int max = -1;
-			if (forceIntersectionMates) {
+//			if (forceIntersectionMates) {
+			if (pairedEndNoMateInRegionHandling==PairedEndNoMateInRegionHandling.Query) {
 				for (SAMRecordList l : mateBuffer.values())
 					for (; l!=null; l=l.next) {
 						if (min==-1) {
@@ -1065,8 +1097,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 				}
 			}
 			
-			if (reportWithMissingMates) {
-				
+//			if (reportWithMissingMates) {
+			if (pairedEndNoMateInRegionHandling==PairedEndNoMateInRegionHandling.ReportSingle) {	
 				HashMap<FactoryGenomicRegion,FactoryGenomicRegion> map = new HashMap<FactoryGenomicRegion, FactoryGenomicRegion>();
 				for (SAMRecordList ll : mateBuffer.values()) {
 					for (; ll!=null; ll=ll.next){
@@ -1075,7 +1107,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 							SAMRecord first = ll.r.getFirstOfPairFlag()?ll.r:null;
 							SAMRecord second = ll.r.getFirstOfPairFlag()?null:ll.r;
 							if (BamUtils.isValidStrand(ref.getStrand(), strandness[ll.file], first,second)) {
-								FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(ll.r,null,cumNumCond, joinMates,false,ignoreVariations,false);
+								FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(ll.r,null,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,false);
 								if (!map.containsKey(fac)) map.put(fac,fac);
 								else fac = map.get(fac);
 								
@@ -1108,56 +1140,74 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 			if (rec.getNotPrimaryAlignmentFlag() && onlyPrimary)
 				return;
 			
-			if (rec.getReadPairedFlag() && !ignorePairedEnd ) {
-				// paired end is super inefficient (stupid samtools!)
-				if (!ignoreProperPair && !rec.getProperPairFlag()) return;
-
-				int file = ((MergeIterator<SAMRecord>)iterator.getParent()).getIteratorIndex();
+			if (rec.getReadPairedFlag() && pairedEndHandling==PairedEndHandling.DropSecondRead) {
+				if (rec.getFirstOfPairFlag())
+					processSingleEnd(fillMateBuffer, rec, iterator, map);
 				
-				SAMRecordList ll = mateBuffer.get(BamUtils.getPairId(rec));
-				SAMRecord mate = findAndRemoveMate(rec, file,mateBuffer,ll);
-				if (mate==null) {
-//					if (rec.getMateAlignmentStart()-1>=pos) //otherwise there is no chance to find it later!
-					if (fillMateBuffer)
-						mateBuffer.put(BamUtils.getPairId(rec), new SAMRecordList(rec,ll,file));
-//					System.out.println("to Matebuffer");
-					return;
-				}
+			} 
+			else if (rec.getReadPairedFlag() && pairedEndHandling==PairedEndHandling.DropFirstRead) {
+				if (!rec.getFirstOfPairFlag())
+					processSingleEnd(fillMateBuffer, rec, iterator, map);
 				
-//				if (ll==null) mateBuffer.remove(BamUtils.getPairId(rec));
-				
-				if (isAnyStrandSpecific()){
-					SAMRecord first = rec.getFirstOfPairFlag()?rec:mate;
-					SAMRecord second = rec.getFirstOfPairFlag()?mate:rec;
-					if (!BamUtils.isValidStrand(ref.getStrand(), strandness[file], first,second))
-						return;
-					rec = first;
-					mate = second;
-				}
-					
-				
-				FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,mate,cumNumCond, joinMates,false,ignoreVariations,keepReadNames);
-//				System.out.println("use it as "+fac.toRegionString());
-				if (!fac.isConsistent()) return;
-
-				if (!map.containsKey(fac)) map.put(fac,fac);
-				else fac = map.get(fac);
-
-				fac.add(rec, mate, file);
+			} 
+			else if (rec.getReadPairedFlag() && pairedEndHandling!=PairedEndHandling.IgnorePairedEnd) {
+				processPairedEnd(fillMateBuffer, rec, iterator, map);
 
 			} else {
-				int file = ((MergeIterator<SAMRecord>)iterator.getParent()).getIteratorIndex();
-				
-				if (!BamUtils.isValidStrand(ref.getStrand(), strandness[file], rec,null))
-					return;
-
-				FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,cumNumCond,ignoreVariations,keepReadNames);
-				if (!map.containsKey(fac)) map.put(fac,fac);
-				else fac = map.get(fac);
-
-				fac.add(rec, file);
+				processSingleEnd(fillMateBuffer, rec, iterator, map);
 			}
 
+		}
+
+		private void processSingleEnd(boolean fillMateBuffer, SAMRecord rec, PeekIterator<SAMRecord> iterator, HashMap<FactoryGenomicRegion, FactoryGenomicRegion> map) {
+			int file = ((MergeIterator<SAMRecord>)iterator.getParent()).getIteratorIndex();
+			
+			if (!BamUtils.isValidStrand(ref.getStrand(), strandness[file], rec,null))
+				return;
+
+			FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,cumNumCond,ignoreVariations,keepReadNames);
+			if (!map.containsKey(fac)) map.put(fac,fac);
+			else fac = map.get(fac);
+
+			fac.add(rec, file);
+		}
+		
+		private void processPairedEnd(boolean fillMateBuffer, SAMRecord rec, PeekIterator<SAMRecord> iterator, HashMap<FactoryGenomicRegion, FactoryGenomicRegion> map) {
+			// paired end is super inefficient (stupid samtools!)
+			if (!ignoreProperPair && !rec.getProperPairFlag()) return;
+
+			int file = ((MergeIterator<SAMRecord>)iterator.getParent()).getIteratorIndex();
+			
+			SAMRecordList ll = mateBuffer.get(BamUtils.getPairId(rec));
+			SAMRecord mate = findAndRemoveMate(rec, file,mateBuffer,ll);
+			if (mate==null) {
+//				if (rec.getMateAlignmentStart()-1>=pos) //otherwise there is no chance to find it later!
+				if (fillMateBuffer)
+					mateBuffer.put(BamUtils.getPairId(rec), new SAMRecordList(rec,ll,file));
+//				System.out.println("to Matebuffer");
+				return;
+			}
+			
+//			if (ll==null) mateBuffer.remove(BamUtils.getPairId(rec));
+			
+			if (isAnyStrandSpecific()){
+				SAMRecord first = rec.getFirstOfPairFlag()?rec:mate;
+				SAMRecord second = rec.getFirstOfPairFlag()?mate:rec;
+				if (!BamUtils.isValidStrand(ref.getStrand(), strandness[file], first,second))
+					return;
+				rec = first;
+				mate = second;
+			}
+				
+			
+			FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,mate,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,keepReadNames);
+//			System.out.println("use it as "+fac.toRegionString());
+			if (!fac.isConsistent()) return;
+
+			if (!map.containsKey(fac)) map.put(fac,fac);
+			else fac = map.get(fac);
+
+			fac.add(rec, mate, file);
 		}
 
 		private SAMRecord findAndRemoveMate(SAMRecord rec, int file, 

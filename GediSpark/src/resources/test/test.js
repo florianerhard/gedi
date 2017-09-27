@@ -1,11 +1,14 @@
 $( document ).ready(function() {
 
-
-var webSocket = new WebSocket("ws://" + location.hostname + ":" + location.port + "/test");
-webSocket.onmessage = function (msg) { message(msg); };
-webSocket.onclose = function (e) { console.log(e.reason); alert("WebSocket connection closed!"); };
-webSocket.onerror = function (e) { console.log(JSON.stringify(e)); };
-webSocket.binaryType = "arraybuffer";
+var webSocket;
+function connect() {
+	webSocket = new WebSocket("ws://" + location.hostname + ":" + location.port + "/test");
+	webSocket.onmessage = function (msg) { message(msg); };
+	webSocket.onclose = function (e) { console.log("reconnect"); connect();};
+	webSocket.onerror = function (e) { console.log(JSON.stringify(e)); };
+	webSocket.binaryType = "arraybuffer";
+}
+connect();
 
 $("#send").click(update);
 $("#location").keypress(function (e) {   if (e.keyCode === 13) { update(); }   });
@@ -19,23 +22,22 @@ updateCanvasWidth();
 var genome;
 var ppbp;
 
-var rcounter = 0;
-var ucounter = 0;
-
-var updateTimer;
-function updateDelayed() {
-	console.log("moved "+(rcounter++));
-	clearTimeout(updateTimer);
-	updateTimer = setTimeout(update, 50);
-}
+var sentLoc;
+setInterval(function () {
+	if ($("#location").val()!=sentLoc)
+		update();
+},200);
 
 function update() {
-
-console.log("send update "+(ucounter++)+" "+rcounter);
-	var loc = $("#location").val();
-
-	var msg = JSON.stringify({"location": loc, "width": $(tracks).width() });
-	webSocket.send(msg);
+	if (webSocket.readyState==1) {
+		sentLoc = $("#location").val();
+		$(".track").each(function(i,o) {
+			o.translate2=0;
+			o.zoom2=1;
+		});
+		var msg = JSON.stringify({"location": sentLoc, "width": $(tracks).width() });
+		webSocket.send(msg);
+	}
 }
 
 
@@ -47,20 +49,25 @@ function message(msg) {
 	if (opt.msg=="info") {
 		genome = opt.genome;
 	}
-	else if (opt.msg=="viewinfo") {
-		ppbp = opt.ppbp;
-		translate = 0;
-		zoom = 1;
-	} 
-	else if (opt.msg=="trackdata") {
-		console.log(JSON.stringify(opt),zoom,translate);
-		var target = document.getElementById("tracks");
-		target.height = opt.height;
-		if (opt.format=="svg")
-			svg(target,data);
-		else
-			blobImage(target,data,opt.format);
+	else {
+	
+		if (opt.location!=sentLoc)
+			return; // dont do anything, another location was already sent!
+		
+		if (opt.msg=="viewinfo") {
+			ppbp = opt.ppbp;
+		} 
+		else if (opt.msg=="trackdata") {
+//		console.log("new data for "+sentLoc);
+			var target = document.getElementById("tracks");
+			target.height = opt.height;
+			if (opt.format=="svg")
+				svg(target,data);
+			else
+				blobImage(target,data,opt.format);
+		}
 	}
+	
 
 }
 
@@ -69,9 +76,11 @@ function message(msg) {
 function svg(target, message) {
 	var svg = String.fromCharCode.apply(null, new Uint8Array(message));
 	var ctx = target.getContext('2d');
+	target.translate = target.translate2;
+	target.zoom = target.zoom2;
 	target.render=function() {
 		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-		ctx.drawSvg(svg, translate,0,svg.width*zoom,svg.height);
+		ctx.drawSvg(svg, this.translate,0,svg.width*this.zoom,svg.height);
 	};
 	target.render();
 }
@@ -81,18 +90,18 @@ function blobImage(target, message, format) {
 	var blob = new Blob([message], {type : 'image/'+format});
 	createImageBitmap(blob).then(function(response) {
 		var ctx = target.getContext('2d');
+		target.translate = target.translate2;
+		target.zoom = target.zoom2;
 		target.render=function() {
+//			console.log("Rendering t="+this.translate+" z="+this.zoom)
 			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-			ctx.drawImage(response, translate,0,response.width*zoom,response.height);
+			ctx.drawImage(response, this.translate,0,response.width*this.zoom,response.height);
 		};
 		target.render();
 	});
 }
 
 var zoomMultiplicationFactor = 1.2;
-var translate = 0;
-var zoom = 1;
-
 
 var dragX = -1;
 
@@ -114,9 +123,12 @@ var dragX = -1;
 					locs = extendLeft(locs,Math.round(dx));
 				}
 				$("#location").val(locs.map(function(s) {return toLocationString(s)}).join("; "));
-				updateDelayed();
 			
-				translate +=Math.round(dx)*ppbp;
+				$(".track").each(function(i,o) {
+					o.translate +=Math.round(dx)*ppbp;
+					o.translate2 +=Math.round(dx)*ppbp;
+					o.render();
+				});
 			    dragX = e.pageX;
 			    document.getElementById("tracks").render();
 			}
@@ -136,7 +148,7 @@ var dragX = -1;
 	$(document).on('mousewheel', function(e) {
 	e.preventDefault();
             
-        var wheelRotation = e.deltaY;
+        var wheelRotation = -e.deltaY;
 	    var f = e.pageX/document.getElementById('tracks').width;
 
 		var loc = $("#location").val();
@@ -181,11 +193,17 @@ var dragX = -1;
 		}
 		
 		$("#location").val(locs.map(function(s) {return toLocationString(s)}).join("; "));
-		updateDelayed();
 		var fac = Math.pow(zoomMultiplicationFactor,-Math.sign(wheelRotation));
-		translate-=e.pageX*(1-zoom);
-		zoom*=fac;
-		translate+=e.pageX*(1-zoom);
+		$(".track").each(function(i,o) {
+			o.translate-=e.pageX*(1-o.zoom);
+			o.zoom*=fac;
+			o.translate+=e.pageX*(1-o.zoom);
+			o.translate2-=e.pageX*(1-o.zoom2);
+			o.zoom2*=fac;
+			o.translate2+=e.pageX*(1-o.zoom2);
+			o.render();
+		});
+	    
 		document.getElementById("tracks").render();
 	});
 
@@ -199,7 +217,6 @@ var dragX = -1;
 			if (lastEnd+right>lastLength) {
 				var after = {"name":genome.order.next(locs[locs.length-1].reference.name),"strand":locs[locs.length-1].reference.strand};
 				locs[locs.length-1].region = locs[locs.length-1].region.extendBack(lastLength-lastEnd);
-				console.log(JSON.stringify(after.name));
 				if (typeof after.name === "undefined") {
 					right = 0;
 				} else {

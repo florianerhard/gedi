@@ -123,14 +123,14 @@ public class GenomicRegionTest {
 		AlignedReadsDataFactory fac = new AlignedReadsDataFactory(2);
 		fac.start();
 		fac.newDistinctSequence();
-		fac.addMismatch(4, 'C', 'G');
-		fac.addDeletion(7, "AC");
+		fac.addMismatch(4, 'C', 'G',false);
+		fac.addDeletion(7, "AC",false);
 		fac.setCount(new int[] {5,6});
 		fac.setMultiplicity(2);
 		fac.setId(8);
 		
 		fac.newDistinctSequence();
-		fac.addInsertion(4, "TG");
+		fac.addInsertion(4, "TG",false);
 		fac.setCount(new int[] {1,2});
 		fac.setMultiplicity(6);
 		fac.setId(1);
@@ -138,14 +138,14 @@ public class GenomicRegionTest {
 		
 		fac.start();
 		fac.newDistinctSequence();
-		fac.addInsertion(4, "TG");
+		fac.addInsertion(4, "TG",false);
 		fac.setCount(new int[] {1,2});
 		fac.setMultiplicity(6);
 		fac.setId(1);
 		
 		fac.newDistinctSequence();
-		fac.addDeletion(7, "AC");
-		fac.addMismatch(4, 'C', 'G');
+		fac.addDeletion(7, "AC",false);
+		fac.addMismatch(4, 'C', 'G',false);
 		fac.setCount(new int[] {5,6});
 		fac.setMultiplicity(2);
 		fac.setId(8);
@@ -153,14 +153,14 @@ public class GenomicRegionTest {
 		
 		fac.start();
 		fac.newDistinctSequence();
-		fac.addInsertion(4, "TG");
+		fac.addInsertion(4, "TG",false);
 		fac.setCount(new int[] {1,2});
 		fac.setMultiplicity(6);
 		fac.setId(1);
 		
 		fac.newDistinctSequence();
-		fac.addDeletion(7, "AT");
-		fac.addMismatch(4, 'C', 'G');
+		fac.addDeletion(7, "AT",false);
+		fac.addMismatch(4, 'C', 'G',false);
 		fac.setCount(new int[] {5,6});
 		fac.setMultiplicity(2);
 		fac.setId(8);
