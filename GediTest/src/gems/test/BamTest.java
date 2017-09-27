@@ -154,19 +154,19 @@ public class BamTest {
 		suMem.asCollection().addAll(suStorage.asCollection());
 
 		fac.start().newDistinctSequence().setMultiplicity(0).setCount(new int[] {1,0,0}) //f1
-				.addDeletion(8, "AAA")
-				.addInsertion(22, "A")
-				.addMismatch(49, 'A', 'G')
+				.addDeletion(8, "AAA",false)
+				.addInsertion(22, "A",false)
+				.addMismatch(49, 'A', 'G',false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {1,0,0}) //f2
-				.addDeletion(8, "AAA")
+				.addDeletion(8, "AAA",false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {1,2,0}) //f3+x1+x2
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {0,1,0}) //x3
-				.addMismatch(0, 'T', 'C')
+				.addMismatch(0, 'T', 'C',false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {0,1,0}) //x4
-				.addMismatch(65, 'C', 'G')
+				.addMismatch(65, 'C', 'G',false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {0,1,0}) //x5
-				.addMismatch(2, 'T', 'G')
-				.addMismatch(3, 'T', 'C');
+				.addMismatch(2, 'T', 'G',false)
+				.addMismatch(3, 'T', 'C',false);
 		
 		AlignedReadsData data = ssStorage.getData(refp,GenomicRegion.parse("10-45|57-88"));
 		assertEquals(fac.create(),data);
@@ -174,11 +174,11 @@ public class BamTest {
 		assertEquals(fac.create(),data);
 		
 		fac.start().newDistinctSequence().setMultiplicity(0).setCount(new int[] {1,0,0}) //f1
-				.addMismatch(16, 'T', 'C')
-				.addInsertion(44, "T")
-				.addDeletion(55, "TTT")
+				.addMismatch(16, 'T', 'C',false)
+				.addInsertion(44, "T",false)
+				.addDeletion(55, "TTT",false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {1,0,0}) //f2
-				.addDeletion(55, "TTT")
+				.addDeletion(55, "TTT",false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {1,0,0}); //f3
 				
 		data = ssStorage.getData(refm,GenomicRegion.parse("10-45|57-88"));
@@ -188,19 +188,19 @@ public class BamTest {
 		
 		
 		fac.start().newDistinctSequence().setMultiplicity(0).setCount(new int[] {2,0,0}) //f1
-				.addDeletion(8, "AAA")
-				.addInsertion(22, "A")
-				.addMismatch(49, 'A', 'G')
+				.addDeletion(8, "AAA",false)
+				.addInsertion(22, "A",false)
+				.addMismatch(49, 'A', 'G',false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {2,0,0}) //f2
-				.addDeletion(8, "AAA")
+				.addDeletion(8, "AAA",false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {2,2,0}) //f3+x1+x2
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {0,1,0}) //x3
-				.addMismatch(0, 'T', 'C')
+				.addMismatch(0, 'T', 'C',false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {0,1,0}) //x4
-				.addMismatch(65, 'C', 'G')
+				.addMismatch(65, 'C', 'G',false)
 			.newDistinctSequence().setMultiplicity(0).setCount(new int[] {0,1,0}) //x5
-				.addMismatch(2, 'T', 'G')
-				.addMismatch(3, 'T', 'C');
+				.addMismatch(2, 'T', 'G',false)
+				.addMismatch(3, 'T', 'C',false);
 		
 		data = suStorage.getData(refu,GenomicRegion.parse("10-45|57-88"));
 		assertEquals(fac.create(),data);

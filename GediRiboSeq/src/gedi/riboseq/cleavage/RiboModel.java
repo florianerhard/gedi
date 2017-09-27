@@ -444,7 +444,7 @@ public class RiboModel implements BinarySerializable {
 			fac.setWeight(1);
 			fac.setMultiplicity(1);
 			if (mmpair!=null) {
-				fac.addMismatch(0, mmpair[0],mmpair[1]); 
+				fac.addMismatch(0, mmpair[0],mmpair[1],false); 
 			}
 		}
 

@@ -23,6 +23,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import javax.imageio.ImageIO;
@@ -57,7 +59,7 @@ import gedi.util.orm.BinaryBlob;
 @WebSocket
 public class GTracksWebSocketHandler {
 
-	
+	private ConcurrentHashMap<Session, String> sessionData = new ConcurrentHashMap<>();
 	private int spacer = 4;
 	private GTracksServer server;
 	
@@ -67,7 +69,7 @@ public class GTracksWebSocketHandler {
 
 	@OnWebSocketConnect
     public void onConnect(Session user) throws Exception {
-		
+		sessionData.put(user, "");
 		DynamicObject header = DynamicObject.fromMap(
 				"msg","info",
 				"genome",DynamicObject.fromMap("map",server.getGenome(),"order",server.getGenome().keySet().toArray(new String[0]))
@@ -78,12 +80,13 @@ public class GTracksWebSocketHandler {
     }
 
     @OnWebSocketError
-    public void methodName(Session session, Throwable error) {
+    public void onError(Session session, Throwable error) {
     	error.printStackTrace();
     }
     
     @OnWebSocketClose
     public void onClose(Session user, int statusCode, String reason) {
+    	sessionData.remove(user);
     	System.out.println(user.getRemoteAddress()+" closed: "+reason+ "("+statusCode+")");
     }
 
@@ -91,21 +94,27 @@ public class GTracksWebSocketHandler {
     public void onMessage(Session user, String message) {
     	DynamicObject req = DynamicObject.parseJson(message);
     	
-    	ImmutableReferenceGenomicRegion<Object> rgr = ImmutableReferenceGenomicRegion.parse(req.getEntry("location").asString());    	
+    	String loc = req.getEntry("location").asString();
+    	sessionData.put(user, loc);
+    	
+    	ImmutableReferenceGenomicRegion<Object> rgr = ImmutableReferenceGenomicRegion.parse(loc);    	
     	double width = req.getEntry("width").asDouble();
     	PixelBasepairMapper xmapper = new PixelBasepairMapper().setIntronFixed(rgr.getReference(),false,rgr.getRegion(),spacer,width);
     	try {
-			send(user,DynamicObject.fromMap("msg","viewinfo","ppbp",xmapper.getPixelsPerBasePair(),"location",req.getEntry("location").asString()));
+			send(user,DynamicObject.fromMap("msg","viewinfo","ppbp",xmapper.getPixelsPerBasePair(),"location",req.getEntry("location").asString(), "location", loc));
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
     	
     	server.getData().setLocation(xmapper,rgr.getReference(),rgr.getRegion(),null,(ctx,place)->{
+    		if (!loc.equals(sessionData.get(user)))
+    				return; // drop if new request already here!
+    		
     		if (ctx.getToken(place) instanceof GTracksRenderer) {
 	    		String id = place.getProducer().getJob().getId();
 	    		
 	    		GTracksRenderer ret = ctx.getToken(place);
-	//    		SvgRenderTarget tar = new SvgRenderTarget();
+//	    		SvgRenderTarget tar = new SvgRenderTarget();
 	    		PngRenderTarget tar = new PngRenderTarget();
 	    		
 	    		GTracksRenderRequest result = ret.render(tar, new GTracksRenderContext(rgr.getReference(), rgr.getRegion(), xmapper));
@@ -118,7 +127,7 @@ public class GTracksWebSocketHandler {
 	    					"format", tar.getFormat(),
 	    					"track",id,
 	    					"height",height,
-	    					"location",req.getEntry("location").asString());
+	    					"location", loc);
 	    			send(user,header,out->tar.writeRaw(out, (int)Math.ceil(width), height));
 	                
 				} catch (IOException e) {
@@ -133,7 +142,7 @@ public class GTracksWebSocketHandler {
     private void send(Session user, DynamicObject header) throws IOException {
     	send(user,header,null);
     }
-    private void send(Session user, DynamicObject header, Consumer2<BinaryWriter> data) throws IOException {
+    private synchronized void send(Session user, DynamicObject header, Consumer2<BinaryWriter> data) throws IOException {
     	BinaryBlob blob = new BinaryBlob();
 		blob.putString(header.toJson());
 		if (data!=null)

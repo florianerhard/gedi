@@ -3,7 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Gedi"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediCore"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/FxDocking"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediCenteredDiskIntervalTreeStorage"/>
 	<classpathentry kind="lib" path="lib/fontawesomefx-8.0.13.jar" sourcepath="lib/fontawesomefx-8.0.13-sources.jar"/>

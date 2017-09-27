@@ -2,7 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Gedi"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediCore"/>
 	<classpathentry kind="lib" path="lib/jericho-html-3.4.jar" sourcepath="/home/users/erhard/java/lib/jericho/jericho-html-3.4/src"/>
 	<classpathentry kind="lib" path="lib/jansi.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/fst-2.43.jar" sourcepath="lib/fst-2.43-sources.jar"/>
