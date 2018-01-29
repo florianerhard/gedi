@@ -55,6 +55,10 @@ public class ReadMappingReferenceInfo {
 		index = mapper.getIndex(genomic,t);
 		this.mapper = mapper;
 	}
+	
+	public Genomic getGenomic() {
+		return genomic;
+	}
 
 
 	

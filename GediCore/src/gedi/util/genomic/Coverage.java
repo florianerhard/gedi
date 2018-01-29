@@ -25,7 +25,7 @@ import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.longcollections.LongArrayList;
 
 
-
+@Deprecated
 public class Coverage {
 
 	

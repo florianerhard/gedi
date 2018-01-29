@@ -40,9 +40,9 @@ for each (var d in datasets) {
 		log.info("SRA entry: Name: "+d.name+" gsm: "+d.gsm+" id: "+arr[0].asString()+" SRR: "+Arrays.toString(srrs));
 		nameToModeAndFiles[d.name] = ["SRR",srrs,d.hasOwnProperty("adapter")?d.adapter:adapter,false];
 	} else if (d.hasOwnProperty("sra")) {
-		var srrs = StringUtils.split(d.sra.asString(), ',');
-		log.info("SRA entry: Name: "+d.name+" srr: "+Arrays.toString(srrs));
-		nameToModeAndFiles[d.name] = ["SRR",srrs,d.hasOwnProperty("adapter")?d.adapter:adapter,false];
+		var srrs = d.sra;
+		log.info("SRA entry: Name: "+d.name+" srr: "+srrs);
+		nameToModeAndFiles[d.name] = ["SRR",JS.array(srrs),d.hasOwnProperty("adapter")?d.adapter:adapter,false];
 	} else if (d.hasOwnProperty("fastq")) {
 		var fastq = d.fastq;
 		log.info("Fastq entry: Name: "+d.name+" fastq: "+fastq);

@@ -37,6 +37,7 @@ import gedi.core.reference.LazyGenome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.workspace.loader.PreloadInfo;
 import gedi.core.workspace.loader.WorkspaceItemLoader;
@@ -98,7 +99,8 @@ public class Display {
 		System.err.println("");
 		System.err.println(" -h [<template>]	Print usage information (of this program and the given template)");
 		System.err.println();
-		System.err.println(" -oml [<oml>]\t\tDisplay using the given oml file");
+		System.err.println(" -oml [<file>]\t\tDisplay using the given oml file");
+		System.err.println(" -include [<file>]\t\tInclude the given oml file (removing header/footer)");
 		System.err.println();
 		System.err.println(" -D\t\t\tOutput debugging information");
 		System.err.println(" -h\t\t\tShow this message");
@@ -150,7 +152,7 @@ public class Display {
 	public static final String STORAGE_ID = "STORAGE_BUFFER";
 	
 	
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void start(String[] args) throws Exception {
 		Gedi.startup(true);
 		
@@ -161,7 +163,8 @@ public class Display {
 		te.direct(prefix);
 		String loc = null;
 		Genomic g = null;
-		boolean show = true; 
+		boolean show = true;
+		String omlFile = null;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -200,7 +203,12 @@ public class Display {
 				te.accept(dpl);
 			}
 			else if (args[i].equals("-oml")) {
-				te.setBuffer(checkParam(args,++i));
+				omlFile = checkParam(args,++i);
+			}
+			else if (args[i].equals("-include")) {
+				String code = new LineOrientedFile(checkParam(args,++i)).readAllText();
+				code = StringUtils.removeFooter(StringUtils.removeHeader(code, prefix),suffix);
+				te.direct(code);
 			}
 			else if (args[i].equals("-out")) {
 				new LineOrientedFile(checkParam(args,++i)).writeAllText(te.toString()+suffix);
@@ -243,6 +251,8 @@ public class Display {
 		log.info("Loading pipeline");
 		
 		String src = te.toString()+suffix;
+		if (omlFile!=null)
+			src = new LineOrientedFile(omlFile).readAllText();
 		
 		String cps = new LineIterator(Template.class.getResourceAsStream("/resources/colors.cps")).concat("\n");
 		OmlNodeExecutor oml = new OmlNodeExecutor()
@@ -252,7 +262,7 @@ public class Display {
 		Pipeline pipeline = (Pipeline)oml.execute(new OmlReader().parse(src));
 		pipeline.sortPlusMinusTracks();
 		
-		if (loc==null || !loc.contains(":")) {
+		if (loc==null) {
 			ReferenceSequence ref = loc==null?EI.wrap(g.getSequenceNames()).map(s->Chromosome.obtain(s,true)).filter(r->r.isStandard()).first():Chromosome.obtain(loc);
 			GenomicRegion reg;
 			if (g.getTranscripts().getTree(ref)==null || g.getTranscripts().getTree(ref).isEmpty()) 
@@ -262,8 +272,10 @@ public class Display {
 			reg = reg.extendAll(reg.getTotalLength()/3, reg.getTotalLength()/3);
 			loc = ref.toPlusMinusString()+":"+reg.toRegionString();
 		}
-		MutableReferenceGenomicRegion reg = new MutableReferenceGenomicRegion().parse(loc).toStrandIndependent();
+		MutableReferenceGenomicRegion reg = ImmutableReferenceGenomicRegion.parse(g, loc).toMutable().toStrandIndependent();
 
+		
+		
 		SwingGenoVisViewer viewer = new SwingGenoVisViewer(pipeline.getPetriNet());
 		for (VisualizationTrack track : pipeline.getTracks())
 			viewer.addTrack(track);

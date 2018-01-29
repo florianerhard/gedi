@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 
@@ -238,11 +239,11 @@ public class PackRegionTrack<D> extends VisualizationTrackAdapter<IntervalTree<G
 		
 		processBoxes(tracks,truncated, context.reference, context.regionToRender, context.data, (r,y,h)->{
 			StyleObject selStyle = selection.getStyle(new ImmutableReferenceGenomicRegion(context.reference,r, PackRegionTrack.this));
-			TriFunction<ReferenceSequence, GenomicRegion, D, Paint> ob = boxRenderer.border;
-			TriFunction<ReferenceSequence, GenomicRegion, D, Stroke> os = boxRenderer.borderStroke;
+			Function<ReferenceGenomicRegion<D>, Paint> ob = boxRenderer.border;
+			Function<ReferenceGenomicRegion<D>, Stroke> os = boxRenderer.borderStroke;
 			if (selStyle!=null) {
-				boxRenderer.border = (ref,reg,x)->selStyle.getColor();
-				boxRenderer.borderStroke = (ref,reg,x)->BoxRenderer.SELECTION;
+				boxRenderer.border = (rgr)->selStyle.getColor();
+				boxRenderer.borderStroke = (rgr)->BoxRenderer.SELECTION;
 			}
 			GenomicRegion reg = boxRenderer.renderBox(context.g2, viewer.getLocationMapper(), context.reference, fixedStrand!=null?fixedStrand:context.reference.getStrand(),r, context.data.get(r), getBounds().getX(), y, h);
 			boxRenderer.border = ob;

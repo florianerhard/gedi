@@ -23,6 +23,7 @@ import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.mutable.MutableDouble;
 
 import java.io.IOException;
 import java.util.function.ToDoubleFunction;
@@ -161,7 +162,7 @@ public class DirichletLikelihoodRatioTest implements ToDoubleFunction<double[]>,
 		
 	}
 	public static double effectSizeMultinomials(double[]... samples) {
-		return effectSizeMultinomials(1E-8, samples);
+		return effectSizeMultinomials(1, samples);
 	}
 
 	
@@ -177,10 +178,13 @@ public class DirichletLikelihoodRatioTest implements ToDoubleFunction<double[]>,
 	 * 
 	 * @return
 	 */
-	public static double testMultinomials(double pseudo, double[]... samples) {
+	public static double testMultinomials(MutableDouble statistic, double pseudo, double[]... samples) {
 		
 		double[][] psamples = new double[samples.length][];
 		assert samples.length>1;
+		
+		
+		// remove NaNs
 		BitVector nans = new BitVector(samples[0].length);
 		for (int i=0; i<samples.length; i++) {
 			assert samples[i].length == samples[0].length;
@@ -189,22 +193,42 @@ public class DirichletLikelihoodRatioTest implements ToDoubleFunction<double[]>,
 					nans.putQuick(j, true);
 		}
 		nans.not();
-		
 		for (int i=0; i<samples.length; i++) {
 			psamples[i] = ArrayUtils.restrict(samples[i],nans);
-			
 			assert ArrayUtils.min(psamples[i])>=0;
-			ArrayUtils.add(psamples[i], pseudo);
 		}
+		
+		// remove all zero components
+		nans.clear();
+		for (int i=0; i<samples.length; i++) 
+			for (int j=0; j<samples[i].length; j++) 
+				if (samples[i][j]>0) 
+					nans.putQuick(j, true);
+		for (int i=0; i<samples.length; i++) {
+			psamples[i] = ArrayUtils.restrict(psamples[i],nans);
+		}
+		
 		int dim = psamples[0].length;
 		int obj = psamples.length;
 		if (dim<2) return Double.NaN;
+		
+		
+		// add pseudocounts proportional to total sum of counts
+		double[] n1 = new double[dim];
+		for (int i=0; i<obj; i++) 
+			ArrayUtils.add(n1, psamples[i]);
+		ArrayUtils.normalize(n1);
+		
+		for (int i=0; i<obj; i++)
+			for (int j=0; j<dim; j++)
+				psamples[i][j]+=pseudo*n1[j];
 		
 		
 		double[] concat = ArrayUtils.concat(psamples);
 		double[] norm = concat.clone();
 		ArrayUtils.normalize(norm);
 		
+		// normalize for L1
 		double[] c1 = new double[dim];
 		for (int i=0; i<norm.length; i+=dim) {
 			for (int j=0; j<dim; j++)
@@ -212,6 +236,7 @@ public class DirichletLikelihoodRatioTest implements ToDoubleFunction<double[]>,
 		}
 		ArrayUtils.normalize(c1);
 		
+		// normalize for L2
 		double[] cnorm = new double[concat.length];
 		for (int i=0; i<norm.length; i+=dim) {
 			double s = ArrayUtils.sum(norm, i, i+dim);
@@ -219,6 +244,8 @@ public class DirichletLikelihoodRatioTest implements ToDoubleFunction<double[]>,
 				cnorm[i+j]=c1[j]*s;
 		}
 		
+		
+		// do the test
 		double L1 = logProbability(concat,norm);
 		double L2 = logProbability(concat,cnorm);
 		
@@ -228,10 +255,17 @@ public class DirichletLikelihoodRatioTest implements ToDoubleFunction<double[]>,
 
 
 
-	public static double testMultinomials(double[]... samples) {
-		return testMultinomials(1E-8, samples);
+	public static double testMultinomials(MutableDouble statistic, double[]... samples) {
+		return testMultinomials(statistic,1, samples);
 	}
 
 	
+	public static double testMultinomials(double pseudo, double[]... samples) {
+		return testMultinomials(null, pseudo, samples);
+	}
+	
+	public static double testMultinomials(double[]... samples) {
+		return testMultinomials(null, samples);
+	}
 	
 }

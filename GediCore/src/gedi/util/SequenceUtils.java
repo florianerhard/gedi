@@ -48,6 +48,7 @@ public class SequenceUtils {
 
 	public static final char[] rna_nucleotides = {'A','C','G','U','N','-'};
 	public static final char[] nucleotides = {'A','C','G','T','N','-'};
+	public static final char[] valid_nucleotides = {'A','C','G','T'};
 	public static final char[] compl_nucleotides = {'T','G','C','A','N','-'};
 	public static final char[] compl_rna_nucleotides = {'U','G','C','A','N','-'};
 	public static final int[] inv_nucleotides = new int[256];
@@ -182,6 +183,10 @@ public class SequenceUtils {
 	public final static boolean isComplementary(char a, char b) {
 		int bindex = inv_nucleotides[b];
 		return a==compl_nucleotides[bindex] || a==compl_rna_nucleotides[bindex];
+	}
+	
+	public final static boolean canPair(char a, char b) {
+		return isComplementary(a, b)||isWobble(a, b);
 	}
 
 	public static String toRna(CharSequence dnaSequence) {
@@ -382,6 +387,16 @@ public class SequenceUtils {
 		for (int i=0; i<coord.getNumParts(); i++)
 			sb.append(seq.subSequence(coord.getStart(i), coord.getEnd(i)));
 		return sb.toString();
+	}
+	public static char[] extractSequence(GenomicRegion coord,
+			char[] seq, char[] re) {
+		if (re==null || re.length<coord.getTotalLength()) re = new char[coord.getTotalLength()];
+		int c = 0;
+		for (int i=0; i<coord.getNumParts(); i++) {
+			System.arraycopy(seq, coord.getStart(i), re, c, coord.getLength(i));
+			c+=coord.getLength(i);
+		}
+		return re;
 	}
 	public static char[] extractSequence(GenomicRegion coord,
 			char[] seq) {

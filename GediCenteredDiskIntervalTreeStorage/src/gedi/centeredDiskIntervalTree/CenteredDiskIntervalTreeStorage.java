@@ -227,14 +227,17 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 	}
 	
 	
-	public void renameChromosomes(HashMap<String,String> mapping) throws IOException {
+	public void mapChromosomes(Function<ReferenceSequence,ReferenceSequence> mapping) throws IOException {
 		PageFileWriter out = new PageFileWriter(file.getPath()+".rename");
 		
 		out.putAsciiChars(EXT_MAGIC);
 		out.putInt(pages.size());
 		long minCurrentStart = Long.MAX_VALUE;
 		for (ReferenceSequence ref : pages.keySet()) {
-			Chromosome.write(Chromosome.obtain(mapping.containsKey(ref.getName())?mapping.get(ref.getName()):ref.getName(),ref.getStrand()),out);
+			ReferenceSequence refm = mapping.apply(ref);
+			if (refm==null) refm = ref;
+			Chromosome.write(refm.toChromosome(),out);
+//			Chromosome.write(Chromosome.obtain(mapping.containsKey(ref.getName())?mapping.get(ref.getName()):ref.getName(),ref.getStrand()),out);
 			CenteredDiskIntervalTree<D>  all = pages.get(ref);
 			minCurrentStart = Math.min(minCurrentStart,all.getStart());
 			out.putLong(0);
@@ -250,7 +253,10 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 		out.putAsciiChars(EXT_MAGIC);
 		out.putInt(pages.size());
 		for (ReferenceSequence ref : pages.keySet()) {
-			Chromosome.write(Chromosome.obtain(mapping.containsKey(ref.getName())?mapping.get(ref.getName()):ref.getName(),ref.getStrand()),out);
+			ReferenceSequence refm = mapping.apply(ref);
+			if (refm==null) refm = ref;
+			Chromosome.write(refm.toChromosome(),out);
+//			Chromosome.write(Chromosome.obtain(mapping.containsKey(ref.getName())?mapping.get(ref.getName()):ref.getName(),ref.getStrand()),out);
 			CenteredDiskIntervalTree<D> all = pages.get(ref);
 			minCurrentStart = Math.min(minCurrentStart,all.getStart());
 			out.putLong(all.getStart()+offset);

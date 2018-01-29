@@ -22,9 +22,13 @@ import gedi.util.FunctorUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.collections.intcollections.IntIterator;
+import gedi.util.io.randomaccess.BinaryReader;
+import gedi.util.io.randomaccess.BinaryWriter;
+import gedi.util.io.randomaccess.serialization.BinarySerializer;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.mutable.MutableTuple;
+import jdk.nashorn.internal.objects.NativeArray;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,6 +84,7 @@ public interface EI {
 	public static <T> IntIterator along(T[] a) {
 		return seq(0,a.length);
 	}
+	
 	public static IntIterator seq(int start, int end, int step) {
 		if (step==0) step = end>=start?1:-1;
 		int ustep = step;
@@ -88,6 +93,26 @@ public interface EI {
 			@Override
 			public int nextInt() {
 				int re = c;
+				c+=ustep;
+				return re;
+			}
+			
+			@Override
+			public boolean hasNext() {
+				return ustep>0?c<end:c>end;
+			}
+		};
+	}
+	
+	
+	public static DoubleIterator seq(double start, double end, double step) {
+		if (step==0) step = end>=start?1:-1;
+		double ustep = step;
+		return new DoubleIterator() {
+			double c = start;
+			@Override
+			public double nextDouble() {
+				double re = c;
 				c+=ustep;
 				return re;
 			}
@@ -131,12 +156,28 @@ public interface EI {
 		return FunctorUtils.singletonIterator(a);
 	}
 	
+	/**
+	 * Returns as long as the supplier does not supply null!
+	 * @param a
+	 * @return
+	 */
+	public static <T> ExtendedIterator<T> wrap(Supplier<T> a) {
+		return new FunctorUtils.TryNextIterator<T>() {
+			@Override
+			protected T tryNext() {
+				return a.get();
+			}
+			
+		};
+	}
+	
 	@SafeVarargs
 	public static <T> ExtendedIterator<T> wrap(T... a) {
 		if (a.length==0) return empty();
 		if (a.length==1) return singleton(a[0]);
 		return FunctorUtils.arrayIterator(a);
 	}
+	
 	
 	public static ExtendedIterator<Byte> wrap(byte[] a) {
 		return (ExtendedIterator)NumericArray.wrap(a).iterator();
@@ -160,6 +201,10 @@ public interface EI {
 	
 	public static DoubleIterator wrap(double[] a) {
 		return NumericArray.wrap(a).doubleIterator();
+	}
+	
+	public static ExtendedIterator<Object> wrap(NativeArray na) {
+		return wrap(na.valueIterator());
 	}
 	
 	
@@ -321,6 +366,37 @@ public interface EI {
 		}
 		
 		return pre.map(combiner);
+	}
+	
+	
+	public static <T,R extends BinaryReader> ExtendedIterator<T> deserialize(BinarySerializer<T> serializer, R reader, Consumer2<R> endReader) throws IOException {
+		serializer.beginDeserialize(reader);
+		
+		return new ExtendedIterator<T>() {
+
+			@Override
+			public boolean hasNext() {
+				return !reader.eof();
+			}
+
+			@Override
+			public T next() {
+				try {
+					return serializer.deserialize(reader);
+				} catch (IOException e) {
+					throw new RuntimeException("Could not deserialize!",e);
+				}
+			}
+			
+		}.endAction(()->{
+			try {
+				serializer.endDeserialize(reader);
+				endReader.accept2(reader);
+			} catch (Exception e) {
+				throw new RuntimeException("Could not deserialize!",e);
+			}
+		});
+		
 	}
 	
 }

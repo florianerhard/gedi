@@ -45,13 +45,7 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
-import org.apache.batik.swing.svg.GVTTreeBuilderAdapter;
-import org.apache.batik.swing.svg.GVTTreeBuilderEvent;
-import org.apache.batik.swing.svg.JSVGComponent;
-import org.apache.batik.util.XMLResourceDescriptor;
 import org.freehep.graphicsbase.util.export.ExportFileType;
-import org.w3c.dom.svg.SVGDocument;
 
 import cern.colt.bitvector.BitMatrix;
 
@@ -765,41 +759,41 @@ public class PaintUtils {
 	}
 
 
-	public static JSVGComponent loadSvg(String path) {
-		JSVGComponent re = new JSVGComponent();
-		re.setRecenterOnResize(false);
-		AtomicBoolean err = new AtomicBoolean(true);
-		re.addGVTTreeBuilderListener(new GVTTreeBuilderAdapter() {
-			@Override
-			public void gvtBuildFailed(GVTTreeBuilderEvent e) {
-				err.set(true);
-				synchronized (re) {
-					re.notify();	
-				}
-			}
-			@Override
-			public void gvtBuildCompleted(GVTTreeBuilderEvent e) {
-				err.set(false);
-				synchronized (re) {
-					re.notify();	
-				}
-			}
-		});
-		re.loadSVGDocument(path);
-		synchronized (re) {
-			try {
-				re.wait();
-			} catch (InterruptedException e1) {
-			}	
-		}
-		return err.get()?null:re;
-	}
-	
-	public static SVGDocument loadSvgDoc(String path) throws IOException {
-		String parser = XMLResourceDescriptor.getXMLParserClassName();
-	    SAXSVGDocumentFactory f = new SAXSVGDocumentFactory(parser);
-	    return (SVGDocument) f.createDocument(new File(path).toURI().toString());
-	}
+//	public static JSVGComponent loadSvg(String path) {
+//		JSVGComponent re = new JSVGComponent();
+//		re.setRecenterOnResize(false);
+//		AtomicBoolean err = new AtomicBoolean(true);
+//		re.addGVTTreeBuilderListener(new GVTTreeBuilderAdapter() {
+//			@Override
+//			public void gvtBuildFailed(GVTTreeBuilderEvent e) {
+//				err.set(true);
+//				synchronized (re) {
+//					re.notify();	
+//				}
+//			}
+//			@Override
+//			public void gvtBuildCompleted(GVTTreeBuilderEvent e) {
+//				err.set(false);
+//				synchronized (re) {
+//					re.notify();	
+//				}
+//			}
+//		});
+//		re.loadSVGDocument(path);
+//		synchronized (re) {
+//			try {
+//				re.wait();
+//			} catch (InterruptedException e1) {
+//			}	
+//		}
+//		return err.get()?null:re;
+//	}
+//	
+//	public static SVGDocument loadSvgDoc(String path) throws IOException {
+//		String parser = XMLResourceDescriptor.getXMLParserClassName();
+//	    SAXSVGDocumentFactory f = new SAXSVGDocumentFactory(parser);
+//	    return (SVGDocument) f.createDocument(new File(path).toURI().toString());
+//	}
 
 
 	public static BufferedImage resize(BufferedImage img, int nw, int nh) {

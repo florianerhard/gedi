@@ -75,10 +75,17 @@ public class MergeCIT {
 		if (args.length==1) {
 			if (new File(out).equals(new File(args[0])))
 				System.exit(0);
-			if (clear)
-				new File(out).renameTo(new File(args[0]));
-			else
-				Files.copy(Paths.get(out), Paths.get(args[0]));
+			if (clear) {
+				new File(args[0]).renameTo(new File(out));
+				if (new File(args[0]+".metadata.json").exists())
+					new File(args[0]+".metadata.json").renameTo(new File(out+".metadata.json"));
+			}
+			else {
+				Files.copy(Paths.get(args[0]),Paths.get(out));
+				if (new File(args[0]+".metadata.json").exists())
+					Files.copy(Paths.get(args[0]+".metadata.json"),Paths.get(out+".metadata.json"));
+			}
+			
 			System.exit(0);
 		}
 		

@@ -145,6 +145,7 @@ public class CsvReader {
 	public DataFrame readDataFrame() {
 		Collection[] lists = readLists();
 		DataFrame df = new DataFrame();
+		if (lists[0].size()==0) return df;
 		
 		for (int i = 0; i < lists.length; i++) {
 			if (getParser(i).getParsedType()==String.class) 

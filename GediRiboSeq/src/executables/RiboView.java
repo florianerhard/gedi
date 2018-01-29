@@ -39,10 +39,12 @@ import gedi.gui.genovis.VisualizationTrack;
 import gedi.riboseq.inference.orf.PriceOrf;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
+import gedi.util.PaintUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.dataframe.DataFrame;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
+import gedi.util.gui.ColorPalettes;
 import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
@@ -55,6 +57,7 @@ import gedi.util.oml.cps.CpsReader;
 import gedi.util.oml.petrinet.Pipeline;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Frame;
 import java.io.File;
 import java.io.IOException;
@@ -155,6 +158,7 @@ public class RiboView {
 		String[] tracks = null;
 		ArrayList<RiboViewOnline> onlines = new ArrayList<RiboViewOnline>();
 		ArrayList<String> additionalTracks = new ArrayList<String>();
+		boolean debug = false;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -186,6 +190,9 @@ public class RiboView {
 			}
 			else if (args[i].equals("-simple")) {
 				onlines.add(new RiboViewOnline(checkParam(args, ++i)));
+			}
+			else if (args[i].equals("-debug")) {
+				debug = true;
 			}
 			else if (args[i].equals("-regu")) {
 				onlines.add(new RiboViewOnline(checkDoubleParam(args, ++i),0));
@@ -285,6 +292,7 @@ public class RiboView {
 		
 		String[][] names = new String[prefix.length][];
 		String[][] condRmq = new String[prefix.length][];
+		String[][] condoptRmq = new String[prefix.length][];
 		double[][] totals = new double[prefix.length][];
 		String[] experimentNames = new String[prefix.length];
 		String[] models = new String[prefix.length];
@@ -312,6 +320,9 @@ public class RiboView {
 			
 			String uprefix = prefix[e];
 			condRmq[e] = EI.seq(0,names[e].length).map(s->uprefix+"."+s+".codons.rmq").toArray(String.class);
+			
+			condoptRmq[e] = EI.seq(0,names[e].length).map(s->uprefix+".opt."+s+".codons.rmq").toArray(String.class);
+			
 			
 			Path p = Paths.get(prefix[e]+".orfs.cit");
 			GenomicRegionStorage<?> orfs = ((GenomicRegionStorage<?>) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p)).toMemory();
@@ -360,10 +371,14 @@ public class RiboView {
 		
 		JS js = new JS();
 		js.putVariable("mergedrmq", EI.wrap(prefix).map(s->s+".codons.rmq").toArray(String.class));
+		js.putVariable("conditionrmq", condRmq);
+		
+		js.putVariable("mergedoptrmq", EI.wrap(prefix).map(s->new File(s+".opt.codons.rmq").exists()?s+".opt.codons.rmq":null).toArray(String.class));
+		js.putVariable("conditionoptrmq", condoptRmq);
+		
 		js.putVariable("tracks", trackNames);
 		js.putVariable("names", names);
 		js.putVariable("totals", totals);
-		js.putVariable("conditionrmq", condRmq);
 		js.putVariable("experimentNames", experimentNames);
 		js.putVariable("models", models);
 		js.putVariable("onlines",onlines.toArray(new RiboViewOnline[0]));
@@ -380,26 +395,46 @@ public class RiboView {
 		String src = new LineIterator(stream).concat("\n");
 		Jhp jhp = new Jhp(js);
 		src = jhp.apply(src);
+		if (debug)
+			FileUtils.writeAllText(src, new File("debug.oml"));
 		
 		String cps = new LineIterator(RiboView.class.getResourceAsStream("/resources/colors.cps")).concat("\n");
+		
+		StringBuilder sb = new StringBuilder();
+		for (int e=0; e<experimentNames.length; e++) {
+			sb.append(".conditions").append(e).append(" { \"styles\":[\n");
+			Color[] colors = ColorPalettes.Dark2.getPalette(names[e].length);
+			for (int cc=0; cc<names[e].length; cc++) {
+				sb.append("\t{ \"color\": \""+PaintUtils.encodeColor(colors[cc])+"\", \"name\": \""+names[e][cc]+"\" },\n");
+			}
+			sb.append("]}\n");
+		}
+		cps = cps+sb.toString();
+		if (debug)
+			FileUtils.writeAllText(cps, new File("debug.cps"));
+		
+		
 		Pipeline pipeline = (Pipeline)new OmlNodeExecutor().addInterceptor(new CpsReader().parse(cps)).execute(new OmlReader().setJs(js).parse(src),context);
 		
 		
 		
 		
+		
 		if (loc==null || !loc.contains(":")) {
-			ReferenceGenomicRegion<?> rgr = g.getNameIndex().get(loc);
-			if (rgr!=null) {
-				rgr = rgr.toMutable().transformRegion(r->r.extendFront(1)).toImmutable();// workaround for IndexGenome bug
-				loc = rgr.toLocationString();
-			} else {
+//			ReferenceGenomicRegion<?> rgr = g.getNameIndex().get(loc);
+//			if (rgr!=null) {
+//				rgr = rgr.toMutable().transformRegion(r->r.extendFront(1)).toImmutable();// workaround for IndexGenome bug
+//				loc = rgr.toLocationString();
+//			} else {
 				ReferenceSequence ref = loc==null?g.getTranscripts().getReferenceSequences().iterator().next():Chromosome.obtain(loc);
 				GenomicRegion reg = g.getTranscripts().getTree(ref).getRoot().getKey().removeIntrons();
 				reg = reg.extendAll(reg.getTotalLength()/3, reg.getTotalLength()/3);
 				loc = ref.toPlusMinusString()+":"+reg.toRegionString();
-			}
+//			}
 		}
-		MutableReferenceGenomicRegion reg = new MutableReferenceGenomicRegion().parse(loc).toStrandIndependent();
+		MutableReferenceGenomicRegion<Object> reg = ImmutableReferenceGenomicRegion.parse(g, loc).toMutable().toStrandIndependent();
+		
+//		MutableReferenceGenomicRegion reg = new MutableReferenceGenomicRegion().parse(loc).toStrandIndependent();
 
 		SwingGenoVisViewer viewer = new SwingGenoVisViewer(pipeline.getPetriNet());
 		for (VisualizationTrack track : pipeline.getTracks())

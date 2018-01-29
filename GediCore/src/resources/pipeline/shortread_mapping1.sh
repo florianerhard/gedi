@@ -8,12 +8,14 @@ varin("mode","SRR/FASTQ",true);
 varin("mapper","Mapping method",false);
 varin("test","Test with the first 10k sequences",false);
 varin("keeptrimmed","Keep the trimmed fastq files",false);
+varin("keepbams","Keep the bam files",false);
 varin("nthreads","Number of threads (Default: 8)",false);
 varin("minlength","Minimal length of reads to keep (default: 18)",false);
 varin("adapter","Adapter sequence (default: infer with minion)",false);
 varin("trimmed","Whether data is already adapter trimmed",false);
 varin("barcodes","Json describing barcodes (Default: undef)",false);
 varin("keepUnmapped","Keep the unmapped reads in a fasta file",false);
+varin("keeptmp","Keep the tmp directory",false);
 
 varout("reads","File name containing read mappings");
 
@@ -23,10 +25,14 @@ varout("reads","File name containing read mappings");
 
 <?JS
 var keepUnmapped;
+var keeptmp;
 var minlength=minlength?minlength:18;
 var nthreads = nthreads?nthreads:Math.min(8,Runtime.getRuntime().availableProcessors());
 var barcodes;
 var mapper = mapper?mapper:"bowtie";
+
+if (mapper=="STAR")
+	System.out.println("We strongly advice against using STAR for mapping short reads (very very bad things will happen)!");
 
 var smapper = mapper;
 mapper = ParseUtils.parseEnumNameByPrefix(mapper,true,ReadMapper.class);
@@ -36,9 +42,17 @@ output.executable=true;
 var infos = ReadMappingReferenceInfo.writeTable(output.file.getParent()+"/"+name+".prio.csv",references,true,true,mapper);
 processTemplate("merge_priority.oml",output.file.getParent()+"/"+name+".prio.oml");
 
+
+var genomes = EI.wrap(infos).filter(function(i) i.priority>1).map(function(i) i.getGenomic().getId()).reduce(function(a,b) a+" "+b);
+
 var test;
 
+var keepbams;
+
+if (keepbams) {
 ?>
+mkdir -p <?JS wd ?>/bams
+<? } ?>
 
 mkdir -p <?JS tmp ?>/<?JS name ?>
 cd <?JS tmp ?>/<?JS name ?>
@@ -75,7 +89,9 @@ var adapter;
 if (adapter) { ?>
 ADAPT=<?JS adapter ?>
 <?JS } else { ?>
-minion search-adapter -i <?JS name ?>.fastq -show 1 -write-fasta adapter.fasta 
+head -n4000000 <?JS name ?>.fastq > <?JS name ?>.head.fastq
+minion search-adapter -i <?JS name ?>.head.fastq -show 1 -write-fasta adapter.fasta
+rm <?JS name ?>.head.fastq 
 ADAPT=`head -n2 adapter.fasta | tail -n1`
 <?JS } ?>
 
@@ -112,7 +128,7 @@ mv <?JS name ?>.collapsed.png <?JS name ?>.collapsed.R <?JS name ?>.collapsed.re
 
 <?JS for (var i=0; i<infos.length; i++)  
 if (infos[i].priority==1) {
-	println(ReadMapper.bowtie.getShortReadCommand(infos[i],name+".fastq","/dev/null",name+"_unmapped.fastq",nthreads));
+	println(ReadMapper.bowtie.getShortReadCommand(new ReadMappingReferenceInfo(ReferenceType.rRNA,infos[i].getGenomic(),ReadMapper.bowtie),name+".fastq","/dev/null",name+"_unmapped.fastq",nthreads));
 ?>
 mv <?JS name ?>_unmapped.fastq <?JS name ?>.fastq
 echo -ne "rRNA removal\t" >> <?JS name ?>.reads.tsv
@@ -125,6 +141,16 @@ echo $leftreads >> <?JS name ?>.reads.tsv
 if (infos[i].priority!=1){ 
 	if (infos[i].mapper==null) throw new RuntimeException("Mapper unknown!");
 	println(infos[i].mapper.getShortReadCommand(infos[i],name+".fastq",infos[i].type+".sam",null,nthreads));
+	if (keepbams) {
+		infos[i].type+".sam" 
+		?>
+samtools view -b <? print(infos[i].type+".sam") ?> > <? print(infos[i].type+".bam") ?>
+samtools sort <? print(infos[i].type+".bam") ?> > <? print(name+"."+infos[i].type+".bam") ?>
+samtools index <? print(name+"."+infos[i].type+".bam") ?>
+rm <? print(infos[i].type+".bam") ?>
+		<?JS
+
+	}
 ?>
 <?JS if (nthreads>1) { ?>
 samtools sort -o <?JS print(infos[i].type) ?>.sort.sam -n -T ./sort -@ <?JS nthreads ?> <?JS print(infos[i].type) ?>.sam 
@@ -142,10 +168,10 @@ var png = output.file.getParentFile().getParentFile()+"/report/"+name+".barcodec
 var table = output.file.getParentFile().getParentFile()+"/report/"+name+".barcodecorrection.tsv"
 processTemplate("plot_barcodes.R",output.file.getParentFile().getParentFile()+"/report/"+name+".barcodecorrection.R");
 ?>
-gedi -t . -e MergeSam -D -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit -bcjson <?JS print(new File(output.file.getParent()+"/"+name+".barcodes.json")) ?> -bcfile <?JS name ?>.collapsed.barcodes  <?JS if (keepUnmapped) { print("-unmapped");} ?>
+gedi -t . -e MergeSam -D -genomic <?JS genomes ?> -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit -bcjson <?JS print(new File(output.file.getParent()+"/"+name+".barcodes.json")) ?> -bcfile <?JS name ?>.collapsed.barcodes  <?JS if (keepUnmapped) { print("-unmapped");} ?>
 cp <?JS name ?>.barcodecorrection.* <?JS wd ?>/report
 <?JS } else { ?>
-gedi -t . -e MergeSam -D -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit  <?JS if (keepUnmapped) { print("-unmapped");} ?>
+gedi -t . -e MergeSam -D -genomic <?JS genomes ?> -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit  <?JS if (keepUnmapped) { print("-unmapped");} ?>
 <?JS } ?>
 echo -ne "Merged\t" >> <?JS name ?>.reads.tsv
 gedi Nashorn -e "println(EI.wrap(DynamicObject.parseJson(FileUtils.readAllText(new File('<?JS name ?>.cit.metadata.json'))).getEntry('conditions').asArray()).mapToDouble(function(d) d.getEntry('total').asDouble()).sum())" >> <?JS name ?>.reads.tsv
@@ -159,12 +185,18 @@ if [ -f <?JS name ?>.cit ]; then
 <?JS if (keepUnmapped) { ?>
    mv <?JS name ?>.unmapped.fasta <?JS wd ?>
 <?JS } ?>
+<?JS if (keepbams) { ?>
+   mv *.bam* <?JS wd ?>/bams
+<?JS } ?>
 <?JS 
 var keeptrimmed;
 if (keeptrimmed) { ?>
    mv <?JS name ?>.fastq <?JS wd ?>
 <?JS } ?>
+
+<?JS if (!keeptmp) { ?>
    rm -rf <?JS tmp ?>/<?JS name ?>
+<? } ?>
 else
    (>&2 echo "There were some errors, did not delete temp directory!")
 fi

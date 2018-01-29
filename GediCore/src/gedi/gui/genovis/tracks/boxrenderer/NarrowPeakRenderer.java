@@ -40,7 +40,7 @@ public class NarrowPeakRenderer extends BoxRenderer<NarrowPeakAnnotation> {
 	public NarrowPeakRenderer() {
 		setBackground(t->mapper.apply(t.getScore()));
 		setForeground(t->PaintUtils.isDarkColor(mapper.apply(t.getScore()))?Color.WHITE:Color.BLACK);
-		setStringer(s->s.toString());
+		stringer = s->s.getData().toString();
 	}
 	
 	public void linear(double min, double max) {

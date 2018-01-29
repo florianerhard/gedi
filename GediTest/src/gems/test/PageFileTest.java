@@ -20,8 +20,15 @@ package gems.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import gedi.core.region.ArrayGenomicRegion;
+import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
+import gedi.util.io.randomaccess.serialization.BinarySerializable;
+import gedi.util.io.randomaccess.serialization.BinarySerializableSerializer;
 import gedi.util.math.stat.RandomNumbers;
 
 import java.io.File;
@@ -36,6 +43,27 @@ import org.nustaq.serialization.FSTConfiguration;
 @RunWith(JUnit4.class)
 public class PageFileTest {
 
+	@Test
+	public void iteratorTest() throws IOException, ClassNotFoundException {
+		RandomNumbers rnd = new RandomNumbers();
+		ArrayGenomicRegion[] regs = new ArrayGenomicRegion[1000];
+		for (int i=0; i<regs.length; i++) 
+			regs[i] = new ArrayGenomicRegion(rnd.getUnif(0, 100),rnd.getUnif(101,200));
+		
+		PageFileWriter out = new PageFileWriter("data/pagefile.bin");
+		BinarySerializableSerializer<ArrayGenomicRegion> seri = new BinarySerializableSerializer<>(ArrayGenomicRegion.class);
+		
+		EI.wrap(regs).serialize(seri, out);
+		
+		ArrayGenomicRegion[] regs2 = EI.deserialize(seri, out.read(true), r->r.close()).toArray(ArrayGenomicRegion.class);
+		
+		
+		assertEquals(regs.length, regs2.length);
+		for (int i=0; i<regs.length; i++)
+			assertEquals(regs[i], regs2[i]);
+	}
+
+	
 	
 	@Test
 	public void primitiveTestNoBulk() throws IOException, ClassNotFoundException {

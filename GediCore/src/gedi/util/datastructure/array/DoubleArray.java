@@ -181,6 +181,13 @@ public abstract class DoubleArray implements NumericArray {
 			add(i,a.getDouble(i));
 	}
 	
+	
+	@Override
+	public void subtract(NumericArray a) {
+		for (int i=0; i<length(); i++)
+			add(i,-a.getDouble(i));
+	}
+
 	@Override
 	public void add(int index, byte value) {
 		add(index, (double)value);

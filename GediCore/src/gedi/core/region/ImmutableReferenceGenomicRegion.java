@@ -18,6 +18,7 @@
 
 package gedi.core.region;
 
+import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.util.StringUtils;
@@ -86,6 +87,37 @@ public class ImmutableReferenceGenomicRegion<D> implements ReferenceGenomicRegio
 		return new ImmutableReferenceGenomicRegion<D>(Chromosome.obtain(p[0]), GenomicRegion.parse(p[1]),data);
 	}
 
+	
+	public static <D> ImmutableReferenceGenomicRegion<D> parse(Genomic g, String pos) {
+		return parse(g,pos,null);
+	}
+		
+	public static <D> ImmutableReferenceGenomicRegion<D> parse(Genomic g, String pos, D data) {
+		if (pos==null || !pos.contains(":")) {
+			ReferenceGenomicRegion<?> rgr = g.getNameIndex().get(pos);
+			if (rgr!=null) {
+				rgr = rgr.toMutable().transformRegion(r->r.extendFront(1)).toImmutable();// workaround for IndexGenome bug
+				pos = rgr.toLocationString();
+			} else {
+				rgr = g.getGeneMapping().apply(pos);
+				if (rgr!=null) {
+					pos = rgr.toLocationString();
+				} else {
+					rgr = g.getTranscriptMapping().apply(pos);
+					if (rgr!=null) {
+						pos = rgr.toLocationString();
+					} else {
+						ReferenceSequence ref = pos==null?g.getTranscripts().getReferenceSequences().iterator().next():Chromosome.obtain(pos);
+						GenomicRegion reg = g.getTranscripts().getTree(ref).getRoot().getKey().removeIntrons();
+						reg = reg.extendAll(reg.getTotalLength()/3, reg.getTotalLength()/3);
+						pos = ref.toPlusMinusString()+":"+reg.toRegionString();
+					}
+				}
+			}
+		}
+		return parse(pos,data);
+	}
+	
 	
 	
 }

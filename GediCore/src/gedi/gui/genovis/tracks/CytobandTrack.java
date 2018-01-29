@@ -40,9 +40,9 @@ public class CytobandTrack extends PackRegionTrack<ScoreNameAnnotation> {
 		simpleBasePairsPerPixel = 0;
 		BoxRenderer<ScoreNameAnnotation> ren = (BoxRenderer<ScoreNameAnnotation>) this.boxRenderer;
 		
-		ren.stringer = (ref,reg,s)->s.getName();
-		ren.background = (ref,reg,s)->s.getScore()>0.5?PaintUtils.parseColor("#CC6600"):PaintUtils.parseColor("#FFFFCC");
-		ren.foreground = (ref,reg,s)->s.getScore()>0.5?Color.WHITE:Color.BLACK;
+		ren.stringer = (r)->r.getData().getName();
+		ren.background = (r)->r.getData().getScore()>0.5?PaintUtils.parseColor("#CC6600"):PaintUtils.parseColor("#FFFFCC");
+		ren.foreground = (r)->r.getData().getScore()>0.5?Color.WHITE:Color.BLACK;
 		ren.border = ren.background;
 	}
 	

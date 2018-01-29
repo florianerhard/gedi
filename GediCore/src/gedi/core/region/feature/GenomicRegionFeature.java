@@ -50,9 +50,7 @@ import javax.script.ScriptException;
 
 public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 
-	default boolean dependsOnData() {
-		return false;
-	}
+	boolean dependsOnData();
 	
 	
 	/**
@@ -65,7 +63,7 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 	
 	GenomicRegionFeatureProgram getProgram();
 	void setProgram(GenomicRegionFeatureProgram program);
-	void setId(String id);
+	GenomicRegionFeature<O> setId(String id);
 	String getId();
 	int getMinValues();
 	int getMaxValues();
@@ -125,7 +123,7 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 		});
 	};
 	
-	default void addCondition(String js) throws ScriptException {
+	default GenomicRegionFeature<O> addCondition(String js) throws ScriptException {
 		StringBuilder code = new StringBuilder();
 		code.append("function() {\n");
 		if (js.contains(";")) {
@@ -135,10 +133,14 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 			code.append("return "+js+";\n}");
 		}
 		
-		addCondition(new JSPredicate(true, code.toString()));
+		return addCondition(new JSPredicate(true, code.toString()));
 	};
 	
-	void addCondition(Predicate<GenomicRegionFeature<O>> condition);
+	default GenomicRegionFeature<O> addUniqueCondition(String feature) throws ScriptException {
+		return addCondition(f->f.getProgram().getInputById(feature).size()==1);
+	};
+	
+	GenomicRegionFeature<O> addCondition(Predicate<GenomicRegionFeature<O>> condition);
 	boolean hasCondition();
 	
 	
@@ -199,7 +201,7 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 		return re;
 	}
 	
-	default void addPredicate(String js) throws ScriptException {
+	default GenomicRegionFeature<O> addPredicate(String js) throws ScriptException {
 		StringBuilder code = new StringBuilder();
 		code.append("function(f) {\n");
 		if (js.contains(";")) {
@@ -209,9 +211,9 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 			code.append("return "+js+";\n}");
 		}
 		
-		addPredicate(new JSPredicate(true, code.toString()));
+		return addPredicate(new JSPredicate(true, code.toString()));
 	}
-	default void addFunction(String js) throws ScriptException {
+	default GenomicRegionFeature<O> addFunction(String js) throws ScriptException {
 		StringBuilder code = new StringBuilder();
 		code.append("function(f) {\n");
 		if (js.contains(";")) {
@@ -221,20 +223,20 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 			code.append("return "+js+";\n}");
 		}
 		
-		addFunction(new JSFunction(true, code.toString()));
+		return addFunction(new JSFunction(true, code.toString()));
 	}
 	
-	default void addField(String field) throws ScriptException {
+	default GenomicRegionFeature<O> addField(String field) throws ScriptException {
 		MutableMonad<Function> mut = new MutableMonad<Function>();
-		addFunction(o->{
+		return addFunction(o->{
 			if (mut.Item==null) mut.Item = Orm.getFieldGetter(o.getClass(), field);
 			return mut.Item.apply(o);
 		});
 	}
 	
-	default void addMethod(String method, String... params){
+	default GenomicRegionFeature<O> addMethod(String method, String... params){
 		MutableMonad<BiFunction<Object,String[],Object>> mut = new MutableMonad<BiFunction<Object,String[],Object>>();
-		addFunction(o->{
+		return addFunction(o->{
 			if (mut.Item==null){
 				mut.Item = ReflectionUtils.findMethod(o, method, params);
 				if (mut.Item==null)
@@ -245,13 +247,13 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 		});
 	}
 	
-	default void addConstant(String c) throws ScriptException {
-		addFunction(o->c);
+	default GenomicRegionFeature<O> addConstant(String c) throws ScriptException {
+		return addFunction(o->c);
 	}
 	
 	
-	default void addPredicate(Predicate<O> predicate) {
-		addFunction((o)->predicate.test(o)?o:null);
+	default GenomicRegionFeature<O> addPredicate(Predicate<O> predicate) {
+		return addFunction((o)->predicate.test(o)?o:null);
 	}
 	
 	/**
@@ -259,10 +261,10 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 	 * to another annotation or remove it (return null).
 	 * @param function
 	 */
-	<T> void addFunction(Function<O,T> function);
+	<T> GenomicRegionFeature<O> addFunction(Function<O,T> function);
 	
 	void applyCommands(Set o);
-	default void addResultProducers(ArrayList<ResultProducer> re) {}
+	default GenomicRegionFeature<O> addResultProducers(ArrayList<ResultProducer> re) {return this;}
 
 
 	/**

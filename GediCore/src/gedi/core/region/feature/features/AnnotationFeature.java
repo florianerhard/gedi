@@ -79,19 +79,20 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 		this.dataonly = dataonly;
 	}
 	
-	public void add(GenomicRegionStorage<T> storage) {
+	public AnnotationFeature<T> add(GenomicRegionStorage<T> storage) {
 		add(storage,0);
+		return this;
 	}
 	
-	public void addTranscripts(Genomic genomic) {
-		addTranscripts(genomic, 0);
+	public AnnotationFeature<T> addTranscripts(Genomic genomic) {
+		return addTranscripts(genomic, 0);
 	}
 	
-	public void addMajorTranscripts(Genomic genomic) {
-		addMajorTranscripts(genomic, 0);
+	public AnnotationFeature<T> addMajorTranscripts(Genomic genomic) {
+		return addMajorTranscripts(genomic, 0);
 	}
 	
-	public void add(GenomicRegionStorage<T> storage, int flank) {
+	public AnnotationFeature<T> add(GenomicRegionStorage<T> storage, int flank) {
 		if (flank>0) {
 			MemoryIntervalTreeStorage<T> mem = new MemoryIntervalTreeStorage<>(storage.getType());
 			storage.ei().map(r->new ImmutableReferenceGenomicRegion<T>(r.getReference(), r.getRegion().extendBack(flank).extendFront(flank),r.getData())).add(mem);
@@ -101,16 +102,17 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 			storage = storage.toMemory();
 		this.storages.add(storage);
 		this.flank.add(flank);
+		return this;
 	}
 	
 	@SuppressWarnings("unchecked")
-	public void addTranscripts(Genomic genomic, int flank) {
-		add((GenomicRegionStorage<T>) genomic.getTranscripts(),flank);
+	public AnnotationFeature<T> addTranscripts(Genomic genomic, int flank) {
+		return add((GenomicRegionStorage<T>) genomic.getTranscripts(),flank);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public void addMajorTranscripts(Genomic genomic, int flank) {
-		add((GenomicRegionStorage<T>) genomic.getMajorTranscripts(),flank);
+	public AnnotationFeature<T> addMajorTranscripts(Genomic genomic, int flank) {
+		return add((GenomicRegionStorage<T>) genomic.getMajorTranscripts(),flank);
 	}
 	
 	public void setReferenceSequenceConversion(
@@ -142,11 +144,13 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 		};
 	}
 	
-	public void setContainsPosition(GenomicRegionPosition position) {
+	public AnnotationFeature<T> setContainsPosition(GenomicRegionPosition position) {
 		checker = (r,referenceRegion)->r.getRegion().contains(position.position(referenceRegion.getReference(),referenceRegion.getRegion()));
+		return this;
 	}
-	public void setContainsPosition(GenomicRegionPosition position, int offset) {
+	public AnnotationFeature<T> setContainsPosition(GenomicRegionPosition position, int offset) {
 		checker = (r,referenceRegion)->r.getRegion().contains(position.position(referenceRegion.getReference(),referenceRegion.getRegion(),offset));
+		return this;
 	}
 	
 	@Override

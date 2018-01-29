@@ -1,0 +1,46 @@
+<?JS0
+varin("id","Track id",true);
+varin("paths","File paths",true);
+varin("background","Background color of track",false);
+varin("agg","Aggregation",false);
+varin("type","boxes/lines",false);
+varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
+?>
+<?JS
+var background = background?background:"#ffffff";
+var mbppp = mbppp?mbppp:1000;
+var agg = agg?agg:"Mean";
+var type = type?type:"lines";
+?>
+	
+	<NumericSource id="+.<?JS id ?>.data" strand="+">
+        <?JS for each (var path in paths) { ?>
+		<Rmq file="<? path ?>" agg="<?JS agg ?>"/>
+		<?JS } ?>
+    </NumericSource>
+    <NumericSource id="-.<?JS id ?>.data" strand="-">
+    	<?JS for each (var path in paths) { ?>
+		<Rmq file="<? path ?>" agg="<?JS agg ?>"/>
+		<?JS } ?>
+    </NumericSource>
+
+
+
+<?JS if (type.equals("boxes")) { ?>	
+	<StackedBoxesTrack input="+.<? id ?>.data" id="+.<? id ?>">
+		<MaxBasePairsPerPixel v="<? mbppp ?>"/>
+	</StackedBoxesTrack>
+	<StackedBoxesTrack input="-.<? id ?>.data" id="-.<? id ?>">
+		<MaxBasePairsPerPixel v="<? mbppp ?>"/>
+	</StackedBoxesTrack>
+<?JS } else { ?>
+	<LinesTrack input="+.<? id ?>.data" id="+.<? id ?>" >
+            <FixedMin min="0"/>
+            <MaxBasePairsPerPixel v="<? mbppp ?>"/>
+    </LinesTrack>
+
+	<LinesTrack input="-.<? id ?>.data" id="-.<? id ?>" >
+            <FixedMin min="0"/>
+            <MaxBasePairsPerPixel v="<? mbppp ?>"/>
+    </LinesTrack>
+<?JS } ?>	

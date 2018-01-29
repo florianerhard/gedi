@@ -44,6 +44,12 @@ public enum ReadMapper {
 		public String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
 			throw new RuntimeException("bowtie does not support PacBio reads!");
 		}
+
+		@Override
+		public String getRnaSeqCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped,
+				int nthreads, boolean shared) {
+			throw new RuntimeException("Not implemented!");
+		}
 		
 	},
 	
@@ -66,6 +72,20 @@ public enum ReadMapper {
 				nthreads,info.index,input,unmapped!=null?"--outReadsUnmapped Fastx":"",output,unmapped!=null?"\nmv Unmapped.out.mate1 "+unmapped:"");
 		}
 		
+		public String getRnaSeqCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, boolean shared) {
+			String re = String.format("STAR --runMode alignReads --runThreadN %d --genomeDir %s %s--readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType Local  --outSAMattributes nM MD  %s\n",
+										nthreads,info.index,shared?"--genomeLoad LoadAndKeep ":"",input,unmapped!=null?"--outReadsUnmapped Fastx":"");
+			if (output==null || output.equals("/dev/null"))
+				re = re+"rm Aligned.out.sam";
+			else
+				re = re+"mv Aligned.out.sam "+output;
+			if (unmapped!=null)
+				re = re+"\nmv Unmapped.out.mate1 "+unmapped;
+			return re;
+		}
+			
+		
+		
 		@Override
 		public String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
 			return String.format("STARlong --runMode alignReads --runThreadN %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType Local  --outSAMattributes nM MD "
@@ -81,4 +101,5 @@ public enum ReadMapper {
 	public abstract boolean isInherentGenomicTranscriptomicMapper();
 	public abstract String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads);
 	public abstract String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads);
+	public abstract String getRnaSeqCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, boolean shared);
 }

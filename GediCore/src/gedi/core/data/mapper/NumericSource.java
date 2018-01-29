@@ -78,7 +78,9 @@ public class NumericSource implements GenomicRegionDataSource<PixelBlockToValues
 		nameMapping.put(incoming, here);
 	}
 	
-
+	public void add(DiskGenomicNumericProvider rmq, SpecialAggregators agg) {
+		providers.add(new ProviderSet(rmq,agg));
+	}
 	
 	public void addRmq(String file, boolean min, boolean mean, boolean sum, boolean max) throws IOException {
 		if (min) providers.add(new ProviderSet(fileCache.computeIfAbsent(file, newDisk),SpecialAggregators.Min));

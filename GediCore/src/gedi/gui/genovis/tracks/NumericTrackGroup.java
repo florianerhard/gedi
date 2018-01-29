@@ -55,6 +55,12 @@ public class NumericTrackGroup extends NumericTrack<Void> implements HasSubtrack
 		return tracks.isEmpty()?super.getLogbase():tracks.get(0).getLogbase();
 	}
 	
+	public void setLogScale(double base) {
+		for (NumericTrack sub : tracks)
+			sub.setLogScale(base);
+		super.setLogScale(base);
+	}
+	
 	
 	public ScaleLimitLinker getLimitLinker() {
 		return limitLinker;

@@ -179,6 +179,13 @@ public abstract class ByteArray implements NumericArray {
 	}
 	
 	@Override
+	public void subtract(NumericArray a) {
+		for (int i=0; i<length(); i++)
+			add(i,-a.getByte(i));
+	}
+
+	
+	@Override
 	public void add(int index, byte value) {
 		setByte(index, (byte) (getByte(index)+value));		
 	}

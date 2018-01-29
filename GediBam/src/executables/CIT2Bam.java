@@ -21,6 +21,7 @@ package executables;
 import gedi.app.Gedi;
 import gedi.app.extension.ExtensionContext;
 import gedi.bam.tools.BamUtils;
+import gedi.core.data.HasConditions;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.DefaultAlignedReadsData;
 import gedi.core.genomic.Genomic;

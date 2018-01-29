@@ -117,9 +117,46 @@
 	</NumericSource>
 	<ToFramesTransformer id="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.cod1.nn.<?JS print(names[e][i]); ?>" strand="-"/>
 	<NumericNormalize id="-.<?JS print(experimentNames[e]) ?>.cod.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" totals="<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>" />
-	<?JS  }} ?>
+	<?JS  } ?>
 
 	
+	<?JS var mergedoptrmq; if (mergedoptrmq[e]) {?>
+	<NumericSource id="+.<?JS print(experimentNames[e]) ?>.ocod1" strand="+">
+		<Rmq file="<?JS print(mergedoptrmq[e]) ?>" agg="Max"/>
+	</NumericSource>
+	<NumericSource id="-.<?JS print(experimentNames[e]) ?>.ocod1" strand="-">
+		<Rmq file="<?JS print(mergedoptrmq[e]) ?>" agg="Max"/>
+	</NumericSource>
+	<ToFramesTransformer id="+.<?JS print(experimentNames[e]) ?>.ocod" input="+.<?JS print(experimentNames[e]) ?>.ocod1" strand="+"/>
+	<ToFramesTransformer id="-.<?JS print(experimentNames[e]) ?>.ocod" input="-.<?JS print(experimentNames[e]) ?>.ocod1" strand="-"/>
+	
+	<?JS  
+		for (var i=0; i<names[e].length; i++) {
+	?>
+	<NumericSource id="+.<?JS print(experimentNames[e]) ?>.ocod1.nn.<?JS print(names[e][i]); ?>" strand="+">
+		<Rmq file="<?JS print(conditionoptrmq[e][i]) ?>" agg="Max"/>
+	</NumericSource>
+	<ToFramesTransformer id="+.<?JS print(experimentNames[e]) ?>.ocod.nn.<?JS print(names[e][i]); ?>" input="+.<?JS print(experimentNames[e]) ?>.ocod1.nn.<?JS print(names[e][i]); ?>" strand="+"/>
+	<NumericNormalize id="+.<?JS print(experimentNames[e]) ?>.ocod.<?JS print(names[e][i]); ?>" input="+.<?JS print(experimentNames[e]) ?>.ocod.nn.<?JS print(names[e][i]); ?>" totals="<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>" />
+	<NumericSource id="-.<?JS print(experimentNames[e]) ?>.ocod1.nn.<?JS print(names[e][i]); ?>" strand="-">
+		<Rmq file="<?JS print(conditionoptrmq[e][i]) ?>" agg="Max"/>
+	</NumericSource>
+	<ToFramesTransformer id="-.<?JS print(experimentNames[e]) ?>.ocod.nn.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.ocod1.nn.<?JS print(names[e][i]); ?>" strand="-"/>
+	<NumericNormalize id="-.<?JS print(experimentNames[e]) ?>.ocod.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.ocod.nn.<?JS print(names[e][i]); ?>" totals="<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>" />
+	<?JS  }} ?>
+	<NumericMerge id="+.<?JS print(experimentNames[e]) ?>.ocod.merged" input="<?JS print(EI.seq(0,names[e].length).map(function(i) "+."+experimentNames[e]+".ocod.nn."+names[e][i]).concat(",")); ?>" />
+	<NumericMerge id="-.<?JS print(experimentNames[e]) ?>.ocod.merged" input="<?JS print(EI.seq(0,names[e].length).map(function(i) "-."+experimentNames[e]+".ocod.nn."+names[e][i]).concat(",")); ?>" />
+	
+	<NumericSelect id="+.<?JS print(experimentNames[e]) ?>.ocod.Frame0" range="<?JS print(EI.seq(0,new Integer(names[e].length*3),3).concat(",")); ?>" input="+.<?JS print(experimentNames[e]) ?>.ocod.merged" />
+	<NumericSelect id="-.<?JS print(experimentNames[e]) ?>.ocod.Frame0" range="<?JS print(EI.seq(0,new Integer(names[e].length*3),3).concat(",")); ?>" input="-.<?JS print(experimentNames[e]) ?>.ocod.merged" />
+	<NumericSelect id="+.<?JS print(experimentNames[e]) ?>.ocod.Frame1" range="<?JS print(EI.seq(1,new Integer(names[e].length*3),3).concat(",")); ?>" input="+.<?JS print(experimentNames[e]) ?>.ocod.merged" />
+	<NumericSelect id="-.<?JS print(experimentNames[e]) ?>.ocod.Frame1" range="<?JS print(EI.seq(1,new Integer(names[e].length*3),3).concat(",")); ?>" input="-.<?JS print(experimentNames[e]) ?>.ocod.merged" />
+	<NumericSelect id="+.<?JS print(experimentNames[e]) ?>.ocod.Frame2" range="<?JS print(EI.seq(2,new Integer(names[e].length*3),3).concat(",")); ?>" input="+.<?JS print(experimentNames[e]) ?>.ocod.merged" />
+	<NumericSelect id="-.<?JS print(experimentNames[e]) ?>.ocod.Frame2" range="<?JS print(EI.seq(2,new Integer(names[e].length*3),3).concat(",")); ?>" input="-.<?JS print(experimentNames[e]) ?>.ocod.merged" />
+	
+	
+	<?JS  } ?>
+
 
 	<SequenceSource id="seq">
 		<Genomic g="genomic" />
@@ -218,6 +255,57 @@
 	<?JS  } ?>
 	<?JS  for (var i=0; i<names[e].length; i++) { ?>
 	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" class="codon" id="+.<?JS print(experimentNames[e]) ?>.CodonsRaw.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<?JS  } ?>
+	
+	
+	
+	<?JS var mergedoptrmq; if (mergedoptrmq[e]) {?>
+		<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.ocod" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Optimistic.Codons" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+	<StackedBoxesTrack input="+.<?JS print(experimentNames[e]) ?>.ocod1" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Optimistic.Codonbars" >
+		<FixedMin m="0" />
+		<Hidden h="true" />
+	</StackedBoxesTrack>
+
+	<ScaleLimitLinker id="+.<?JS print(experimentNames[e]) ?>.linker" />
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.ocod.<?JS print(names[e][i]); ?>" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Optimistic.Codons.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+		<LimitLinker l="+.<?JS print(experimentNames[e]) ?>.linker" />
+	</LinesTrack>
+	<?JS  } ?>
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.ocod.nn.<?JS print(names[e][i]); ?>" class="codon" id="+.<?JS print(experimentNames[e]) ?>.Optimistic.CodonsRaw.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<?JS  } ?>
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.ocod.Frame0" class="conditions<? e ?>" id="+.<?JS print(experimentNames[e]) ?>.Optimistic.Frame.0" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.ocod.Frame1" class="conditions<? e ?>" id="+.<?JS print(experimentNames[e]) ?>.Optimistic.Frame.1" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<LinesTrack input="+.<?JS print(experimentNames[e]) ?>.ocod.Frame2" class="conditions<? e ?>" id="+.<?JS print(experimentNames[e]) ?>.Optimistic.Frame.2" >
 		<LogScale base="10" />
 		<FixedMin min="0"/>
 		<Points p="false" />
@@ -390,6 +478,54 @@
 	<?JS  } ?>
 
 
+	<?JS var mergedoptrmq; if (mergedoptrmq[e]) {?>
+		<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.ocod" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Optimistic.Codons" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+	</LinesTrack>
+	<StackedBoxesTrack input="-.<?JS print(experimentNames[e]) ?>.ocod1" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Optimistic.Codonbars" >
+		<FixedMin m="0" />
+		<Hidden h="true" />
+	</StackedBoxesTrack>
+
+	<ScaleLimitLinker id="-.<?JS print(experimentNames[e]) ?>.linker" />
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.ocod.<?JS print(names[e][i]); ?>" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Optimistic.Codons.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+		<LimitLinker l="-.<?JS print(experimentNames[e]) ?>.linker" />
+	</LinesTrack>
+	<?JS  } ?>
+	<?JS  for (var i=0; i<names[e].length; i++) { ?>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.ocod.nn.<?JS print(names[e][i]); ?>" class="codon" id="-.<?JS print(experimentNames[e]) ?>.Optimistic.CodonsRaw.<?JS print(names[e][i]); ?>" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<?JS  } ?>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.ocod.Frame0" class="conditions<? e ?>" id="-.<?JS print(experimentNames[e]) ?>.Optimistic.Frame.0" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.ocod.Frame1" class="conditions<? e ?>" id="-.<?JS print(experimentNames[e]) ?>.Optimistic.Frame.1" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<LinesTrack input="-.<?JS print(experimentNames[e]) ?>.ocod.Frame2" class="conditions<? e ?>" id="-.<?JS print(experimentNames[e]) ?>.Optimistic.Frame.2" >
+		<LogScale base="10" />
+		<FixedMin min="0"/>
+		<Points p="false" />
+		<Hidden h="true" />
+	</LinesTrack>
+	<?JS  } ?>
 
 	<StackedBoxesTrack input="-.<?JS print(experimentNames[e]) ?>.startscore" id="-.<?JS print(experimentNames[e]) ?>.Orfs Start score" >
 		<FixedMax m="1" />

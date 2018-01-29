@@ -23,13 +23,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import gedi.app.classpath.ClassPathCache;
-import gedi.util.FileUtils;
-import gedi.util.io.randomaccess.BufferBinaryReaderWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
+import gedi.util.orm.BinaryBlob;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.handler.codec.MessageToByteEncoder;
 
 
 /**
@@ -109,7 +107,7 @@ public class DefaultDecoder extends ByteToMessageDecoder {
 			Class<?> cls = Class.forName(clsName);
 			BinarySerializable re = (BinarySerializable) cls.newInstance();
 			
-			BufferBinaryReaderWriter buff = new BufferBinaryReaderWriter(size-Integer.BYTES-classname.length);
+			BinaryBlob buff = new BinaryBlob(size-Integer.BYTES-classname.length);
 			in.readBytes(buff.getBuffer());
 			buff.getBuffer().flip();
 			

@@ -24,10 +24,12 @@ import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MissingInformationIntronInformation;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.PaintUtils;
-import gedi.util.functions.TriFunction;
 import gedi.util.gui.PixelBasepairMapper;
+import gedi.util.nashorn.JSFunction;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -40,6 +42,8 @@ import java.awt.geom.Rectangle2D;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 
+import javax.script.ScriptException;
+
 public class BoxRenderer<D> {
 	
 	public static final Stroke SOLID = new BasicStroke();
@@ -51,23 +55,23 @@ public class BoxRenderer<D> {
 
 	
     
-	public TriFunction<ReferenceSequence,GenomicRegion,D,String> stringer = (ref,reg,d)->{
-		if (d instanceof NameProvider) return ((NameProvider)d).getName();
+	public Function<ReferenceGenomicRegion<D>,String> stringer = (rgr)->{
+		if (rgr.getData() instanceof NameProvider) return ((NameProvider)rgr.getData()).getName();
 		else return null;
 	};
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Paint> background = (ref,reg,c)->{
-		if (c instanceof ColorProvider)
-			return ((ColorProvider)c).getColor();
+	public Function<ReferenceGenomicRegion<D>,Paint> background = (rgr)->{
+		if (rgr.getData() instanceof ColorProvider)
+			return ((ColorProvider)rgr.getData()).getColor();
 		return Color.lightGray;
 	};
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Paint> foreground = (ref,reg,c)->Color.black;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Paint> border = (ref,reg,c)->Color.darkGray;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Font> font = (ref,reg,c)->null;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Stroke> borderStroke = (ref,reg,c)->SOLID;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Paint> intronPaint = (ref,reg,c)->Color.gray;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Stroke> intronStroke = (ref,reg,c)->DOTTED;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Stroke> missingInformationStroke = (ref,reg,c)->DOTTED;
-	public TriFunction<ReferenceSequence,GenomicRegion,D,Double> height = (ref,reg,c)->15.0;
+	public Function<ReferenceGenomicRegion<D>,Paint> foreground = (rgr)->Color.black;
+	public Function<ReferenceGenomicRegion<D>,Paint> border = (rgr)->Color.darkGray;
+	public Function<ReferenceGenomicRegion<D>,Font> font = (rgr)->null;
+	public Function<ReferenceGenomicRegion<D>,Stroke> borderStroke = (rgr)->SOLID;
+	public Function<ReferenceGenomicRegion<D>,Paint> intronPaint = (rgr)->Color.gray;
+	public Function<ReferenceGenomicRegion<D>,Stroke> intronStroke = (rgr)->DOTTED;
+	public Function<ReferenceGenomicRegion<D>,Stroke> missingInformationStroke = (rgr)->DOTTED;
+	public Function<ReferenceGenomicRegion<D>,Double> height = (rgr)->15.0;
 	
 	public boolean forceLabel = false;
 	
@@ -75,64 +79,62 @@ public class BoxRenderer<D> {
 		this.forceLabel = forceLabel;
 	}
 	
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Paint> getBackground() {
-		return background;
-	}
 
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Paint> getForeground() {
-		return foreground;
+	public void setStringer(String js) throws ScriptException {
+		this.stringer = new JSFunction<>(true, js);
 	}
-
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Paint> getBorder() {
-		return border;
-	}
-
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Font> getFont() {
-		return font;
-	}
-
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Stroke> getBorderStroke() {
-		return borderStroke;
-	}
-
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Paint> getIntronPaint() {
-		return intronPaint;
-	}
-
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Stroke> getIntronStroke() {
-		return intronStroke;
-	}
-
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Stroke> getMissingInformationStroke() {
-		return missingInformationStroke;
-	}
-
-	public TriFunction<ReferenceSequence, GenomicRegion, D, Double> getHeight() {
-		return height;
-	}
-
-	public void setStringer(Function<D, String> stringer) {
-		this.stringer = (ref,reg,c)->stringer.apply(c);
+	public void setForeground(String js) throws ScriptException {
+		this.foreground = new JSFunction<>(true, js);
 	}
 	
-	public void setStringer() {
-		this.stringer = null;
+	public void setBorder(String js) throws ScriptException {
+		this.border = new JSFunction<>(true, js);
 	}
+	
+	public void setFont(String js) throws ScriptException {
+		this.font = new JSFunction<>(true, js);
+	}
+	
+	public void setBorderStroke(String js) throws ScriptException {
+		this.borderStroke= new JSFunction<>(true, js);
+	}
+	
+	public void setIntronPaint(String js) throws ScriptException {
+		this.intronPaint= new JSFunction<>(true, js);
+	}
+	
+	public void setIntronStroke(String js) throws ScriptException {
+		this.intronStroke = new JSFunction<>(true, js);
+	}
+	
+	public void setMissingInformationStroke(String js) throws ScriptException {
+		this.missingInformationStroke = new JSFunction<>(true, js);
+	}
+	
+	public void setHeight(String js) throws ScriptException {
+		this.height= new JSFunction<>(true, js);
+	}
+	
+	public void setBackground(String js) throws ScriptException {
+		this.background = new JSFunction<>(true, js);
+	}
+	
+	
 	
 	public void setBackground(Function<D, Paint> background) {
-		this.background = (ref,reg,c)->background.apply(c);
+		this.background = (r)->background.apply(r.getData());
 	}
 	
-	public void setBackground(Color background) {
-		this.background = (ref,reg,c)->background;
+	public void setBackground(Color c) {
+		this.background = (r)->c;
 	}
 	
 	public void setForeground(Function<D, Paint> foreground) {
-		this.foreground = (ref,reg,c)->foreground.apply(c);
+		this.foreground = (r)->foreground.apply(r.getData());
 	}
 	
 	public void setBorder(Function<D, Paint> border) {
-		this.border = (ref,reg,c)->border.apply(c);
+		this.border = (r)->border.apply(r.getData());
 	}
 	
 	public void setBorder() {
@@ -142,40 +144,40 @@ public class BoxRenderer<D> {
 	public void setBorder(Color col, float size) {
 		BasicStroke stroke = new BasicStroke(size);
 		
-		this.borderStroke = (ref,reg,c)->stroke;
-		this.border = (ref,reg,c)->col;
+		this.borderStroke = (r)->stroke;
+		this.border = (r)->col;
 	}
 
 	public void setIntronPaint(Function<D, Paint> intronPaint) {
-		this.intronPaint = (ref,reg,c)->intronPaint.apply(c);
+		this.intronPaint = (r)->intronPaint.apply(r.getData());
 	}
 	public void setIntronStroke(Function<D, Stroke> intronStroke) {
-		this.intronStroke = (ref,reg,c)->intronStroke.apply(c);
+		this.intronStroke = (r)->intronStroke.apply(r.getData());
 	}
 	
 	public void setIntronColor(Color col) {
-		this.intronPaint = (ref,reg,c)->col;
+		this.intronPaint = (r)->col;
 	}
 	public void setIntronSize(float h) {
 		BasicStroke re = new BasicStroke(h);
-		this.intronStroke = (ref,reg,c)->re;
+		this.intronStroke = (r)->re;
 	}
 	
 	public void setMissingInformationStroke(
 			Function<D, Stroke> missingInformationStroke) {
-		this.missingInformationStroke = (ref,reg,c)->missingInformationStroke.apply(c);
+		this.missingInformationStroke = (r)->missingInformationStroke.apply(r.getData());
 	}
 
 	public void setHeight(ToDoubleFunction<D> height) {
-		this.height = (ref,reg,c)->height.applyAsDouble(c);
+		this.height = (r)->height.applyAsDouble(r.getData());
 	}
 	
-	public void setHeight(double height) {
-		this.height = (ref,reg,c)->height;
+	public void setHeight(double h) {
+		this.height = (r)->h;
 	}
 	
 	public void setFont(Function<D, Font> font) {
-		this.font = (ref,reg,c)->font.apply(c);
+		this.font = (r)->font.apply(r.getData());
 	}
 	
 	public void setFont(String name, int size, boolean bold, boolean italic) {
@@ -184,63 +186,10 @@ public class BoxRenderer<D> {
 		if (italic) style|=Font.ITALIC;
 		
 		Font f = new Font(name, style, size);
-		this.font = (ref,reg,c)->f;
+		this.font = (r)->f;
 	}
 	
 
-	public TriFunction<ReferenceSequence, GenomicRegion, D, String> getStringer() {
-		return stringer;
-	}
-	
-	
-	public void setStringer(
-			TriFunction<ReferenceSequence, GenomicRegion, D, String> stringer) {
-		this.stringer = stringer;
-	}
-
-	public void setBackground(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Paint> background) {
-		this.background = background;
-	}
-
-	public void setForeground(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Paint> foreground) {
-		this.foreground = foreground;
-	}
-
-	public void setBorder(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Paint> border) {
-		this.border = border;
-	}
-
-	public void setFont(TriFunction<ReferenceSequence, GenomicRegion, D, Font> font) {
-		this.font = font;
-	}
-
-	public void setBorderStroke(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Stroke> borderStroke) {
-		this.borderStroke = borderStroke;
-	}
-
-	public void setIntronPaint(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Paint> intronPaint) {
-		this.intronPaint = intronPaint;
-	}
-
-	public void setIntronStroke(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Stroke> intronStroke) {
-		this.intronStroke = intronStroke;
-	}
-
-	public void setMissingInformationStroke(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Stroke> missingInformationStroke) {
-		this.missingInformationStroke = missingInformationStroke;
-	}
-
-	public void setHeight(
-			TriFunction<ReferenceSequence, GenomicRegion, D, Double> height) {
-		this.height = height;
-	}
 
 	public GenomicRegion renderBox(Graphics2D g2, PixelBasepairMapper locationMapper,ReferenceSequence reference, Strand strand, GenomicRegion region, D d, double xOffset, double y, double h) {
 		double y1 = y;
@@ -250,11 +199,13 @@ public class BoxRenderer<D> {
 		
 		boolean rtl = locationMapper.is5to3() && strand==Strand.Minus;
 		
-		Paint border = this.border==null?null:this.border.apply(reference.toStrand(strand),region,d);
-		Paint fg = this.foreground==null?null:this.foreground.apply(reference.toStrand(strand),region,d);
-		Paint bg  = this.background==null?null:this.background.apply(reference.toStrand(strand),region,d);
-		String label = this.stringer==null?null:this.stringer.apply(reference.toStrand(strand),region,d);
-		Font font = this.font==null?null:this.font.apply(reference.toStrand(strand),region,d);
+		ImmutableReferenceGenomicRegion<D> rgr = new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region,d);
+		
+		Paint border = this.border==null?null:this.border.apply(rgr);
+		Paint fg = this.foreground==null?null:this.foreground.apply(rgr);
+		Paint bg  = this.background==null?null:this.background.apply(rgr);
+		String label = this.stringer==null?null:this.stringer.apply(rgr);
+		Font font = this.font==null?null:this.font.apply(rgr);
 		
 		// paint connecting lines
 		if (this.intronPaint!=null && this.intronStroke!=null) {
@@ -265,11 +216,11 @@ public class BoxRenderer<D> {
 
 				if (missingInformationStroke!=null && region instanceof MissingInformationIntronInformation
 						&& ((MissingInformationIntronInformation)region).isMissingInformationIntron(i)) 
-					g2.setStroke(missingInformationStroke.apply(reference.toStrand(strand),region,d));
+					g2.setStroke(missingInformationStroke.apply(rgr));
 				else
-					g2.setStroke(intronStroke.apply(reference.toStrand(strand),region,d));
+					g2.setStroke(intronStroke.apply(rgr));
 				
-				g2.setPaint(intronPaint.apply(reference.toStrand(strand),region,d));
+				g2.setPaint(intronPaint.apply(rgr));
 
 				g2.draw(new Line2D.Double(xOffset+x1, ym, xOffset+x2, ym));
 			}
@@ -281,7 +232,7 @@ public class BoxRenderer<D> {
 		boolean changed = false;
 		GenomicRegion reg = new ArrayGenomicRegion();
 		
-		g2.setStroke(borderStroke.apply(reference.toStrand(strand),region,d));
+		g2.setStroke(borderStroke.apply(rgr));
 		for (int i=0; i<region.getNumParts(); i++) {
 			
 			
@@ -348,7 +299,7 @@ public class BoxRenderer<D> {
 	}
 	
 	public double prefHeight(ReferenceSequence ref, GenomicRegion reg, D d) {
-		return height.apply(ref, reg, d);
+		return height.apply(new ImmutableReferenceGenomicRegion<D>(ref, reg, d));
 	}
 
 }

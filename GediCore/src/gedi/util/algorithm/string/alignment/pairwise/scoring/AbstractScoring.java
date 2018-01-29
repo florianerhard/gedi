@@ -92,7 +92,7 @@ public abstract class AbstractScoring<A,P> implements Scoring<A> {
 	
 	public static int inferPrecision(float f) {
 		String number = f+"";
-		return number.indexOf('.')>=0 ? number.length()-number.indexOf('.')-1: 0;
+		return number.indexOf('.')>=0 && !number.endsWith(".") ? number.length()-number.indexOf('.')-2: 0;
 	}
 	
 

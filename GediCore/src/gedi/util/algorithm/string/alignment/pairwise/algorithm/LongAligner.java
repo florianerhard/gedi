@@ -125,4 +125,17 @@ public class LongAligner<A> extends AbstractAligner<A,A> {
 
 		out.flush();
 	}
+	
+	public void writeLatex(Writer out, char[] s1, char[] s2) throws IOException {
+		if (gotoh!=null)
+			gotoh.printMatrices(s1, s2, out);
+		else if (nw!=null)
+			nw.printLatex(scoring,longGapExtend,mode,s1, s2, out);
+		else if (gl!=null)
+			gl.printMatrices(s1, s2, out);
+		else
+			throw new RuntimeException();
+
+		out.flush();
+	}
 }

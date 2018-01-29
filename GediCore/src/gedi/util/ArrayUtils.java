@@ -381,6 +381,13 @@ public class ArrayUtils {
 			re+=i;
 		return re;
 	}
+	
+	public static int sum(int[] a, int start, int end) {
+		int re = 0;
+		for (int i=start; i<end; i++)
+			re+=a[i];
+		return re;
+	}
 
 	public static double sum(double[][] m) {
 		double re = 0;
@@ -2068,6 +2075,27 @@ public class ArrayUtils {
 		return sb.toString();
 	}
 
+	
+	/**
+	 * 0,0 is in the left bottom corner of the output!
+	 * @param m
+	 * @return
+	 */
+	public static String matrixToString(boolean[][] m) {
+		StringBuilder sb = new StringBuilder();
+
+		for (int i=0; i<m.length; i++) {
+			for (int j=0; j<m[i].length; j++) {
+				sb.append(m[i][j]);
+				if (j<m[i].length-1)
+					sb.append("\t");
+			}
+			if (i<m.length-1)
+				sb.append("\n");
+		}
+
+		return sb.toString();
+	}
 
 	/**
 	 * Returns the sorted permutation of a, i.e. re[0] contains the index of the smallest value in a,
@@ -4874,14 +4902,16 @@ public class ArrayUtils {
 	 * @param dp
 	 * @param d
 	 */
-	public static void mult(double[] a, double f) {
+	public static double[] mult(double[] a, double f) {
 		for (int i=0; i<a.length; i++)
 			a[i]*=f;
+		return a;
 	}
 
-	public static void mult(double[] a, int start, int end, double f) {
+	public static double[] mult(double[] a, int start, int end, double f) {
 		for (int i=start; i<end; i++)
 			a[i]*=f;
+		return a;
 	}
 
 	public static float[] toFloat(double[] a) {
@@ -4993,7 +5023,15 @@ public class ArrayUtils {
 			re[i] = m[i].clone();
 		return re;
 	}
+	
+	public static double[][] cloneMatrix(double[][] m) {
+		double[][] re = new double[m.length][];
+		for (int i=0; i<re.length; i++)
+			re[i] = m[i].clone();
+		return re;
+	}
 
+	
 	/**
 	 * L1 normalization
 	 * @param a
@@ -5242,6 +5280,14 @@ public class ArrayUtils {
 		double[] re = new double[fields.length];
 		for (int i=0;i<re.length; i++)
 			re[i] = fields[i].length()==0?0:Double.parseDouble(fields[i]);
+		return re;
+	}
+	
+	public static double[] parseDoubleArray(String[] fields, int start, int end) {
+		if (fields==null) return new double[0];
+		double[] re = new double[end];
+		for (int i=0;i<re.length; i++)
+			re[i] = fields[i+start].length()==0?0:Double.parseDouble(fields[i+start]);
 		return re;
 	}
 

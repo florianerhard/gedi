@@ -38,6 +38,18 @@ public class JSFunction<I,O> implements Function<I,O> {
 	}
 	public JSFunction(boolean useAsThis, String code) throws ScriptException {
 		this.useAsThis = useAsThis;
+
+		if (!code.startsWith("function(")) {
+			StringBuilder c = new StringBuilder();
+			c.append("function() {\n");
+			if (code.contains(";")) {
+				c.append(code);
+				c.append("}");
+			} else {
+				c.append("return "+code+";\n}");
+			}
+			code = c.toString();
+		}
 		p = new JS().execSource(code);
 	}
 	

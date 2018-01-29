@@ -39,7 +39,7 @@ public class PeptideRenderer<T> extends BoxRenderer<T> {
 	
 	
 	public PeptideRenderer() {
-		setStringer(f->StringUtils.toString(f));
+		stringer = f->StringUtils.toString(f.getData());
 	}
 	
 	public void setStyles(DynamicObject styles) {

@@ -28,8 +28,10 @@ import gedi.riboseq.javapipeline.PriceCollectSufficientStatistics;
 import gedi.riboseq.javapipeline.PriceDetermineDelta;
 import gedi.riboseq.javapipeline.PriceEstimateModel;
 import gedi.riboseq.javapipeline.PriceIdentifyMaxPos;
+import gedi.riboseq.javapipeline.PriceLocalChanges;
 import gedi.riboseq.javapipeline.PriceMultipleTestingCorrection;
 import gedi.riboseq.javapipeline.PriceNoiseTraining;
+import gedi.riboseq.javapipeline.PriceOptimisticCodonMapping;
 import gedi.riboseq.javapipeline.PriceOrfInference;
 import gedi.riboseq.javapipeline.PriceParameterSet;
 import gedi.riboseq.javapipeline.PriceReassignCodons;
@@ -61,7 +63,8 @@ public class Price {
 				new PriceOrfInference(params),
 				new PriceMultipleTestingCorrection(params),
 				new PriceReassignCodons(params),
-				new PriceSignalToNoise(params)
+				new PriceSignalToNoise(params),
+				new PriceOptimisticCodonMapping(params)
 				);
 		GediProgram.run(pipeline, params.paramFile, new CommandLineHandler("PRICE","PRICE is an analysis method for Ribo-seq data.",args));
 		

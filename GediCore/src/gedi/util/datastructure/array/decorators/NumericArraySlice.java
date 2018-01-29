@@ -132,6 +132,18 @@ public class NumericArraySlice implements NumericArray {
 				parent.add(i, a.getDouble(i-start));
 	}
 
+	
+	@Override
+	public void subtract(NumericArray a) {
+		if (isIntegral())
+			for (int i=start; i<end; i++)
+				parent.add(i, -a.getLong(i-start));
+		else
+			for (int i=start; i<end; i++)
+				parent.add(i, -a.getDouble(i-start));
+	}
+
+	
 	@Override
 	public void add(int index, byte value) {
 		parent.add(index+start,value);

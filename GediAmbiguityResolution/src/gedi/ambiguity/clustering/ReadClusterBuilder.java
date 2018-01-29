@@ -115,6 +115,7 @@ public class ReadClusterBuilder {
 		program.add(clustering);
 		
 		program.begin();
+		program.setThreads(0);
 		progress.init();
 		progress.setCount((int) reads.size());
 		reads.iterateReferenceGenomicRegions().forEachRemaining(r->{

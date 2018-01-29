@@ -666,11 +666,18 @@ public class FunctorUtils {
 	public static class SideEffectIterator<T> implements ExtendedIterator<T> {
 
 		private Iterator<T> parent;
+		private Predicate<T> pred;
 		private Consumer<T> effect;
 		
 		public SideEffectIterator(Iterator<T> parent, Consumer<T> effect) {
 			this.parent = new PeekIterator<>(parent);
+			pred=t->true;
 			this.effect = effect;
+		}
+		public SideEffectIterator(Iterator<T> parent, Predicate<T> pred, Consumer<T> effect) {
+			this.parent = new PeekIterator<>(parent);
+			this.effect = effect;
+			this.pred = pred;
 		}
 		
 		@Override
@@ -681,7 +688,8 @@ public class FunctorUtils {
 		@Override
 		public T next() {
 			T re = parent.next();
-			effect.accept(re);
+			if (pred.test(re))
+				effect.accept(re);
 			return re;
 		}
 
@@ -2022,6 +2030,10 @@ public class FunctorUtils {
 
 	public static <T> SideEffectIterator<T> sideEffectIterator(Iterator<T> it, Consumer<T> effect) {
 		return new SideEffectIterator<>(it,effect);
+	}
+	
+	public static <T> SideEffectIterator<T> sideEffectIterator(Iterator<T> it, Predicate<T> pred, Consumer<T> effect) {
+		return new SideEffectIterator<>(it,pred,effect);
 	}
 	
 	public static <T> InitActionIterator<T> initActionIterator(Iterator<T> it, Consumer<T> effect) {

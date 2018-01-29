@@ -7,6 +7,7 @@ gedi.util.**
 gedi.gui.**
 gedi.fx.**
 gedi.remote.**
+gedi.sra.schema.?
 java.lang.**
 gedi.**
 # this is necessary to circumvent all those stupid classes with the same name in the jdk

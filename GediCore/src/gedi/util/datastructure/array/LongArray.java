@@ -150,6 +150,11 @@ public abstract class LongArray implements NumericArray {
 			add(i,a.getLong(i));
 	}
 	
+	@Override
+	public void subtract(NumericArray a) {
+		for (int i=0; i<length(); i++)
+			add(i,-a.getLong(i));
+	}
 	
 	@Override
 	public void add(int index, byte value) {

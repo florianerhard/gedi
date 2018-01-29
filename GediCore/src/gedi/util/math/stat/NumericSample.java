@@ -283,7 +283,9 @@ public class NumericSample extends DoubleArrayList {
 
 	public void sort() {
 		if (!sorted)
-			super.sort();
+			synchronized (doubleArray) {
+				super.sort();	
+			}
 		sorted = true;
 	}
 

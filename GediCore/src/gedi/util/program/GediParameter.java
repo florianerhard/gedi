@@ -103,6 +103,10 @@ public class GediParameter<T> {
 		
 		if (defaultValue!=null && type.hasValue()) sb.append(" (default: ").append(defaultValue).append(")");
 		
+		String help = type.helpText();
+		if (help!=null)
+			sb.append(" ").append(help);
+		
 		if (isOptional()) sb.append("]");
 		
 		return sb.toString();
@@ -133,7 +137,7 @@ public class GediParameter<T> {
 	public T get() {
 		if (isFile()) {
 			File f = getFile();
-			if (f.exists()) return (T) f;
+			if (f.exists() && f.length()>0) return (T) f;
 			return null;
 		}
 		return value;

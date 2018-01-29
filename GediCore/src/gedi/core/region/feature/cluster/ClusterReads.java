@@ -18,6 +18,7 @@
 
 package gedi.core.region.feature.cluster;
 
+import gedi.core.genomic.Genomic;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
@@ -50,11 +51,17 @@ public class ClusterReads extends AbstractFeature<Void> {
 	private BiFunction<Object,NumericArray,NumericArray> dataToCounts;
 	private int decimals = 2;
 	
+	private Genomic genomic;
 	
 	public ClusterReads(String file) {
 		minValues = maxValues = 0;
 		minInputs = maxInputs = 0;
 		setFile(file);
+	}
+	
+	
+	public void setGenomic(Genomic genomic) {
+		this.genomic = genomic;
 	}
 	
 	public void setFile(String path) {
@@ -127,6 +134,8 @@ public class ClusterReads extends AbstractFeature<Void> {
 			MutableReferenceGenomicRegion<NumericArray> cluster) {
 		try {
 			
+			if (cluster.getData().sum()==0) return;
+			
 			if (isCopy) {
 				if (bout==null) {
 					File main = new File(getId());
@@ -142,8 +151,11 @@ public class ClusterReads extends AbstractFeature<Void> {
 				}
 				
 				out.write(cluster.toLocationString());
+				if (genomic!=null) {
+					out.writef("\t%s", genomic.getGenes().ei(cluster).map(r->r.getData()).concat(","));
+				}
 				for (int i=0; i<cluster.getData().length(); i++)
-					out.writef("\t%s", cluster.getData().formatDecimals(i,decimals));
+						out.writef("\t%s", cluster.getData().formatDecimals(i,decimals));
 				out.writeLine();
 			}
 				
@@ -156,8 +168,10 @@ public class ClusterReads extends AbstractFeature<Void> {
 	
 	private void writeHeader(LineOrientedFile out) throws IOException {
 		out.writef("Genomic position");
-		for (int i=0; i<inputs.length; i++) 
-			out.writef("\t%s",inputNames[i]);
+		if (genomic!=null)
+			out.writef("\tGenes");
+//		for (int i=0; i<inputs.length; i++) 
+//			out.writef("\t%s",inputNames[i]);
 		
 		int l = buffer.length();
 		if (program.getLabels()!=null && program.getLabels().length==l)
@@ -277,6 +291,7 @@ public class ClusterReads extends AbstractFeature<Void> {
 		re.setTolerance(tolerance);
 		re.setDecimals(decimals);
 		re.setDataToCounts(dataToCounts);
+		re.genomic = genomic;
 		return re;
 	}
 

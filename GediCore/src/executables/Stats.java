@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 
 import gedi.app.Gedi;
 import gedi.core.data.reads.AlignedReadsData;
+import gedi.core.data.reads.IgnoreVariationsAlignedReadsData;
 import gedi.core.data.reads.OneDistinctSequenceAlignedReadsData;
 import gedi.core.data.reads.ReadCountMode;
 import gedi.core.genomic.Genomic;
@@ -34,9 +35,9 @@ import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeatureProgram;
-import gedi.core.region.feature.output.Downsampling;
 import gedi.core.region.feature.output.FeatureStatisticOutput;
 import gedi.core.region.feature.output.PlotReport;
+import gedi.core.region.feature.special.Downsampling;
 import gedi.core.workspace.Workspace;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
@@ -84,9 +85,12 @@ public class Stats {
 		System.err.println("Options:");
 		System.err.println(" -l <location>\t\t\tLocation string");
 		System.err.println(" -g <genome1 genome2 ...>\t\t\tGenome names");
-		System.err.println(" -downsampling <method>\t\t\tSet downsampling method (one of "+StringUtils.concat(",", Downsampling.values())+", default is "+Downsampling.values()[0]+")");
+		System.err.println(" -downsampling <method>\t\t\tSet downsampling method (one of "+StringUtils.concat(",", Downsampling.values())+", default is "+Downsampling.values()[0]+"); be aware that depending on the -ignoreReadVariations flag, this may either downsample within a variation group or for all reads mapped at a specific location!");
 		System.err.println(" -mode <mode>\t\t\tSet read count mode (one of "+StringUtils.concat(",", ReadCountMode.values())+", default is "+ReadCountMode.Weight+")");
+		System.err.println(" -ignoreReadVariations\t\t\tIgnores all variations in reads");
+		System.err.println(" -count\t\t\tOnly count reads; implies ignoreReadVariations!");
 		System.err.println(" -interactive\t\t\tDisplay all plots progressively in a graphical window");
+		System.err.println(" -noplots\t\t\tDo not generate any plots!");
 		System.err.println(" -prefix <prefix>\t\t\tPrefix for output files (default: report/<filename>.)");
 		System.err.println(" -out [<oml>]\t\tWrite current pipeline to oml file (and do not process storage)");
 		System.err.println("");
@@ -156,6 +160,9 @@ public class Stats {
 		String oml = null;
 		String template = null;
 		boolean interactive = false;
+		boolean ignoreVariations = false;
+		boolean count = false;
+		boolean noplots = false;
 		Downsampling downsampling  = Downsampling.values()[0];
 		ReadCountMode mode = ReadCountMode.Weight;
 		String loc = null;
@@ -215,6 +222,16 @@ public class Stats {
 			else if (args[i].equals("-oml")) {
 				oml = checkParam(args,++i);
 			}
+			else if (args[i].equals("-ignoreReadVariations")) {
+				ignoreVariations = true;
+			}
+			else if (args[i].equals("-count")) {
+				count = true;
+				ignoreVariations = true;
+			}
+			else if (args[i].equals("-noplots")) {
+				noplots = true;
+			}
 			else if (args[i].equals("-downsampling")) {
 				downsampling = ParseUtils.parseEnumNameByPrefix(checkParam(args,++i),true,Downsampling.class);
 			}
@@ -265,8 +282,13 @@ public class Stats {
 			log.info("Loading pipeline from given template: "+template);
 			te.template(template);
 		} else  if (isRead) {
-			log.info("Loading read pipeline");
-			te.template("reads");
+			if (count) {
+				log.info("Loading read count pipeline");
+				te.template("countreads");
+			} else {
+				log.info("Loading read pipeline");
+				te.template("reads");
+			}
 		} else {
 			log.info("Loading default pipeline");
 			te.template("default");
@@ -299,12 +321,20 @@ public class Stats {
 //		program.setBenchmark(true);
 		program.setThreads(nthreads);
 		
+		if (noplots) {
+			log.info("Skipping plots!");
+			EI.seq(0, program.getNumFeatures())
+					.map(ind->program.getFeature(ind))
+					.castFiltered(FeatureStatisticOutput.class)
+					.forEachRemaining(f->f.getPlots().clear());
+		}
+		
 		if (storage.getRandomRecord() instanceof AlignedReadsData) {
 			log.info("Using read mode: "+mode);
 			GenomicRegionStorage<? extends AlignedReadsData> s = (GenomicRegionStorage<? extends AlignedReadsData>) storage;
 			GenomicRegionFeatureProgram<? extends AlignedReadsData> p = program;
 			Downsampling udownsampling = downsampling;
-			ReadCountMode umode = mode;
+			ReadCountMode umode = ignoreVariations?ReadCountMode.Weight:mode;
 			p.setDataToCounts((ard,b)->udownsampling.downsample(ard.getCountsForDistinct(b, 0, umode)));
 			
 			program.begin();
@@ -312,12 +342,19 @@ public class Stats {
 			progress.setCount((int) storage.size());
 			
 			MutableReferenceGenomicRegion<AlignedReadsData> mut = new MutableReferenceGenomicRegion<AlignedReadsData>();
-			for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).loop()) {
-				for (int d=0; d<r.getData().getDistinctSequences(); d++) {
-					program.accept(mut.set(r.getReference(),r.getRegion(),new OneDistinctSequenceAlignedReadsData(r.getData(),d)));
+			if (ignoreVariations)
+				for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).loop()) {
+					program.accept(mut.set(r.getReference(),r.getRegion(),new IgnoreVariationsAlignedReadsData(r.getData(),mode)));
+					progress.incrementProgress();
 				}
-				progress.incrementProgress();
-			}
+			else
+				for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).loop()) {
+					for (int d=0; d<r.getData().getDistinctSequences(); d++) {
+						program.accept(mut.set(r.getReference(),r.getRegion(),new OneDistinctSequenceAlignedReadsData(r.getData(),d)));
+					}
+					progress.incrementProgress();
+				}
+			
 			
 			progress.finish();
 			program.end();
@@ -350,40 +387,42 @@ public class Stats {
 		
 		log.info("Finished producing statistics");
 		
-		ArrayList<PlotReport> plots = EI.seq(0, program.getNumFeatures())
-			.map(ind->program.getFeature(ind))
-			.castFiltered(FeatureStatisticOutput.class)
-			.unfold(f->EI.wrap(f.getPlots()))
-			.filter(f->f.getImageFile()!=null)
-			.map(f->new PlotReport(
-					f.getSection(),
-					StringUtils.toJavaIdentifier(f.getName()), 
-					StringUtils.removeHeader(f.getTitle(),storage.getName()+"."), 
-					f.getDescription(),
-					new File(f.getImageFile()).getName(),
-					new File(f.getScriptFile()).getName(),
-					new File(f.getCsvFile()).getName()
-					))
-			.list();
-		
-		LinkedHashMap<String, String> map = new LinkedHashMap<>();
-		map.put("title", storage.getName());
-		map.put("downsampling", downsampling.name());
-		map.put("mode", mode.name());
-		DynamicObject dprops = DynamicObject.from(map);
-		DynamicObject dplots = DynamicObject.from("plots", DynamicObject.from(plots));
-		
-		File json = new File(te.<String>get("prefix")+"report.json");
-		FileUtils.writeAllText(dprops.merge(dplots).toJson(),json);
-		
-		String[] jsons = EI.wrap(json.getParentFile().list())
-				.filter(s->s.endsWith("report.json"))
-				.sort((a,b)->Long.compare(new File(a).lastModified(), new File(b).lastModified()))
-				.map(a->new File(json.getParentFile(),a).getPath())
-				.toArray(String.class);
-		
-		if (jsons.length>0)
-			new Report(jsons).write(new LineOrientedFile(json.getParentFile(),"index.html").write());
+		if (!count) {
+			ArrayList<PlotReport> plots = EI.seq(0, program.getNumFeatures())
+				.map(ind->program.getFeature(ind))
+				.castFiltered(FeatureStatisticOutput.class)
+				.unfold(f->EI.wrap(f.getPlots()))
+				.filter(f->f.getImageFile()!=null)
+				.map(f->new PlotReport(
+						f.getSection(),
+						StringUtils.toJavaIdentifier(f.getName()), 
+						StringUtils.removeHeader(f.getTitle(),storage.getName()+"."), 
+						f.getDescription(),
+						new File(f.getImageFile()).getName(),
+						new File(f.getScriptFile()).getName(),
+						new File(f.getCsvFile()).getName()
+						))
+				.list();
+			
+			LinkedHashMap<String, String> map = new LinkedHashMap<>();
+			map.put("title", storage.getName());
+			map.put("downsampling", downsampling.name());
+			map.put("mode", mode.name());
+			DynamicObject dprops = DynamicObject.from(map);
+			DynamicObject dplots = DynamicObject.from("plots", DynamicObject.from(plots));
+			
+			File json = new File(te.<String>get("prefix")+"report.json");
+			FileUtils.writeAllText(dprops.merge(dplots).toJson(),json);
+			
+			String[] jsons = EI.wrap(json.getAbsoluteFile().getParentFile().list())
+					.filter(s->s.endsWith("report.json"))
+					.sort((a,b)->Long.compare(new File(a).lastModified(), new File(b).lastModified()))
+					.map(a->new File(json.getParentFile(),a).getPath())
+					.toArray(String.class);
+			
+			if (jsons.length>0)
+				new Report(jsons).write(new LineOrientedFile(json.getParentFile(),"index.html").write());
+		}
 	}
 	
 }

@@ -277,15 +277,8 @@ public class PageFileWriter implements AutoCloseable, BinaryWriter {
 	
 	public PageFileWriter putAsciiChars(long pos, CharSequence data)
 			throws IOException {
-		int offset = getOffset(pos);
-		int index = getIndex(pos);
-
-		ByteBuffer buffer = getBuffer(index);
-		buffer.position(offset);
-		for (int i=0; i<data.length(); i++)
-			buffer.put((byte)data.charAt(i));
-		maxLength = Math.max(maxLength,pos+Byte.BYTES*data.length());
-		return this;
+		put(pos,data.toString().getBytes(),0,data.length());
+        return this;
 	}
 
 	public PageFileWriter putAsciiChars(CharSequence data)

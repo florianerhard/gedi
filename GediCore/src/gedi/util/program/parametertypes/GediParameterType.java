@@ -39,5 +39,8 @@ public interface GediParameterType<T> {
 	default boolean parsesMulti() {
 		return false;
 	}
+	default String helpText() {
+		return null;
+	}
 	
 }

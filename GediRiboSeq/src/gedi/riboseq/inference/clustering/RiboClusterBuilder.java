@@ -106,8 +106,8 @@ public class RiboClusterBuilder {
 		log.log(Level.INFO, "Clustering reads");
 		
 		GenomicRegionFeatureProgram<AlignedReadsData> program = new GenomicRegionFeatureProgram<AlignedReadsData>();
+		program.setThreads(0);
 		program.setCheckSorting(true);
-		program.setThreads(nthreads);
 		ClusterReads clustering = new ClusterReads(prefix+".clusters.csv");
 		clustering.addCondition(c->checkIntronLength(c.getReferenceRegion().getRegion()));
 		clustering.setDataToCounts((ard,a)->{
@@ -157,8 +157,8 @@ public class RiboClusterBuilder {
 		
 		
 		GenomicRegionFeatureProgram<Object> merger = new GenomicRegionFeatureProgram<Object>();
+		merger.setThreads(0);
 		merger.setCheckSorting(true);
-		merger.setThreads(nthreads);
 		clustering = new ClusterReads(prefix+".clusters.csv");
 		clustering.setTolerance(closeGaps);
 		clustering.setDataToCounts((d,a)->{

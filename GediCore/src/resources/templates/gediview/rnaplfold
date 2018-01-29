@@ -1,0 +1,24 @@
+<?JS0
+varin("id","genomic id",false);
+varin("foldingmbppp","Maximum bp per pixel to show sequences (Default: 100)",false);
+?>
+<?JS
+var id = id?id:"genomic";
+var foldingmbppp = foldingmbppp?foldingmbppp:100;
+?>
+	<RNAFolding input="<?JS id ?>.sequence" id="+.bp probabilities.data">
+	</RNAFolding>
+
+	<RNAFolding input="<?JS id ?>.sequence" complement="true" id="-.bp probabilities.data">
+	</RNAFolding>
+	
+	
+	
+	<LinesTrack input="+.bp probabilities.data" id="+.bp probabilities">
+		<Points p="false" />
+		<MaxBasePairsPerPixel v="<?JS foldingmbppp ?>"/>
+	</LinesTrack>
+	<LinesTrack input="-.bp probabilities.data" id="-.bp probabilities">
+		<Points p="false" />
+		<MaxBasePairsPerPixel v="<?JS foldingmbppp ?>"/>
+	</LinesTrack>

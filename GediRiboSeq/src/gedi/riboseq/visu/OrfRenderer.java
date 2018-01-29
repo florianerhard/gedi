@@ -21,6 +21,7 @@ package gedi.riboseq.visu;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.gui.genovis.style.StyleObject;
 import gedi.riboseq.inference.orf.Orf;
 import gedi.util.ArrayUtils;
@@ -32,6 +33,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.util.HashMap;
+import java.util.function.Function;
 
 public class OrfRenderer extends PeptideRenderer<Orf> {
 
@@ -60,17 +62,17 @@ public class OrfRenderer extends PeptideRenderer<Orf> {
 
 		frameColors = brighterframeColors;
 		if (data.hasStart() && data.hasStop())
-			setStringer(o->"");
+			stringer = o->"";
 		else
-			setStringer(o->o.getOrfType().toString());
+			stringer = o->o.getData().getOrfType().toString();
 		
-		TriFunction<ReferenceSequence, GenomicRegion, Orf, Paint> oldBorder = border;
+		Function<ReferenceGenomicRegion<Orf>, Paint> oldBorder = border;
 		if (!data.passesAllFilters()) 
-			border = (ref,reg,c)->Color.red;
+			border = (rgr)->Color.red;
 		
 		GenomicRegion re = super.renderBox(g2, locationMapper, reference, strand, region, data, xOffset, y, h);
 		
-		setStringer(o->o.getOrfType().toString());
+		stringer = o->o.getData().getOrfType().toString();
 		frameColors = save;
 		if (data.hasStart() && data.hasStop()) {
 			GenomicRegion codingRegion = data.getStartToStop(reference.toStrand(strand), region);

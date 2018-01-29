@@ -81,6 +81,9 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	default GenomicRegion map(GenomicRegion region) {
 		return getReference().getStrand()==Strand.Minus?getRegion().map(region.reverse(getRegion().getTotalLength())):getRegion().map(region);
 	}
+	default GenomicRegion mapMaybeOutSide(GenomicRegion region) {
+		return getReference().getStrand()==Strand.Minus?getRegion().mapMaybeOutside(region.reverse(getRegion().getTotalLength())):getRegion().map(region);
+	}
 	
 	default <T> ImmutableReferenceGenomicRegion<T> map(ReferenceGenomicRegion<T> region) {
 		ReferenceSequence ref = getReference();

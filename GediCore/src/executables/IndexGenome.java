@@ -24,6 +24,7 @@ import gedi.app.extension.ExtensionContext;
 import gedi.core.data.annotation.Gff3Element;
 import gedi.core.data.annotation.NameAttributeMapAnnotation;
 import gedi.core.data.annotation.Transcript;
+import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
@@ -133,6 +134,8 @@ public class IndexGenome {
 		boolean transcriptome = true;
 		boolean bowtie = true;
 		boolean star = true;
+		boolean kallisto = true;
+		int fixedNbases = -1;
 		
 		String ensemblOrg = null;
 		String ensemblVer = null;
@@ -183,6 +186,12 @@ public class IndexGenome {
 			}
 			else if (args[i].equals("-nostar")) {
 				star=false;
+			}
+			else if (args[i].equals("-nokallisto")) {
+				kallisto=false;
+			}
+			else if (args[i].equals("-nbases")) {
+				fixedNbases = checkIntParam(args, ++i);
 			}
 			else if (args[i].equals("-ignoreMulti")) {
 				ignoreMulti=true;
@@ -448,19 +457,19 @@ public class IndexGenome {
 				progress.init().setDescription("Output GTF for "+path).setCount((int) aaano.size());
 				LineWriter gtf = new LineOrientedFile(annotPath).write();
 				for (ImmutableReferenceGenomicRegion<Transcript> tr : aaano.ei().loop()) {
-					gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\";\n", 
+					gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s\t.\tgene_id \"%s\";\n", 
 							tr.getReference().getName(),"gene",
 							tr.getRegion().getStart()+1,tr.getRegion().getEnd(),
 							tr.getReference().getStrand().getGff(),
 							tr.getData().getGeneId());
-					gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
+					gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
 							tr.getReference().getName(),"transcript",
 							tr.getRegion().getStart()+1,tr.getRegion().getEnd(),
 							tr.getReference().getStrand().getGff(),
 							tr.getData().getGeneId(),
 							tr.getData().getTranscriptId());
 					for (int p=0; p<tr.getRegion().getNumParts(); p++) {
-						gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
+						gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
 								tr.getReference().getName(),"exon",
 								tr.getRegion().getStart(p)+1,tr.getRegion().getEnd(p),
 								tr.getReference().getStrand().getGff(),
@@ -470,7 +479,7 @@ public class IndexGenome {
 					if (tr.getData().isCoding()) {
 						GenomicRegion cds = tr.getData().getCds(tr.getReference(), tr.getRegion());
 						for (int p=0; p<cds.getNumParts(); p++) {
-							gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
+							gtf.writef("%s\tGENBANK\t%s\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\";\n", 
 									tr.getReference().getName(),"CDS",
 									cds.getStart(p)+1,cds.getEnd(p),
 									tr.getReference().getStrand().getGff(),
@@ -516,7 +525,8 @@ public class IndexGenome {
 					
 					seq = new FastaFile(fastaPath);
 					seq.setFastaHeaderParser(new DefaultFastaHeaderParser(' '));
-					name = ensemblOrg+"."+ensemblVer;
+					if (name==null)
+						name = ensemblOrg+"."+ensemblVer;
 				}
 			}
 			
@@ -586,7 +596,10 @@ public class IndexGenome {
 		
 		if (name==null && annotPath==null) name = FileUtils.getNameWithoutExtension(seq);
 		if (name==null) name = FileUtils.getNameWithoutExtension(annotPath);
-		LineWriter out = new LineOrientedFile(output!=null?output:Config.getInstance().getConfigFolder()+"/genomic/"+name+".oml").write();
+		
+		String path = Genomic.getGenomicPaths()[0].toString();
+		String outfile = output!=null?output:path+"/"+name+".oml";
+		LineWriter out = new LineOrientedFile(outfile).write();
 		
 		out.writef("<Genomic>\n\t<FastaIndexSequenceProvider file=\"%s\" />",new File(seqpath).getAbsolutePath());
 		
@@ -682,8 +695,10 @@ public class IndexGenome {
 		if (star) {
 			//STAR --runThreadN 24 --runMode genomeGenerate --genomeDir . --genomeFastaFiles Homo_sapiens.GRCh38.dna.primary_assembly.fa --sjdbGTFfile Homo_sapiens.GRCh38.86.gtf
 			FastaIndexFile ff = new FastaIndexFile(seqpath).open();
-			int len = EI.wrap(ff.getEntryNames()).mapToInt(n->ff.getLength(n)).sum();
+			long len = EI.wrap(ff.getEntryNames()).map(n->new Long(ff.getLength(n))).reduce((a,b)->a+b);
 			int nbases = (int)Math.ceil(Math.min(14, Math.log(len)/Math.log(2)/2-1));
+			if (fixedNbases>-1)
+				nbases = fixedNbases;
 			
 			String fasta =ff.getFastaFile().getPath();
 			String index = new File(new File(fasta).getParentFile(),"STAR-index").getPath();
@@ -709,9 +724,30 @@ public class IndexGenome {
 			out.write("\t<Info name=\"STAR\" info=\""+index+"\" />\n");
 		}
 		
+		if (kallisto && transcriptome) {
+			
+			String indout = prefix+".kallisto";
+			if (!new File(indout).exists()) {
+					progress.init().setDescription("Creating kallisto index "+indout);
+				ProcessBuilder pb = new ProcessBuilder(
+						"kallisto","index","-i",indout,
+						prefix+".transcripts.fasta"
+				);
+				System.err.println("Calling "+EI.wrap(pb.command()).concat(" "));
+				pb.redirectError(Redirect.INHERIT);
+				pb.redirectOutput(Redirect.INHERIT);
+				pb.start().waitFor();
+				
+				progress.finish();
+			}
+			out.write("\t<Info name=\"kallisto-transcriptomic\" info=\""+new File(indout).getAbsolutePath()+"\" />\n");
+		}
+		
 		
 		out.write("</Genomic>\n");
 		out.close();
+		
+		System.out.println("Written genomic info to "+outfile);
 		
 		
 	}
@@ -739,6 +775,8 @@ public class IndexGenome {
 		System.err.println(" -o <file>\t\tSpecify output file (Default: ~/.gedi/genomic/${name}.oml)");
 		System.err.println(" -nobowtie\t\t\tDo not create bowtie indices");
 		System.err.println(" -nostar\t\t\tDo not create STAR indices");
+		System.err.println(" -nbases <nbases>\t\t\tSpecify nbases parameter for STAR (instead of using the formula in the STAR manual)");
+		
 		System.err.println(" -p\t\t\tShow progress");
 		System.err.println(" -h\t\t\tShow this message");
 		System.err.println(" -D\t\t\tOutput debugging information");

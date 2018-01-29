@@ -22,8 +22,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import gedi.util.FileUtils;
-import gedi.util.io.randomaccess.BufferBinaryReaderWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
+import gedi.util.orm.BinaryBlob;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
@@ -51,7 +51,7 @@ public class BinaryEncoder extends MessageToByteEncoder<BinarySerializable> {
 	protected void encode(ChannelHandlerContext ctx, BinarySerializable msg,
 			ByteBuf out) throws Exception {
 		
-		BufferBinaryReaderWriter buff = new BufferBinaryReaderWriter(msg);
+		BinaryBlob buff = new BinaryBlob(msg);
 		String n = msg.getClass().getName();
 		out.writeInt(Integer.BYTES+n.length()+buff.getBuffer().limit());
 		out.writeInt(n.length());

@@ -31,7 +31,7 @@ public class AnnotationRenderer<T> extends BoxRenderer<T> {
 		setFont("Arial", 14, true, false);
 		setForeground(t->Color.WHITE);
 		setBackground(t->PaintUtils.DARK_BLUE);
-		setStringer(x->String.valueOf(x));
+		stringer = x->String.valueOf(x.getData());
 	}
 	
 

@@ -59,6 +59,8 @@ public abstract class AbstractFeature<O> implements GenomicRegionFeature<O>{
 	
 	protected ArrayList<Consumer<GenomicRegionFeature<O>>> finishActions = new ArrayList<Consumer<GenomicRegionFeature<O>>>();
 	
+	protected boolean dependsOnData = false;
+	
 		
 	public MutableReferenceGenomicRegion<Object> getReferenceRegion() {
 		return referenceRegion;
@@ -76,6 +78,7 @@ public abstract class AbstractFeature<O> implements GenomicRegionFeature<O>{
 		this.postprocessors = from.postprocessors;
 		this.condition = from.condition;
 		this.inputs = new Set[from.inputs.length];
+		this.dependsOnData = from.dependsOnData;
 	}
 	
 	@Override
@@ -84,11 +87,17 @@ public abstract class AbstractFeature<O> implements GenomicRegionFeature<O>{
 	}
 	
 	@Override
-	public void addCondition(Predicate<GenomicRegionFeature<O>> condition) {
+	public boolean dependsOnData() {
+		return dependsOnData;
+	}
+	
+	@Override
+	public GenomicRegionFeature<O> addCondition(Predicate<GenomicRegionFeature<O>> condition) {
 		if (this.condition==null)
 			this.condition = condition;
 		else 
 			this.condition = this.condition.and(condition);
+		return this;
 	}
 	
 	@Override
@@ -163,9 +172,10 @@ public abstract class AbstractFeature<O> implements GenomicRegionFeature<O>{
 	}
 
 	@Override
-	public <T> void addFunction(Function<O, T> function) {
+	public <T> GenomicRegionFeature<O> addFunction(Function<O, T> function) {
 		Objects.requireNonNull(function, "Function is null in "+getId());
 		postprocessors.add(function);
+		return this;
 	}
 	
 	public int getInputLength() {
@@ -189,8 +199,9 @@ public abstract class AbstractFeature<O> implements GenomicRegionFeature<O>{
 	}
 	
 	@Override
-	public void setId(String id) {
+	public GenomicRegionFeature<O> setId(String id) {
 		this.id = id;
+		return this;
 	}
 
 	@Override

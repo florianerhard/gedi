@@ -35,7 +35,7 @@ public class ScoreRenderer extends BoxRenderer<ScoreProvider> {
 	public ScoreRenderer() {
 		setBackground(t->mapper.apply(t.getScore()));
 		setForeground(t->PaintUtils.isDarkColor(mapper.apply(t.getScore()))?Color.WHITE:Color.BLACK);
-		setStringer(s->s.toString());
+		stringer = s->s.getData().toString();
 	}
 	
 	public void linear(double min, double max) {
@@ -52,10 +52,13 @@ public class ScoreRenderer extends BoxRenderer<ScoreProvider> {
 		mapper = new ValueToColorMapper(mapper.getRange(), colors);
 	}
 	
+	public void colors(double min, double max, Color... colors) {
+		mapper = new ValueToColorMapper(MathUtils.linearRange(min, max), colors);
+	}
+	
 	public void colors(ColorPalettes palette, int numColors) {
 		colors(palette.getPalette(numColors));
 	}
 	
-
 
 }

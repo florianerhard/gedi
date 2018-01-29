@@ -18,6 +18,7 @@
 
 package gedi.core.region;
 
+import gedi.core.data.HasConditions;
 import gedi.core.data.annotation.ReferenceSequencesProvider;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.reference.Chromosome;
@@ -390,6 +391,26 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 	}
 
 	default String getName(){return "";}
+
+	default String[] getMetaDataConditions() {
+		if (getMetaData().hasProperty("conditions")) {
+			int numCond = getMetaData().getEntry("conditions").asArray().length;
+			String[] conditions = new String[numCond];
+			for (int c=0; c<conditions.length; c++) {
+				conditions[c] = getMetaData().getEntry("conditions").getEntry(c).getEntry("name").asString();
+				if ("null".equals(conditions[c])) conditions[c] = c+"";
+			}
+			return conditions;
+		}
+		if (getMetaData().isNull() && getRandomRecord() instanceof HasConditions) {
+			int numCond = ((HasConditions) getRandomRecord()).getNumConditions();
+			String[] conditions = new String[numCond];
+			for (int c=0; c<conditions.length; c++)
+				conditions[c] = c+"";
+			return conditions;
+		}
+		return new String[0];
+	}
 
 	
 }

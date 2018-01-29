@@ -52,6 +52,7 @@ import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
+import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.tree.redblacktree.IntervalTreeSet;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -132,7 +133,10 @@ public class PriceOrfInference extends GediProgram {
 		tab.close();
 		tmp.close();
 		
-		setOutput(0, pvals);
+		PageFileWriter pvf = new PageFileWriter(getOutputFile(0).getAbsolutePath()); 
+		DoubleIterator dit = pvals.iterator();
+		while( dit.hasNext()) pvf.putDouble(dit.nextDouble());
+		pvf.close();
 		
 		
 		return null;

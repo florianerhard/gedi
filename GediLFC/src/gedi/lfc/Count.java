@@ -19,6 +19,7 @@
 package gedi.lfc;
 
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;
+import gedi.core.data.HasConditions;
 import gedi.core.data.annotation.Transcript;
 import gedi.core.data.numeric.GenomicNumericProvider.PositionNumericIterator;
 import gedi.core.data.reads.AlignedReadsData;

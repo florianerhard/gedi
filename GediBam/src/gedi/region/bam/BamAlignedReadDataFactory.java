@@ -121,7 +121,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 		int start = file==0?0:cumNumCond[file-1];
 		int end = cumNumCond[file];
 		
-		String c = record.getStringAttribute("XR");
+		String c = record.getAttribute("XR") instanceof String?record.getStringAttribute("XR"):null;
 		if (c==null && end-start!=1) throw new RuntimeException("XR counts do not match BAM header descriptor");
 		if (c==null)
 			incrementCount(s, start, 1);
@@ -270,7 +270,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 		int start = file==0?0:cumNumCond[file-1];
 		int end = cumNumCond[file];
 		
-		String c = record1.getStringAttribute("XR");
+		String c = record1.getAttribute("XR") instanceof String?record1.getStringAttribute("XR"):null;
 		if (c==null && end-start!=1) throw new RuntimeException("XR counts to not match BAM header descriptor");
 		if (c==null)
 			incrementCount(s, start, 1);
@@ -312,12 +312,12 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				pos = (invertPos?coveredGenomic-lr:lr);
 				vread = complement?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
 				ls+=e.getLength(); 
-				to.add(createInsertion(pos+offset, vread, record.getSecondOfPairFlag()));
+				to.add(createInsertion(pos+offset, vread, record.getReadPairedFlag() && record.getSecondOfPairFlag()));
 				break;
 			case D:
 				pos = (invertPos?coveredGenomic-lr-e.getLength():lr);
 				vread = complement?SequenceUtils.getDnaReverseComplement(getReferenceSequence(record,lr,lr+e.getLength())):getReferenceSequence(record,lr,lr+e.getLength());;
-				to.add(createDeletion(pos+offset, vread, record.getSecondOfPairFlag()));
+				to.add(createDeletion(pos+offset, vread, record.getReadPairedFlag() && record.getSecondOfPairFlag()));
 				lr+=e.getLength(); 
 				break;
 			case M: 
@@ -328,7 +328,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 						pos = (invertPos?coveredGenomic-1-lr-i:lr+i);
 						char g = complement?SequenceUtils.getDnaComplement(ref.charAt(i)):ref.charAt(i);
 						char r = complement?SequenceUtils.getDnaComplement(read.charAt(i)):read.charAt(i);
-						to.add(createMismatch(pos+offset, g, r, record.getSecondOfPairFlag()));
+						to.add(createMismatch(pos+offset, g, r, record.getReadPairedFlag() && record.getSecondOfPairFlag()));
 					}
 				ls+=e.getLength();
 				lr+=e.getLength();
@@ -336,7 +336,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 			case S:
 				pos = (invertPos?coveredGenomic-lr:lr);
 				vread = complement?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
-				to.add(createSoftclip(pos+offset, vread, record.getSecondOfPairFlag()));
+				to.add(createSoftclip(pos+offset, vread, record.getReadPairedFlag() && record.getSecondOfPairFlag()));
 				
 				ls+=e.getLength();
 				

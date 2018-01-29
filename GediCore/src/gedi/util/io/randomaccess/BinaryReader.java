@@ -57,7 +57,8 @@ public interface BinaryReader {
 
 	byte get() throws IOException;
 	
-	
+	boolean eof();
+	 
 	ExtensionContext getContext();
 
 	BinaryReader get(byte[] dst, int offset, int length)

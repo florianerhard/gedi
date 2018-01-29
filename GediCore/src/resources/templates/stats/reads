@@ -26,12 +26,11 @@
 	<AnnotationFeature id="Transcript" data="false" >
 		<Transcripts g="genomic" flank="50" />
 	</AnnotationFeature>
-	<ContainedFeature id="ContainedTranscript" input="Transcript" />
-	<MapFeature id="GeneId" input="ContainedTranscript">
+	<MapFeature id="GeneId" input="Transcript">
 		<Field n='data' />
 		<Field n='geneId' />
 	</MapFeature>
-	<MapFeature id="TranscriptIdFolded" input="ContainedTranscript">
+	<MapFeature id="TranscriptIdFolded" input="Transcript">
 		<Field n='data' />
 		<Field n='transcriptId' />
 	</MapFeature>
@@ -99,11 +98,6 @@
 	<FeatureStatisticOutput file="<?JS prefix ?>total.tsv" input="Total">
 		<Condition inputs="Total" cond="[U]" />
 	</FeatureStatisticOutput>
-		<FeatureStatisticOutput file="<?JS prefix ?>genes.tsv" input="GeneId">
-		<Condition inputs="GeneId" cond="[U]" />
-	</FeatureStatisticOutput>
-	<FeatureStatisticOutput file="<?JS prefix ?>transcripts.tsv" input="TranscriptId">
-	</FeatureStatisticOutput>
 
 
 	<FeatureStatisticOutput file="<?JS prefix ?>genome.tsv" input="Genome">
@@ -159,7 +153,7 @@
 	</FeatureStatisticOutput>
 
 	
-	<FeatureStatisticOutput file="<?JS prefix ?>mismatchcount.tsv" input="MismatchCount,Ambiguity">
+	<FeatureStatisticOutput file="<?JS prefix ?>n.tsv" input="MismatchCount,Ambiguity">
 		<Barplot aes="x,fill,,y" position="stack">
 			<Section>Mismatches</Section>
 			<Title>Mismatch histogram</Title>
@@ -368,7 +362,6 @@
 			<Description>Shows the number of reads starting within coding transcripts. The x axis is the relative position of the read start within the three regions (5'-UTR: &lt;0; CDS: 0-100; 3'-UTR: &gt;100). The major isoform is used as reference for each gene (the longest coding transcript) and only uniquely mapped reads are considered.</Description>
 		</Barplot>
 	</FeatureStatisticOutput>
-
 
 
 

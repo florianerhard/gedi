@@ -19,6 +19,7 @@
 package gedi.region.bam;
 
 import gedi.bam.tools.BamUtils;
+import gedi.core.data.HasConditions;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.ConditionMappedAlignedReadsData;
 import gedi.core.data.reads.ContrastMapping;
@@ -105,7 +106,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	private PairedEndNoMateInRegionHandling pairedEndNoMateInRegionHandling = PairedEndNoMateInRegionHandling.ReportSingle;
 	
 	private boolean keepReadNames = false;
-	private boolean onlyPrimary = true;
+	private boolean onlyPrimary = false;
 	
 	private int minaqual = 0;
 

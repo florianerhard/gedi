@@ -18,6 +18,7 @@
 
 package gedi.core.data.reads;
 
+import gedi.core.data.HasConditions;
 import gedi.util.io.randomaccess.BinaryReader;
 
 import java.io.IOException;

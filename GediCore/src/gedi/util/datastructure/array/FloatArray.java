@@ -188,6 +188,13 @@ public abstract class FloatArray implements NumericArray {
 	}
 	
 	@Override
+	public void subtract(NumericArray a) {
+		for (int i=0; i<length(); i++)
+			add(i,-a.getFloat(i));
+	}
+
+	
+	@Override
 	public void add(int index, byte value) {
 		add(index, (float) value);
 	}

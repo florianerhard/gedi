@@ -48,6 +48,7 @@ public class CommandLineHandler {
 	 * @param spec
 	 * @return
 	 */
+	@SuppressWarnings("rawtypes")
 	public String parse(GediParameterSpec spec, GediParameterSet set) {
 		
 		spec.add("Commandline", getProgress(set),getD(set),getH(set),getHh(set),getHhh(set),getDry(set),getKeep(set));

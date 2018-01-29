@@ -30,6 +30,7 @@ import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 import gedi.app.Gedi;
+import gedi.util.StringUtils;
 import gedi.util.functions.EI;
 import gedi.util.job.ExecutionContext;
 import gedi.util.job.Job;
@@ -51,7 +52,6 @@ public abstract class GediProgram {
 	private GediParameterSpec inputSpec = new GediParameterSpec();
 	private GediParameterSpec outputSpec = new GediParameterSpec();
 	private GediParameter<Boolean> runflag;
-	
 	private String name;
 
 	
@@ -81,8 +81,6 @@ public abstract class GediProgram {
 	public GediParameter<Boolean> getRunFlag() {
 		return runflag;
 	}
-	
-	
 	
 	protected int getIntParameter(int index) {
 		return (Integer)inputSpec.get(index).get();
@@ -156,12 +154,17 @@ public abstract class GediProgram {
 		return outputSpec;
 	}
 	
+	public File getOutputFile(int i) {
+		return outputSpec.get(i).getFile();
+	}
 
 	public String getName() {
 		return name;
 	}
 	
-	
+	public static void run(GediProgram program, CommandLineHandler cmd) {
+		run(program,null,cmd);
+	}
 	public static void run(GediProgram program, GediParameter<File> parameterFile, CommandLineHandler cmd) {
 		
 		Gedi.startup(true);
@@ -197,14 +200,16 @@ public abstract class GediProgram {
 			
 		} catch (Exception e) {
 			
-			cmd.usage(e.getMessage(),program.getInputSpec(),program.getOutputSpec(),1);
+			String emsg = StringUtils.createExceptionMessage(e);
+			
+			cmd.usage(emsg,program.getInputSpec(),program.getOutputSpec(),1);
 			
 			if (program.getBooleanParameter(CommandLineHandler.D))
 				e.printStackTrace();
 			System.exit(2);
 		}
 		
-		if (!program.getBooleanParameter(CommandLineHandler.keep)) {
+		if (!program.getBooleanParameter(CommandLineHandler.keep) && !program.getBooleanParameter(CommandLineHandler.dry)) {
 			for (GediParameter<?> out : program.outputSpec.list)
 				if (out.isRemoveFile() && out.getFile().exists()) {
 					Logger.getLogger("GEDI").info("Removing temp file "+out.getFile());
@@ -254,7 +259,6 @@ public abstract class GediProgram {
 				
 				PetriNet pn = new PetriNet();
 				HashMap<GediParameter,Place> places = new HashMap<>();
-
 				
 				// create a transition for each sub program; for each parameter, connect the corresponding input place
 				// if it has a single output, connect the corresponding place; if there are several, connect the transition
@@ -333,6 +337,8 @@ public abstract class GediProgram {
 						.newContext("context", ExecutionContext.class);
 				econtext.setContext("context", context);
 				DefaultPetriNetScheduler scheduler = new DefaultPetriNetScheduler(econtext, pool);
+				scheduler.setRethrowExceptions(true);
+				
 				for (Transition t : pn.getTransitions()) {
 					if (t.getJob().isDisabled(econtext))
 						econtext.setDisabled(t, true);

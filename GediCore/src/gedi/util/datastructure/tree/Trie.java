@@ -20,6 +20,7 @@ package gedi.util.datastructure.tree;
 
 
 import gedi.util.datastructure.tree.redblacktree.Interval;
+import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 
 import java.util.AbstractMap;
@@ -764,6 +765,8 @@ public class Trie<T> implements Map<String,T> {
 		return iterateAhoCorasick(text, false);
 	}
 	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final CharSequence text, final boolean reUse) {
+		if (text==null) return EI.empty();
+		
 		prepareAhoCorasick();
 		final AhoCorasickResult<T> one = reUse?new AhoCorasickResult<T>():null;
 		return new ExtendedIterator<AhoCorasickResult<T>>() {

@@ -80,6 +80,9 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
         
     }
     
+    public ByteBuffer getBuffer() {
+		return buffer;
+	}
     
     @Override
     public ExtensionContext getContext() {
@@ -102,6 +105,11 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
     		nb.put(buffer);
     		buffer = nb;
     	}
+    }
+    
+    @Override
+    public boolean eof() {
+    	return !buffer.hasRemaining();
     }
     
     /**

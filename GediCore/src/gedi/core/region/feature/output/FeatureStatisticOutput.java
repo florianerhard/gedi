@@ -219,8 +219,9 @@ public class FeatureStatisticOutput extends OutputFeature {
 	}
 	
 	@Override
-	public void addResultProducers(ArrayList<ResultProducer> re) {
+	public FeatureStatisticOutput addResultProducers(ArrayList<ResultProducer> re) {
 		re.addAll(plots);
+		return this;
 	}
 
 	@Override

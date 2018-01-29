@@ -26,6 +26,7 @@ import gedi.util.job.Place;
 import gedi.util.job.Transition;
 import gedi.util.math.stat.RandomNumbers;
 import gedi.util.mutable.MutableLong;
+import gedi.util.mutable.MutableMonad;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -50,6 +51,8 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 	protected Consumer<ExecutionContext> finishAction;
 	protected BiConsumer<ExecutionContext, Place> newTokenObserver;
 	
+	private boolean rethrowExceptions = false;
+	
 //	private long hysteresis = 200;
 	
 	private boolean logging = true;
@@ -60,6 +63,9 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 		this.threadpool = threadpool; 
 	}
 	
+	public void setRethrowExceptions(boolean rethrowExceptions) {
+		this.rethrowExceptions = rethrowExceptions;
+	}
 	
 	@Override
 	public void addListener(PetriNetListener rg) {
@@ -146,6 +152,7 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 				});
 			}
 			
+			MutableMonad<Throwable> exception = new MutableMonad<>();
 			while (!runnings.isEmpty() || !ready.isEmpty()) {
 				
 				if (Thread.interrupted() || context.getExecutionId()!=eid) {
@@ -161,6 +168,8 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 					ready.removeAll(ran);
 					iter.addAll(ready);
 					ready.clear();
+					if (exception.Item!=null)
+						throw exception.Item;
 				}
 				for (Transition n : iter) {
 					if (logging) log.log(Level.FINE,()->"Submitting "+n+" (id="+uid+") "+context);
@@ -170,7 +179,15 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 								StringWriter exmsg = new StringWriter();
 								ft.getException().printStackTrace(new PrintWriter(exmsg));
 								boolean interrupted = GeneralUtils.isCause(ft.getException(),InterruptedException.class);
-								log.log(interrupted?Level.FINE:Level.SEVERE,"Exception in "+n+" (id="+uid+"):"+exmsg.toString());
+								if (interrupted) {
+									log.log(Level.FINE,"Exception in "+n+" (id="+uid+"):"+exmsg.toString());	
+								} else {
+									if (rethrowExceptions)
+										exception.Item = ft.getException();
+									else
+										log.log(Level.SEVERE,"Exception in "+n+" (id="+uid+"):"+exmsg.toString());
+								}
+								
 							} else if (ft.isValidExecution()) {
 								context.putToken(n.getOutput(), ft.getResult());
 								if (logging) log.log(Level.FINER,()->"Finished "+n+" (id="+uid+") after "+ft.getTime()+"ns");
@@ -203,8 +220,7 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 				finishAction.accept(context);
 			
 		} catch (Throwable e) {
-			log.log(Level.SEVERE,"Uncaught exception!",e);
-			
+			throw new RuntimeException(e);
 		}
 	}
 

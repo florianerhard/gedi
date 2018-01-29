@@ -156,6 +156,7 @@ public class GediCommandline {
 								
 								long nano = System.nanoTime();
 								JSResult re = context.jsThread.execute(context.prevBuffer.toString()+line);
+								context.lastResult = re;
 								if (re.getException()!=null) throw re.getException();
 		
 								nano = System.nanoTime()-nano;
@@ -167,7 +168,6 @@ public class GediCommandline {
 									re = context.jsThread.execute("echo(result);");
 									if (re.getException()!=null) throw re.getException();
 								}
-								context.lastResult = re;
 								context.reader.setPrompt(prompt);
 								context.prevBuffer.delete(0, context.prevBuffer.length());
 								

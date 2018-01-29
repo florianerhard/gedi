@@ -79,39 +79,13 @@ public class PriceIdentifyMaxPos extends GediProgram {
 		p.setId("Position");
 		program.add(p,"transcript");
 		
-		FeatureStatisticOutput t = new FeatureStatisticOutput(prefix+".maxPos.estimateData");
+		FeatureStatisticOutput t = new FeatureStatisticOutput(prefix+".maxPos");
 		t.addCondition(new String[] {"transcript"}, "[U]");
 		t.addCondition(new String[] {"Position"}, "[U]");
 		program.add(t,"Position");
 		
 		new AlignedReadsDataToFeatureProgram(program).setProgress(context.getProgress(),()->"Identify maxpos").processStorage(reads);
 		
-		DataFrame df = Csv.toDataFrame(prefix+".maxPos.estimateData", true, 0, null);
-		new File(prefix+".maxPos.estimateData").delete();
-		
-		int[] pos = df.getIntegerColumn(0).getRaw().toIntArray();
-		double[] sum = null;
-		double[][] mat = new double[df.columns()-1][];
-		for (int c=1; c<df.columns(); c++) {
-			mat[c-1] = ArrayUtils.restrict(df.getDoubleColumn(c).getRaw().toDoubleArray(),ind->pos[ind]<=-10);
-			sum = ArrayUtils.add(sum, mat[c-1]);
-		}
-		int[] posr = ArrayUtils.restrict(pos,ind->pos[ind]<=-10);
-
-//		maxpos = new int[mat.length+1];
-//		for (int c=0; c<mat.length; c++) {
-//			maxpos[c] = -posr[ArrayUtils.argmax(mat[c])];
-//			String name = reads.getMetaData()!=null?reads.getMetaData().getEntry("conditions").getEntry(c).getEntry("name").asString():null;
-//			if (name==null || name.length()==0) name = i+"";
-//			log.info("maxpos("+name+") = "+maxpos[c]);
-//		}
-//		maxpos[maxpos.length-1] = -posr[ArrayUtils.argmax(sum)];
-		
-		
-		int maxPos = -posr[ArrayUtils.argmax(sum)];
-		context.getLog().info("maxpos = "+maxPos);
-		
-		setOutput(0,maxPos);
 		
 		return null;
 	}

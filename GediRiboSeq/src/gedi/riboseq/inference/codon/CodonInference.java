@@ -30,9 +30,11 @@ import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
+import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
 import gedi.core.sequence.SequenceProvider;
 import gedi.riboseq.cleavage.RiboModel;
 import gedi.riboseq.cleavage.SimpleCodonModel;
+import gedi.util.ArrayUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.datastructure.tree.redblacktree.IntervalTreeSet;
 import gedi.util.functions.EI;
@@ -111,7 +113,7 @@ public class CodonInference {
 	 * @return
 	 */
 	public ImmutableReferenceGenomicRegion<IntervalTreeSet<Codon>> inferCodons(GenomicRegionStorage<AlignedReadsData> reads, ReferenceGenomicRegion<?> part) {
-		Set<Codon> codons = inferCodons(()->Spliterators.iterator(reads.iterateIntersectingMutableReferenceGenomicRegions(part.getReference(), part.getRegion())),null);
+		Set<Codon> codons = inferCodons(part.getReference(),()->Spliterators.iterator(reads.iterateIntersectingMutableReferenceGenomicRegions(part.getReference(), part.getRegion())),null);
 
 		GenomicRegion reg = part.getRegion();
 		IntervalTreeSet<Codon> set = new IntervalTreeSet<Codon>(part.getReference());
@@ -137,7 +139,7 @@ public class CodonInference {
 	 */
 	public ImmutableReferenceGenomicRegion<IntervalTreeSet<Codon>> inferCodons(GenomicRegionStorage<AlignedReadsData> reads, ReferenceSequence ref, int start, int end, MutableMonad<ToDoubleFunction<Collection<Codon>>> gofComp) {
 		ArrayGenomicRegion reg = new ArrayGenomicRegion(start,end);
-		Set<Codon> codons = inferCodons(()->Spliterators.iterator(reads.iterateIntersectingMutableReferenceGenomicRegions(ref, reg)),gofComp);
+		Set<Codon> codons = inferCodons(ref,()->Spliterators.iterator(reads.iterateIntersectingMutableReferenceGenomicRegions(ref, reg)),gofComp);
 
 		IntervalTreeSet<Codon> set = new IntervalTreeSet<Codon>(ref);
 		for (Codon c : codons) {
@@ -161,7 +163,7 @@ public class CodonInference {
 	 * @return
 	 */
 	public ImmutableReferenceGenomicRegion<IntervalTreeSet<Codon>> inferCodons(GenomicRegionStorage<AlignedReadsData> reads, ReferenceSequence ref, int start, int end, int flanking, MutableMonad<ToDoubleFunction<Collection<Codon>>> gofComp) {
-		Set<Codon> codons = inferCodons(()->Spliterators.iterator(reads.iterateIntersectingMutableReferenceGenomicRegions(ref, new ArrayGenomicRegion(start,end))),gofComp);
+		Set<Codon> codons = inferCodons(ref,()->Spliterators.iterator(reads.iterateIntersectingMutableReferenceGenomicRegions(ref, new ArrayGenomicRegion(start,end))),gofComp);
 
 		ArrayGenomicRegion reg = new ArrayGenomicRegion(Math.max(0, start-flanking),sequence==null?end+flanking:Math.min(end+flanking,sequence.getLength(ref.getName())));
 		
@@ -179,15 +181,18 @@ public class CodonInference {
 	}
 	
 	
-	private double totalReads;
 	private double neighborFactor = 10;
+	private boolean useNewCombineConditions = true;
 	
-	public double getTotalReads() {
-		return totalReads;
-	}
-	public Set<Codon> inferCodons(Supplier<Iterator<? extends ReferenceGenomicRegion<AlignedReadsData>>> reads, MutableMonad<ToDoubleFunction<Collection<Codon>>> gofComp) {
+	private double allowedProbCutoff = 0;
+	private MemoryIntervalTreeStorage<?> allowedOrfs;
+	
+	public Set<Codon> inferCodons(ReferenceSequence ref, Supplier<Iterator<? extends ReferenceGenomicRegion<AlignedReadsData>>> reads, MutableMonad<ToDoubleFunction<Collection<Codon>>> gofComp) {
 		if (models.length==1) 
 			return inferCodons(models[0], -1, reads.get(), gofComp);
+		
+		if (useNewCombineConditions )
+			return inferCodons(ref, models,reads.get());
 		
 		ToDoubleFunction<Collection<Codon>>[] gofComps = new ToDoubleFunction[models.length];
 		
@@ -231,7 +236,6 @@ public class CodonInference {
 		ReadsXCodonMatrix m = new ReadsXCodonMatrix(model, condition);
 		int readcount = m.addAll(reads);
 		m.finishReads();
-		totalReads = m.getTotal();
 		
 		if (readcount==0) return Collections.emptySet();
 		
@@ -364,7 +368,140 @@ public class CodonInference {
 		return m.getCodons();
 	}
 	
+
 	
+	private Set<Codon> inferCodons(ReferenceSequence reference, RiboModel model[], Iterator<? extends ReferenceGenomicRegion<AlignedReadsData>> reads) {
+		if (filter!=null)
+			reads = FunctorUtils.filteredIterator(reads, filter);
+		
+		MultiConditionReadsXCodonMatrix m;
+		if (allowedOrfs!=null) {
+			m = new MultiConditionReadsXCodonMatrix(model,ReadCountMode.Unique,1E-3,allowedProbCutoff);
+			m.setAllowed(allowedOrfs.getTree(reference));
+		} else {
+			m = new MultiConditionReadsXCodonMatrix(model,ReadCountMode.Weight,1E-3,allowedProbCutoff);
+		}
+		
+		int readcount = m.addAll(reads);
+		m.finishReads();
+		
+		if (readcount==0) return Collections.emptySet();
+		
+		int cond = m.checkConditions();
+		if (cond==-2) // no reads at all
+			return new HashSet<Codon>();
+		
+		if (cond<0) throw new RuntimeException("Inconsistent conditions!");
+		double[] act = null;
+		
+		iters = 0;
+		do  {
+			m.computeExpectedReadsPerCodon();
+			m.computePriorReadProbabilities();
+			m.computeExpectedCodonPerRead();
+			iters++;
+//			if (rho>0)
+//				act = m.getCurrentActivities(act);
+			lastDifference = m.computeExpectedCodons();
+			
+//			if (rho>0)
+//				lastDifference = m.applyPrior(rho,act);
+			
+//			System.out.println(m.computeLogLikelihood());
+		} while (lastDifference>threshold && iters<maxIter);
+		
+		if (lambda>=0) {
+//			System.out.println("Before "+m.computeLogLikelihood());
+			// regularization
+			HashMap<Integer,ArrayList<Codon>> startMap = new HashMap<>();
+			HashMap<Integer,ArrayList<Codon>> endMap = new HashMap<>();
+			for (Codon c : m.getCodons()) {
+				startMap.computeIfAbsent(c.getStart(), x->new ArrayList<>()).add(c);
+				endMap.computeIfAbsent(c.getEnd(), x->new ArrayList<>()).add(c);
+			}
+			
+			
+			Codon[] codons = m.getCodons().toArray(new Codon[0]);
+			Arrays.sort(codons,(a,b)->Double.compare(a.totalActivity, b.totalActivity));
+//			double ll = m.computeLogLikelihood();
+			m.copySlots(1, 2);
+			HashSet<Codon> removed = new HashSet<Codon>();
+			HashMap<Codon,ArrayList<Codon>> removeIfNeighborRemoved = new HashMap<Codon, ArrayList<Codon>>();
+			for (Codon c : codons) {
+				ArrayList<Codon> neia = startMap.get(c.getEnd());
+				ArrayList<Codon> neib = endMap.get(c.getStart());
+				boolean hasNeighbors = neia!=null && neib!=null &&  EI.wrap(neia).filter(n->!removed.contains(n) && n.totalActivity>threshold).count()>0 
+						&& EI.wrap(neib).filter(n->!removed.contains(n) && n.totalActivity>threshold).count()>0;
+
+				double delta = m.regularize3(c);
+//				if (c.getStart()>=142747 && c.getStart()<142880 && c.getStart()%3==1)
+//					System.out.println("overlap "+c+" "+delta);
+//				if (c.getStart()<142747 && c.getStart()>142580 && c.getStart()%3!=0)
+//					System.out.println("nooverl "+c+" "+delta);
+				
+				if (delta<(hasNeighbors?-lambda/neighborFactor :-lambda)){
+					m.copySlotsReads(c,2, 1); //revert
+				} else {
+					if (hasNeighbors && delta<-lambda) { // i.e. there are two neigbors; if they are removed and there are no other neighbors, c must also be deleted
+						ExtendedIterator<Codon> ita = EI.wrap(neia).filter(n->!removed.contains(n) && n.totalActivity>threshold);
+						ExtendedIterator<Codon> itb = EI.wrap(neib).filter(n->!removed.contains(n) && n.totalActivity>threshold);
+						Codon na = ita.next();
+						Codon nb = itb.next();
+						if (!ita.hasNext())
+							removeIfNeighborRemoved.computeIfAbsent(na, x->new ArrayList<>()).add(c);
+						if (!itb.hasNext())
+							removeIfNeighborRemoved.computeIfAbsent(nb, x->new ArrayList<>()).add(c);
+						
+					}
+					m.copySlotsReads(c,1, 2); //save it
+					removed.add(c);
+					m.computeExpectedCodons(c);
+					
+				}
+			}
+			
+			for (Codon c : removeIfNeighborRemoved.keySet()) {
+				if (removed.contains(c)) {
+					for (Codon rc : removeIfNeighborRemoved.get(c)) {
+						m.regularize3(rc);
+						m.computeExpectedCodons(c);
+					}
+				}
+			}
+//			System.out.println("After "+m.computeLogLikelihood());
+			m.computeExpectedCodons();
+			m.removeZeroCodons();
+			m.resetCodons();
+			
+			iters = 0;
+			do  {
+				m.computeExpectedReadsPerCodon();
+				m.computePriorReadProbabilities();
+				m.computeExpectedCodonPerRead();
+				iters++;
+				lastDifference = m.computeExpectedCodons();
+	//			System.out.println(m.computeLogLikelihood());
+			} while (lastDifference>threshold && iters<maxIter);
+			// end regularization
+//			System.out.println("Recalc "+m.computeLogLikelihood());
+			
+		}
+		
+		m.computeExpectedReadsPerCodon();
+		m.computePriorReadProbabilities();
+		m.copySlots(1,2); 
+		
+		// do the final inference step for each condition individually
+		for (cond=0; cond<models.length; cond++) {
+			m.computeExpectedCodonPerRead(cond);
+			m.computeExpectedCodons(cond);
+			m.copySlots(2, 1); // restore the prior read probabilities
+		}
+	
+		
+		return m.getCodons();
+	}
+
 	
 	public Set<Codon> inferSimple(
 			Iterator<? extends ReferenceGenomicRegion<AlignedReadsData>> reads,
@@ -420,7 +557,7 @@ public class CodonInference {
 		
 		
 		CodonInference inf = new CodonInference(new RiboModel[]{model});
-		System.out.println(inf.inferCodons(()->Arrays.asList(
+		System.out.println(inf.inferCodons(null,()->Arrays.asList(
 				new MutableReferenceGenomicRegion<AlignedReadsData>().set(Chromosome.obtain("chr1+"), new ArrayGenomicRegion(1,29), new AlignedReadsDataFactory(1).start().newDistinctSequence().setCount(0, 2).create()),
 				new MutableReferenceGenomicRegion<AlignedReadsData>().set(Chromosome.obtain("chr1+"), new ArrayGenomicRegion(2,30), new AlignedReadsDataFactory(1).start().newDistinctSequence().setCount(0, 7).create()),
 				new MutableReferenceGenomicRegion<AlignedReadsData>().set(Chromosome.obtain("chr1+"), new ArrayGenomicRegion(3,31), new AlignedReadsDataFactory(1).start().newDistinctSequence().setCount(0, 1).create())
@@ -431,6 +568,11 @@ public class CodonInference {
 	}
 	public SequenceProvider getGenome() {
 		return sequence;
+	}
+	public CodonInference setAllowedOrfs(MemoryIntervalTreeStorage<?> storage, double probCutoff) {
+		this.allowedOrfs = storage;
+		this.allowedProbCutoff = probCutoff;
+		return this;
 	}
 	
 	

@@ -131,6 +131,14 @@ public class RepeatCIT {
 				if (verbose!=null && !re) {
 					verbose.writeLine2("Filtered out "+e+", not contained in "+from);
 				}
+				ImmutableReferenceGenomicRegion mapped = new ImmutableReferenceGenomicRegion(to.getReference(),to.map(from.induce(e.getRegion())),e.getData());
+				if (re && in.contains(mapped.getReference(), mapped.getRegion())) {
+					if (verbose!=null && !in.getData(mapped.getReference(), mapped.getRegion()).equals(mapped.getData())) 
+						verbose.writeLine2("Filtered out "+mapped+", already present: "+in.getData(mapped.getReference(), mapped.getRegion()));
+					re = false;
+				}
+				
+				
 				return re;
 			})
 			.map(e->{

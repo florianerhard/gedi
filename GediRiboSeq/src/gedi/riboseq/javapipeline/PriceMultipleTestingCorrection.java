@@ -78,6 +78,7 @@ public class PriceMultipleTestingCorrection extends GediProgram {
 		addInput(params.orfinference);
 		addInput(params.fdr);
 		addInput(params.orfsbin);
+		addInput(params.keepAnno);
 		
 		addOutput(params.orfstmp);
 	}
@@ -85,10 +86,16 @@ public class PriceMultipleTestingCorrection extends GediProgram {
 	public String execute(GediProgramContext context) throws IOException {
 		
 		String prefix = getParameter(0);
-		DoubleArrayList pvals = getParameter(1);
+		File pvalFile = getParameter(1);
 		OrfInference v = getParameter(2);
 		double fdr = getParameter(3);
+		boolean keepAnno = getBooleanParameter(5);
 		
+		DoubleArrayList pvals = new DoubleArrayList();
+		PageFile pvf = new PageFile(pvalFile.getAbsolutePath());
+		while (!pvf.eof())
+			pvals.add(pvf.getDouble());
+		pvf.close();
 		
 		
 		context.getLog().log(Level.INFO, "Found "+pvals.size()+" ORFs");
@@ -97,6 +104,7 @@ public class PriceMultipleTestingCorrection extends GediProgram {
 		PageFile in = new PageFile(prefix+".orfs.bin");
 		in.getContext().add(Class.class, PriceOrf.class);
 		MutableInteger index = new MutableInteger();
+		MutableInteger fdrn = new MutableInteger(0);
 		
 		GenomicRegionStorage out = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(String.class, prefix+".tmp.orfs").add(Class.class, PriceOrf.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
 		out.fill(
@@ -111,13 +119,17 @@ public class PriceMultipleTestingCorrection extends GediProgram {
 					}
 					})
 				.progress(context.getProgress(), corr.length, r->r.toLocationStringRemovedIntrons())
-				.filter(o->o.getData().getCombinedP()<fdr)
+				.filter(o->o.getData().getCombinedP()<fdr || (keepAnno && v.isAnnotatedEnd(o, true)))
+				.sideEffect(o->{
+					if (o.getData().getCombinedP()<fdr) fdrn.N++;
+				})
 				.iff(v.getCheckOrfNames().size()>0, ei->ei.sideEffect(o->v.setDetected(o)))
 				);
 		in.close();
 		
-		context.getLog().log(Level.INFO, "Remaining after multiple testing correction: "+out.size()+" ORFs");
-		
+		context.getLog().log(Level.INFO, "Remaining after multiple testing correction: "+fdrn.N+" ORFs");
+		if (keepAnno)
+			context.getLog().log(Level.INFO, "+ remaining annotated: "+(out.size()-fdrn.N)+" ORFs");
 		
 		
 		return null;

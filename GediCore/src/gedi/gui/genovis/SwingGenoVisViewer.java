@@ -107,6 +107,25 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 		this(new TracksDataManager(dataPipeline),screenshotMode);
 	}
 	
+	
+	ComponentAdapter reloadCompListener = new ComponentAdapter() {
+		@Override
+		public void componentResized(ComponentEvent e) {
+			if (region!=null && reference!=null) {
+				reload();
+			}
+		}
+	};
+	public void setScreenshotMode(boolean screenshotMode) {
+		boolean wasscreen = this.screenshotMode;
+		this.screenshotMode = screenshotMode;
+		
+		dataManager.setHysteresis(screenshotMode?0:200);
+
+		if (screenshotMode && !wasscreen) removeComponentListener(reloadCompListener);
+		else if (!screenshotMode && wasscreen) addComponentListener(reloadCompListener);
+	}
+	
 	public SwingGenoVisViewer(TracksDataManager dataManager, boolean screenshotMode) {
 		this.dataManager = dataManager;
 		this.screenshotMode = screenshotMode;
@@ -114,14 +133,7 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 		if (screenshotMode)
 			dataManager.setHysteresis(0);
 		else 
-			addComponentListener(new ComponentAdapter() {
-				@Override
-				public void componentResized(ComponentEvent e) {
-					if (region!=null && reference!=null) {
-						reload();
-					}
-				}
-			});
+			addComponentListener(reloadCompListener);
 			// this reloads potential additional data, when the window has been made bigger (as the information may have been hidden due to setMinBpPerPixel or so)
 			// this leads to deadlocks with waitUntil when using this without display to generate screenshots
 			
@@ -351,8 +363,6 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 		log.log(Level.FINE,"Set location "+EI.seq(0, reference.length).map(i->reference[i]+":"+region[i]).concat(";"));
 		this.reference = reference;
 		this.region = region;
-		if (region[0].isEmpty())
-			System.out.println();
 		
 		for (VisualizationTrack<?,?> t : tracks)
 			t.setView(reference, region);
@@ -682,14 +692,17 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 							Thread.sleep(10);
 						} catch (InterruptedException e) {
 						}
-					height+=t.getPrefHeight();
+					height=Math.max(height, t.getBounds().getMaxY());
 				}
+//				System.out.println("dont draw "+t+" "+t.isUptodate()+" "+t.isHidden()+" "+t.isDataEmpty()+" "+t.isVisible()+" "+t.getBounds());
 			}
+			
 			re = new BufferedImage(getWidth(), (int) height, BufferedImage.TYPE_INT_RGB);
 			Graphics2D g2 = re.createGraphics();
 			needlayout = false;
 			paintComponent(g2);
 			doLayout();
+			setSize(getPreferredSize());
 			g2.dispose();
 		}
 		

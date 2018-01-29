@@ -255,15 +255,16 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 					boolean keepit=keep.getQuick(i);
 					
 					int p = conditioner.applyAsInt(arr[i]);
-					if (p!=-1) {
-						int[][] c = count.get(list.get(arr[i]));
-						if (c==null) count.put(list.get(arr[i]), c = new int[3][cumNumCond[0]]);
-						
-						c[0][p]++;
-						if (keepit)
-							c[1][p]++;
-						c[2][p]+=arr[i].getCount();
-					}
+					if (p==-1) p=cumNumCond[0];
+					// put into last condition slot
+					
+					int[][] c = count.get(list.get(arr[i]));
+					if (c==null) count.put(list.get(arr[i]), c = new int[3][cumNumCond[0]+1]);
+					
+					c[0][p]++;
+					if (keepit)
+						c[1][p]++;
+					c[2][p]+=arr[i].getCount();
 					
 				}
 				
@@ -279,28 +280,31 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 //					return true;
 //					});
 				
+				
+				if (programs!=null) {
+					for (int mode=0; mode<programs.length; mode++)
+						for (SAMRecord s : count.keySet()) {
+							int[] c = count.get(s)[1];
+							if (ArrayUtils.sum(c)>0) {
+								s.setAttribute("XR",""+StringUtils.concat(",",count.get(s)[mode]));
+								
+								FactoryGenomicRegion reg = BamUtils.getFactoryGenomicRegion(s, cumNumCond, false, false);
+								reg.add(s,0);
+								
+								programs[mode].accept(rgr .set(BamUtils.getReference(s),reg,reg.create()));
+							}
+						}
+				}
+				
 				sa = new SAMRecord[count.size()];
 				int index = 0;
 				for (SAMRecord s : count.keySet()) {
 					int[] c = count.get(s)[1];
-					if (ArrayUtils.sum(c)>0)
+					if (ArrayUtils.sum(c,0,c.length-1)>0)
 						sa[index++] = s;
 				}
 				if (index<sa.length)
 					sa = ArrayUtils.redimPreserve(sa, index);
-				
-				
-				if (programs!=null) {
-					for (int mode=0; mode<programs.length; mode++)
-						for (int i=0; i<sa.length; i++) {
-							sa[i].setAttribute("XR",""+StringUtils.concat(",",count.get(sa[i])[mode]));
-							
-							FactoryGenomicRegion reg = BamUtils.getFactoryGenomicRegion(sa[i], cumNumCond, false, false);
-							reg.add(sa[i],0);
-							
-							programs[mode].accept(rgr .set(BamUtils.getReference(sa[i]),reg,reg.create()));
-						}
-				}
 				
 				for (int i=0; i<sa.length; i++)
 					sa[i].setAttribute("XR",""+StringUtils.concat(",",count.get(sa[i])[1]));

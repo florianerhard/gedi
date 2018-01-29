@@ -44,6 +44,7 @@ public class FeatureListOutput extends OutputFeature {
 
 	private LineOrientedFile out;
 	private NumericArray buffer;
+	private boolean outputData = true;
 	
 	
 	public FeatureListOutput(String file) {
@@ -60,6 +61,11 @@ public class FeatureListOutput extends OutputFeature {
 	}
 	
 	
+	public FeatureListOutput setOutputData(boolean outputData) {
+		this.outputData = outputData;
+		return this;
+	}
+	
 	@Override
 	public GenomicRegionFeature<Void> copy() {
 		FeatureListOutput re = new FeatureListOutput(getId());
@@ -68,6 +74,7 @@ public class FeatureListOutput extends OutputFeature {
 		re.dataToCounts = dataToCounts;
 		re.decimals = decimals;
 		re.minimalCount = minimalCount;
+		re.outputData = outputData;
 		return re;
 	}
 	
@@ -101,9 +108,10 @@ public class FeatureListOutput extends OutputFeature {
 		if (program.isRunning()) return;
 		
 		try {
-			if (o==null) o = new GenomicRegionFeature[] {this};
+			if (o==null) 
+				o = new GenomicRegionFeature[] {this};
 			
-			out = new LineOrientedFile(getId());
+			LineOrientedFile out = new LineOrientedFile(getId());
 			out.startWriting();
 			for (int i=0; i<o.length; i++)
 				if (((FeatureListOutput) o[i]).buffer!=null) {
@@ -136,7 +144,9 @@ public class FeatureListOutput extends OutputFeature {
 			if (out==null) {
 				File main = new File(getId());
 				
-				out = new LineOrientedFile(File.createTempFile(main.getName(), ".tmp", main.getParentFile()).getPath());
+				File tmp = File.createTempFile(main.getName(), ".tmp", main.getAbsoluteFile().getParentFile());
+				tmp.deleteOnExit();
+				out = new LineOrientedFile(tmp.getPath());
 				out.startWriting();
 			}
 			
@@ -160,6 +170,8 @@ public class FeatureListOutput extends OutputFeature {
 	private void write(MutableTuple key) {
 		try {
 			out.writef("%s:%s",referenceRegion.getReference().toPlusMinusString(),referenceRegion.getRegion().toRegionString());
+			if (outputData)
+				out.writef("\t%s",referenceRegion.getData().toString().replace('\t', ' '));
 			for (int i=0; i<key.size(); i++) {
 				Set<?> s = key.get(i);
 				out.writef("\t%s",StringUtils.concat(multiSeparator, s));
@@ -176,6 +188,9 @@ public class FeatureListOutput extends OutputFeature {
 
 	private void writeHeader(LineOrientedFile out) throws IOException {
 		out.writef("Genomic position");
+		if (outputData )
+			out.writef("\tData");
+
 		for (int i=0; i<inputs.length; i++) 
 			out.writef("\t%s",inputNames[i]);
 		

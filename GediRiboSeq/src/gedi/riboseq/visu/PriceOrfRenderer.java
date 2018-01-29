@@ -23,6 +23,7 @@ import gedi.core.reference.Strand;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.gui.genovis.style.StyleObject;
 import gedi.riboseq.inference.orf.Orf;
 import gedi.riboseq.inference.orf.PriceOrf;
@@ -35,6 +36,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.util.HashMap;
+import java.util.function.Function;
 
 public class PriceOrfRenderer extends PeptideRenderer<PriceOrf> {
 
@@ -65,7 +67,7 @@ public class PriceOrfRenderer extends PeptideRenderer<PriceOrf> {
 			PixelBasepairMapper locationMapper, ReferenceSequence reference, Strand strand, GenomicRegion region,
 			PriceOrf data, double xOffset, double y, double h) {
 
-		setStringer(o->"");
+		stringer = o->"";
 		frameColors = save;
 		GenomicRegion codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),0,true).getRegion();
 		super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
@@ -91,12 +93,12 @@ public class PriceOrfRenderer extends PeptideRenderer<PriceOrf> {
 //			}
 		}
 		
-		TriFunction<ReferenceSequence, GenomicRegion, PriceOrf, Paint> borderSave = this.border;
-		TriFunction<ReferenceSequence, GenomicRegion, PriceOrf, Paint> backgroundSave = this.background;
+		Function<ReferenceGenomicRegion<PriceOrf>, Paint> borderSave = this.border;
+		Function<ReferenceGenomicRegion<PriceOrf>, Paint> backgroundSave = this.background;
 		
 		this.border = null;
 		frameColors = fnull;
-		setStringer(o->o.getTranscript());
+		stringer = o->o.getData().getTranscript();
 		codingRegion = data.getStartStop(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand),region),0,true).getRegion();
 		super.renderBox(g2, locationMapper, reference, strand, codingRegion, data, xOffset, y, h);
 		

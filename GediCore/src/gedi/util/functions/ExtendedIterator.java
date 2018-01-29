@@ -48,6 +48,9 @@ import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.datastructure.collections.intcollections.IntIterator;
+import gedi.util.io.randomaccess.BinaryWriter;
+import gedi.util.io.randomaccess.PageFileWriter;
+import gedi.util.io.randomaccess.serialization.BinarySerializableSerializer;
 import gedi.util.io.randomaccess.serialization.BinarySerializer;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
@@ -572,6 +575,9 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 		return FunctorUtils.sideEffectIterator(this,effect);
 	}
 	
+	default SideEffectIterator<T> sideEffect(Predicate<T> predicate, Consumer<T> effect) {
+		return FunctorUtils.sideEffectIterator(this,predicate,effect);
+	}
 	
 	default ParallelizedSideEffectIterator<T> parallelizedSideEffect(Consumer<T> effect, int capacity) {
 		return FunctorUtils.parallelizedSideEffectIterator(this,capacity,effect);
@@ -931,7 +937,7 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 		maxLength = Math.max(maxLength, 3);
 		StringBuilder sb = new StringBuilder();
 		while (hasNext()) {
-			sb.append(StringUtils.toString(next()));
+			sb.append(StringUtils.toString(next())).append(", ");
 			if (sb.length()>maxLength) 
 				return sb.delete(maxLength-3, sb.length()).append("...").toString();
 		}
@@ -939,6 +945,51 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 			
 	}
 
-	
+	default <R extends BinaryWriter> R serialize(BinarySerializer<T> serializer, R writer) throws IOException {
+		serializer.beginSerialize(writer);
+		while (hasNext()) 
+			serializer.serialize(writer, next());
+		
+		serializer.endSerialize(writer);
+		return writer;
+	}
+
+	default ExtendedIterator<T> sub(Predicate<T> from, Predicate<T> to, boolean includeFrom, boolean includeTo) {
+		ExtendedIterator<T> it = this;
+		return new FunctorUtils.TryNextIterator<T>() {
+
+			boolean in = false;
+			boolean finito = false;
+
+			@Override
+			protected T tryNext() {
+				if (finito) return null;
+				if (!in) {
+					while (it.hasNext()) {
+						T re = it.next();
+						if (from.test(re)) {
+							in=true;
+							if (includeFrom) return re;
+							return it.hasNext()?it.next():null;
+						}
+					}
+					return null;
+				}
+				else {
+					if (it.hasNext()) {
+						T re = it.next();
+						if (to.test(re)) {
+							finito=true;
+							if (includeTo) return re;
+							return null;
+						}
+						return re;
+					}
+					return null;
+				}
+			}
+			
+		};
+	}
 	
 }

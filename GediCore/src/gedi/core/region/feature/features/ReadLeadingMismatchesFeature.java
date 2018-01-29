@@ -32,12 +32,9 @@ public class ReadLeadingMismatchesFeature extends AbstractFeature<Integer> {
 
 	public ReadLeadingMismatchesFeature() {
 		minInputs = maxInputs = 0;
+		dependsOnData=true;
 	}
 	
-	
-	public boolean dependsOnData() {
-		return true;
-	}
 	
 	public void setCount(boolean count) {
 		this.count = count;

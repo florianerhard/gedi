@@ -88,6 +88,10 @@ public class TracksDataManager {
 		this.hysteresis = hysteresis;
 	}
 	
+	public long getHysteresis() {
+		return hysteresis;
+	}
+	
 	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence reference, GenomicRegion region, Consumer<ExecutionContext> finishAction) {
 		setLocation(xmapper, reference, region, finishAction, null);
 	}
@@ -102,8 +106,9 @@ public class TracksDataManager {
 	}
 	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence[] reference, GenomicRegion[] region, Consumer<ExecutionContext> finishAction, BiConsumer<ExecutionContext, Place> newTokenObserver) {
 		if (!currentSchedulers.isEmpty()) {
-			for (Future<?> f : currentSchedulers)
+			for (Future<?> f : currentSchedulers) {
 				f.cancel(true);
+			}
 			currentSchedulers.clear();
 			log.fine("Cancelling all running threads.");
 		}
@@ -163,7 +168,8 @@ public class TracksDataManager {
 						scheduler.setNewTokenAction(newTokenObserver);
 						scheduler.setFinishAction(finishAction);
 						log.fine("Scheduling job for reference "+reference[i]+" ("+(i+1)+"/"+reference.length+" Thread="+Thread.currentThread().getName()+")");
-						currentSchedulers.add(pool.submit(scheduler));
+						scheduler.run();
+//						currentSchedulers.add(pool.submit(scheduler));
 					}
 					
 				} catch (Throwable t) {

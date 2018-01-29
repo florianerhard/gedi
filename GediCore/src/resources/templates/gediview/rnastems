@@ -1,0 +1,28 @@
+<?JS0
+varin("id","genomic id",false);
+varin("foldingmbppp","Maximum bp per pixel to show sequences (Default: 100)",false);
+?>
+<?JS
+var id = id?id:"genomic";
+var foldingmbppp = foldingmbppp?foldingmbppp:100;
+?>
+	<RNAStems input="<?JS id ?>.sequence" id="+.stems.data">
+	</RNAStems>
+
+	<RNAStems input="<?JS id ?>.sequence" complement="true" id="-.stems.data">
+	</RNAStems>
+	
+	
+	
+	<PackRegionTrack input="+.stems.data" id="+.RNA Stems" >
+		<Hspace space="0" />
+		<Background c="#AAAAAA" />
+		<MaxBasePairsPerPixel v="<?JS foldingmbppp ?>"/>
+	</PackRegionTrack>
+	
+	<PackRegionTrack input="-.stems.data" id="-.RNA Stems" >
+		<Hspace space="0" />
+		<Background c="#AAAAAA" />
+		<MaxBasePairsPerPixel v="<?JS foldingmbppp ?>"/>
+	</PackRegionTrack>
+	

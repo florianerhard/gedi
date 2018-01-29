@@ -120,8 +120,9 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 	
 	
 	@Override
-	public void addResultProducers(ArrayList<ResultProducer> re) {
+	public CodonUsageFeature addResultProducers(ArrayList<ResultProducer> re) {
 		re.addAll(plots);
+		return this;
 	}
 	
 	

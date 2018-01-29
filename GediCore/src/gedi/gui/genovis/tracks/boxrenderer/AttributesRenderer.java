@@ -33,19 +33,19 @@ public class AttributesRenderer extends BoxRenderer<Object> {
 	private String attribute = "name";
 
 	public AttributesRenderer() {
-		stringer = (ref,reg,a)->{
+		stringer = (rgr)->{
 			if (features==null) return "";
-			String t = getType(a);
+			String t = getType(rgr.getData());
 			if (t==null) return "";
 			String s = features.getEntry(t).getEntry("label").asString();
 			return StringUtils.replaceVariables(s,p->{
-				Object r = a instanceof AttributesProvider?((AttributesProvider)a).getAttribute(p):null;
+				Object r = rgr.getData() instanceof AttributesProvider?((AttributesProvider)rgr.getData()).getAttribute(p):null;
 				return r==null?p:r.toString();
 			});
 		};
-		background = (ref,reg,a)->{
+		background = (rgr)->{
 			if (features==null) return Color.gray;
-			String t = getType(a);
+			String t = getType(rgr.getData());
 			if (t==null) return Color.gray;
 			String s = features.getEntry(t).getEntry("color").asString();
 			return PaintUtils.parseColor(s);

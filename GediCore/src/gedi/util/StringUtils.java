@@ -1760,6 +1760,18 @@ public class StringUtils {
 
 		return sb.toString();
 	}
+
+	public static String createExceptionMessage(Exception e) {
+		StringBuilder sb = new StringBuilder();
+		for (Throwable t=e; t!=null; t=t.getCause()) {
+			if (t.getMessage()!=null && t.getMessage().length()>0) {
+				if (sb.length()>0)
+					sb.append("\n");
+				sb.append(t.getMessage());
+			}
+		}
+		return sb.toString();
+	}
 	
 
 }

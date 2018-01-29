@@ -209,6 +209,12 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 
 	@SuppressWarnings("unchecked")
 	public <T> MemoryIntervalTreeStorage<T> getAnnotation(String id) {
+		if (id.equals(AnnotationType.Transcripts.name()))
+			getTranscripts();
+		if (id.equals(AnnotationType.UnionTranscripts.name()))
+			getUnionTranscripts();
+		if (id.equals(AnnotationType.Genes.name()))
+			getGenes();
 		return ((Annotation<T>)annotations.get(id)).get();
 	}
 	
@@ -315,7 +321,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	 * @return
 	 */
 	public Function<String,ReferenceGenomicRegion<Transcript>> getGeneMapping() {
-		return this.getMapping(AnnotationType.Genes.name()+".geneId");
+		return this.getMapping(AnnotationType.Genes.name());
 	}
 	
 	
@@ -415,6 +421,12 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 		return g;
 	}
 	
+	public static Path[] getGenomicPaths() {
+		return EI.wrap(Config.getInstance().getConfig().getEntry("genomic").asArray())
+				.map(d->Paths.get(d.asString(null)))
+				.chain(EI.singleton(Paths.get(Config.getInstance().getConfigFolder(),"genomic")))
+				.toArray(Path.class);
+	}
 
 	public static synchronized Genomic get(String name) {
 		return get(name,true);
@@ -436,10 +448,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 					b=e;
 				}
 			}
-			Path[] folders = EI.wrap(Config.getInstance().getConfig().getEntry("genomic").asArray())
-					.map(d->Paths.get(d.asString(null)))
-					.chain(EI.singleton(Paths.get(Config.getInstance().getConfigFolder(),"genomic")))
-					.toArray(Path.class);
+			Path[] folders = getGenomicPaths();
 			outer:for (Path folder : folders)
 				if (folder.toFile().exists())
 					for (String p : folder.toFile().list()) {

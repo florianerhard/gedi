@@ -18,6 +18,7 @@
 
 package gedi.region.bam;
 
+import gedi.core.data.HasConditions;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.GenomicRegionStoragePreload;

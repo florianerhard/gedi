@@ -31,7 +31,7 @@ else {
 
 ?>
 
-<?JS prerunner(id+".price",tokens) ?>gedi -t <?JS tmp ?> -e Price -reads <?JS reads ?> -genomic <?JS genomes ?> -prefix <?JS wd ?>/price/<?JS name ?> -D <?JS var price = postrunner(id+".price") ?> 
+<?JS prerunner(id+".price",tokens) ?>gedi -t <?JS tmp ?> -e Price -reads <?JS reads ?> -genomic <?JS genomes ?> -prefix <?JS wd ?>/price/<?JS name ?> -plot -percond -D <?JS var price = postrunner(id+".price") ?> 
 
 
 <?JS

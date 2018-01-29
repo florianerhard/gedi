@@ -273,6 +273,8 @@ public class OrfInference {
 		SingleNoiseModel rre = allTranscripts.ei(codons)
 				.filter(t->SequenceUtils.checkCompleteCodingTranscript(genomic, t))
 				.map(t->{
+					if (!codons.getRegion().contains(t.getData().getCds(t).getRegion()))
+						System.out.println(codons.toLocationString()+" "+t);
 					GenomicRegion cds = codons.induce(t.getData().getCds(t),codonChr.getName()).getRegion();
 					if (cds.getTotalLength()<300) return null;
 					
@@ -727,7 +729,7 @@ public class OrfInference {
 		}
 		return ll;
 	}
-	private boolean isAnnotatedEnd(ImmutableReferenceGenomicRegion<?> genomicCoord, boolean includesStop) {
+	public boolean isAnnotatedEnd(ReferenceGenomicRegion<?> genomicCoord, boolean includesStop) {
 		return allTranscripts.ei(genomicCoord)
 			.filter(t->SequenceUtils.checkCompleteCodingTranscript(genomic, t))
 			.map(t->t.getData().getCds(t))

@@ -18,7 +18,12 @@
 
 package gedi.core.data.reads;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+
 import gedi.app.extension.GlobalInfoProvider;
+import gedi.core.data.HasConditions;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
@@ -33,11 +38,6 @@ import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
 import gedi.util.math.stat.Ranking;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 
 
 /**
@@ -81,7 +81,7 @@ import java.util.LinkedHashMap;
  * @author erhard
  *
  */
-public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider {
+public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider, HasConditions {
 
 	public static final String HASIDATTRIBUTE = "HASIDATTRIBUTE";
 	public static final String HASWEIGHTATTRIBUTE = "HASWEIGHT";
@@ -104,8 +104,6 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	 * @return
 	 */
 	int getDistinctSequences();
-	int getNumConditions();	
-
 	int getCount(int distinct, int condition);
 	int getVariationCount(int distinct); 
 	
@@ -115,6 +113,20 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	boolean hasWeights();
 	
 	boolean isVariationFromSecondRead(int distinct, int index);
+	
+	default boolean hasMismatch(int distinct) {
+		for (int v=0; v<getVariationCount(distinct); v++)
+			if (isMismatch(distinct, v))
+				return true;
+		return false;
+	}
+	
+	default boolean hasMismatch(int distinct, char genomic, char read) {
+		for (int v=0; v<getVariationCount(distinct); v++)
+			if (isMismatch(distinct, v) && getMismatchGenomic(distinct, v).charAt(0)==genomic && getMismatchRead(distinct, v).charAt(0)==read)
+				return true;
+		return false;
+	}
 	
 	boolean isMismatch(int distinct, int index);
 	int getMismatchPos(int distinct, int index);
@@ -229,6 +241,16 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 			re = new double[getNumConditions()];
 		for (int i=0; i<re.length; i++)
 			re[i] += getCount(distinct, i, mode);
+		return re;
+	}
+	
+	default NumericArray addCountsForDistinct(int distinct, NumericArray re, ReadCountMode mode) {
+		
+		if (re==null || re.length()!=getNumConditions() || re.getType().getType()!=mode.getType())
+			re = NumericArray.createMemory(getNumConditions(), NumericArrayType.fromType(mode.getType()));
+		
+		for (int c=0; c<re.length(); c++)
+			mode.addCount(re,c,getCount(distinct, c),getMultiplicity(distinct),getWeight(distinct));
 		return re;
 	}
 	
@@ -476,13 +498,9 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	 * @return
 	 */
 	default NumericArray getTotalCountsForDistincts(NumericArray re, ReadCountMode mode) {
-		if (re==null || re.length()!=getDistinctSequences() || re.getType().getType()!=mode.getType())
-			re = NumericArray.createMemory(getDistinctSequences(), NumericArrayType.fromType(mode.getType()));
-		
-		for (int i=0; i<getDistinctSequences(); i++)
-			for (int c=0; c<getNumConditions(); c++)
-				mode.getCount(re,i,getCount(i, c),getMultiplicity(i),getWeight(i));
-		return re;
+		if (re!=null)
+			re.clear();
+		return getTotalCountsForDistincts(re, mode);
 	}
 	
 	default NumericArray addTotalCountsForDistincts(NumericArray re, ReadCountMode mode) {
@@ -506,13 +524,9 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	 * @return
 	 */
 	default NumericArray getTotalCountsForConditions(NumericArray re, ReadCountMode mode) {
-		if (re==null || re.length()!=getNumConditions() || re.getType().getType()!=mode.getType())
-			re = NumericArray.createMemory(getNumConditions(), NumericArrayType.fromType(mode.getType()));
-	
-		for (int c=0; c<getNumConditions(); c++)
-			for (int i=0; i<getDistinctSequences(); i++)
-				mode.getCount(re,c,getCount(i, c),getMultiplicity(i),getWeight(i));
-		return re;
+		if (re!=null)
+			re.clear();
+		return addTotalCountsForConditions(re, mode);
 	}
 	
 	default NumericArray addTotalCountsForConditions(NumericArray re, ReadCountMode mode) {

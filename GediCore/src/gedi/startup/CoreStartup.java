@@ -23,16 +23,15 @@ import java.lang.reflect.Modifier;
 import gedi.app.Startup;
 import gedi.app.classpath.ClassPath;
 import gedi.app.classpath.ClassPathCache;
+import gedi.core.data.numeric.diskrmq.DiskGenomicNumericLoader;
 import gedi.core.data.table.CsvTableLoader;
 import gedi.core.region.GenomicRegionStorageCapabilities;
 import gedi.core.region.GenomicRegionStorageExtensionPoint;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
-import gedi.core.workspace.loader.WorkspaceItemLoader;
 import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
 import gedi.util.oml.OmlLoader;
 import gedi.util.ReflectionUtils;
 import gedi.util.io.text.jhp.TemplateGenerator;
-import gedi.util.io.text.jhp.display.AutoTemplateGenerator;
 import gedi.util.io.text.jhp.display.DisplayTemplateGeneratorExtensionPoint;
 import gedi.util.io.text.tsv.formats.BedFileLoader;
 import gedi.util.io.text.tsv.formats.GediViewFileLoader;
@@ -59,6 +58,9 @@ public class CoreStartup implements Startup {
 		
 		for (String ext : GediViewFileLoader.extensions)
 			WorkspaceItemLoaderExtensionPoint.getInstance().addExtension(GediViewFileLoader.class,ext);
+		
+		for (String ext : DiskGenomicNumericLoader.extensions)
+			WorkspaceItemLoaderExtensionPoint.getInstance().addExtension(DiskGenomicNumericLoader.class,ext);
 		
 		
 		GenomicRegionStorageExtensionPoint.getInstance().addExtension(MemoryIntervalTreeStorage.class,

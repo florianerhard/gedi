@@ -18,6 +18,13 @@
 
 package gedi.util.datastructure.array;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.AbstractList;
+import java.util.List;
+import java.util.Locale;
+import java.util.function.DoubleUnaryOperator;
+
 import gedi.util.datastructure.array.decorators.NumericArraySlice;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.datastructure.array.functions.NumericArrayTransformation;
@@ -29,13 +36,6 @@ import gedi.util.io.randomaccess.BinaryReaderWriter;
 import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.PageFileReaderWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.AbstractList;
-import java.util.List;
-import java.util.Locale;
-import java.util.function.DoubleUnaryOperator;
 
 public interface NumericArray extends BinarySerializable {
 
@@ -179,6 +179,7 @@ public interface NumericArray extends BinarySerializable {
 	 * @param a
 	 */
 	void add(NumericArray a);
+	void subtract(NumericArray a);
 
 	void add(int index, byte value);
 	void add(int index, short value);
@@ -613,17 +614,25 @@ public interface NumericArray extends BinarySerializable {
 	}
 
 	default String toArrayString() {
+		return toArrayString(", ", true);
+	}
+	
+	default String toArrayString(String sep, boolean parenth) {
 		int iMax = length() - 1;
 		if (iMax == -1)
-			return "[]";
+			return parenth?"[]":"";
 
 		StringBuilder b = new StringBuilder();
-		b.append('[');
+		if (parenth) 
+			b.append('[');
 		for (int i = 0; ; i++) {
 			b.append(format(i));
-			if (i == iMax)
-				return b.append(']').toString();
-			b.append(", ");
+			if (i == iMax) {
+				if (parenth)
+					b.append(']');
+				return b.toString();
+			}
+			b.append(sep);
 		}
 	}
 	

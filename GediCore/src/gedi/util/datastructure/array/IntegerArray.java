@@ -152,6 +152,12 @@ public abstract class IntegerArray implements NumericArray {
 	}
 	
 	@Override
+	public void subtract(NumericArray a) {
+		for (int i=0; i<length(); i++)
+			add(i,-a.getInt(i));
+	}
+	
+	@Override
 	public void add(int index, byte value) {
 		add(index, (int)value);
 	}

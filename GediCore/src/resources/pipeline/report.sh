@@ -25,3 +25,5 @@ reads = new File(reads).getAbsolutePath();
 ?>
 
 <?JS prerunner(id+".report",tokens) ?>gedi -e Stats -prefix <?JS wd ?>/report/<?JS print(FileUtils.getNameWithoutExtension(reads)); ?>. -g <?JS genomes ?> <?JS reads?><?JS var end=postrunner(id+".report") ?>
+
+<?JS prerunner(id+".count",tokens) ?>gedi -e Stats -prefix <?JS wd ?>/report/<?JS print(FileUtils.getNameWithoutExtension(reads)); ?>. -g <?JS genomes ?> -count <?JS reads?><?JS var end2=postrunner(id+".count") ?>

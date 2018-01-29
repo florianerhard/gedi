@@ -18,6 +18,8 @@
 
 package gedi.util.dynamic;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -34,6 +36,7 @@ import java.util.function.Function;
 import javax.json.Json;
 import javax.lang.model.type.NullType;
 
+import gedi.util.FileUtils;
 import gedi.util.ParseUtils;
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
@@ -323,8 +326,10 @@ public interface DynamicObject {
 //		throw new RuntimeException("Cannot create Dynamic object!");
 	}
 
-
 	
+	public static DynamicObject parseJson(File file) throws IOException {
+		return parseJson(FileUtils.readAllText(file));
+	}
 
 	public static DynamicObject parseJson(String json) {
 		if (json==null || json.length()==0 || json.equals("null")) return getEmpty();

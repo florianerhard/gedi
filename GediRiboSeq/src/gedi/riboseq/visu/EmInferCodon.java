@@ -131,7 +131,7 @@ public class EmInferCodon implements GenomicRegionDataMapper<IntervalTree<Genomi
 			ContrastMapping mmapping = new ContrastMapping();
 			for (int o : mapping.getMergeConditions(c))
 				mmapping.addMapping(o, 0);
-			Set<Codon> codons = inf.inferCodons(()->EI.wrap(data.entrySet().iterator()).<ReferenceGenomicRegion<AlignedReadsData>>map(e->rgr.set(rref,e.getKey(),new ConditionMappedAlignedReadsData(e.getValue(),mmapping))),null);
+			Set<Codon> codons = inf.inferCodons(null,()->EI.wrap(data.entrySet().iterator()).<ReferenceGenomicRegion<AlignedReadsData>>map(e->rgr.set(rref,e.getKey(),new ConditionMappedAlignedReadsData(e.getValue(),mmapping))),null);
 			
 //			System.out.println(inf.getIterations()+" iterations "+inf.getLastDifference()+" difference");
 			

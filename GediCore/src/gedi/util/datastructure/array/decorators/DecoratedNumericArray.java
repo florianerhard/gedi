@@ -226,6 +226,11 @@ public class DecoratedNumericArray implements NumericArray {
 	public void add(NumericArray a) {
 		parent.add(a);
 	}
+	
+	@Override
+	public void subtract(NumericArray a) {
+		parent.subtract(a);
+	}
 	@Override
 	public void add(int index, byte value) {
 		parent.add(index,value);

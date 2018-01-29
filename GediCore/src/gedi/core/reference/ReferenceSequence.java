@@ -49,6 +49,10 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 		return Strand.Independent.equals(getStrand());
 	}
 	
+	default Chromosome toChromosome() {
+		return Chromosome.obtain(getName(), getStrand());
+	}
+	
 	ReferenceSequence toChrStrippedReference();
 	
 	default ReferenceSequence toStrandIndependent() {

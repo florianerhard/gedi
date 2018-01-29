@@ -21,6 +21,17 @@ package gedi.core.reference;
 public enum Strand {
 	Plus,Minus,Independent;
 	
+	public boolean isPlus() {
+		return this.equals(Plus);
+	}
+	
+	public boolean isMinus() {
+		return this.equals(Minus);
+	}
+	
+	public boolean isIndependent() {
+		return this.equals(Independent);
+	}
 	
 	public static Strand parse(String s) {
 		if (s==null || s.length()==0 || s.equals("0") || s.equals(".")) return Strand.Independent;

@@ -39,12 +39,12 @@ public class TranscriptRenderer extends BoxRenderer<Transcript> {
 		coding.setForeground(t->Color.WHITE);
 		coding.setHeight(20);
 		coding.setFont("Arial", 14, true, false);
-		coding.setStringer(t->t.getTranscriptId());
+		coding.stringer = t->t.getData().getTranscriptId();
 		setHeight(20);
 		setFont("Arial", 14, true, false);
 		setForeground(t->Color.WHITE);
 		setBackground(t->PaintUtils.VERY_LIGHT_RED);
-		setStringer();
+		stringer = d->"";
 	}
 	
 
@@ -52,7 +52,7 @@ public class TranscriptRenderer extends BoxRenderer<Transcript> {
 	public GenomicRegion  renderBox(Graphics2D g2,
 			PixelBasepairMapper locationMapper, ReferenceSequence reference, Strand strand, GenomicRegion region,
 			Transcript data, double xOffset, double y, double h) {
-		setStringer(data.isCoding()?null:coding.getStringer());
+		stringer = data.isCoding()?null:coding.stringer;
 			
 		GenomicRegion re = super.renderBox(g2, locationMapper, reference, strand, region, data, xOffset, y, h);
 		if (data.isCoding()) {

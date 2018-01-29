@@ -99,7 +99,11 @@ public class MergeSam {
 		}
 	}
 	
-	
+	private static int checkMultiParam(String[] args, int index, ArrayList<String> re) throws UsageException {
+		while (index<args.length && !args[index].startsWith("-")) 
+			re.add(args[index++]);
+		return index-1;
+	}
 	
 	private static String checkParam(String[] args, int index) throws UsageException {
 		if (index>=args.length || args[index].startsWith("-")) throw new UsageException("Missing argument for "+args[index-1]);
@@ -130,6 +134,7 @@ public class MergeSam {
 		String table = null;
 		String bcFile = null;
 		String bcJson = null;
+		String[] genomic = null;
 		int bcOffset = -1;
 		int filterPrio = 1;
 		String output = null;
@@ -160,6 +165,11 @@ public class MergeSam {
 			}
 			else if (args[i].equals("-t")) {
 				table = checkParam(args,++i);
+			}
+			else if (args[i].equals("-g")) {
+				ArrayList<String> gnames = new ArrayList<>();
+				i = checkMultiParam(args, ++i, gnames);
+				genomic = gnames.toArray(new String[0]);
 			}
 			else if (args[i].equals("-filter")) {
 				filterPrio = checkIntParam(args,++i);
@@ -303,21 +313,23 @@ public class MergeSam {
 			uprioPipeline.end();
 		}
 		
+		String genomicJson = genomic==null?"":("\"genomic\": ["+EI.wrap(genomic).map(s->"\""+s+"\"").concat(",")+"],\n");
+		
 		if (conditionsFile!=null) {
 			DynamicObject d = DynamicObject.from(new CsvReaderFactory().createReader(conditionsFile).iterateMap(true).map(m->{m.remove("barcode"); return m;}).toArray());
 			DynamicObject t = DynamicObject.parseJson("["+EI.wrap(total.Item.toDoubleArray()).map(tx-> "{\"total\": "+tx+"}").concat(",")+"]");
 			d = d.cascade(t);
-			String meta = "{\"conditions\":"+d.toJson().replaceAll("\"condition\"","\"name\"")+"}";
+			String meta = "{"+genomicJson+"\"conditions\":"+d.toJson().replaceAll("\"condition\"","\"name\"")+"}";
 			FileUtils.writeAllText(meta, new File(output+".metadata.json"));
 		} else if (bcJson!=null) {
 			DynamicObject barcodes = DynamicObject.parseJson(FileUtils.readAllText(new File(bcJson)));
 			DynamicObject d = barcodes.getEntry("condition");
 			DynamicObject t = DynamicObject.parseJson("["+EI.wrap(total.Item.toDoubleArray()).map(tx-> "{\"total\": "+tx+"}").concat(",")+"]");
 			d = d.cascade(t);
-			String meta = "{\"conditions\":"+d.toJson().replaceAll("\"condition\"","\"name\"")+"}";
+			String meta = "{"+genomicJson+"\"conditions\":"+d.toJson().replaceAll("\"condition\"","\"name\"")+"}";
 			FileUtils.writeAllText(meta, new File(output+".metadata.json"));
 		} else {
-			String meta = "{\"conditions\":[{\"name\":\""+p.getName()+"\", \"total\": "+(total.Item==null?0:total.Item.getLong(0))+"}]}";
+			String meta = "{"+genomicJson+"\"conditions\":[{\"name\":\""+p.getName()+"\", \"total\": "+(total.Item==null?0:total.Item.getLong(0))+"}]}";
 			FileUtils.writeAllText(meta, new File(output+".metadata.json"));
 		}
 	}

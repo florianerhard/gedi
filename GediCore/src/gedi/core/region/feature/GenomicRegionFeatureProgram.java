@@ -18,7 +18,11 @@
 
 package gedi.core.region.feature;
 
+import gedi.core.data.reads.AlignedReadsData;
+import gedi.core.data.reads.ReadCountMode;
+import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ReferenceGenomicRegion;
+import gedi.core.region.feature.special.ProcessRegionPredicate;
 import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
@@ -97,6 +101,10 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 	
 	public void setConditionFile(String file) throws IOException {
 		this.labels = new LineOrientedFile(file).lineIterator().skip(1).map(s->StringUtils.splitField(s, '\t', 1)).toArray(new String[0]);
+	}
+	
+	public void setLabelsFromStorage(GenomicRegionStorage<?> st) throws IOException {
+		setLabels(st.getMetaDataConditions());
 	}
 
 	public void setLabels(String[] labels) {
@@ -475,6 +483,8 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 					benchmark.counter[i][0]++;
 					newSet.putQuick(i, true);
 					
+					if (f instanceof ProcessRegionPredicate && !(Boolean)data.get(i).iterator().next())
+						return;
 				} else {
 					benchmark.duration[i][0]+=System.nanoTime()-start;
 					benchmark.counter[i][1]++;
@@ -503,6 +513,9 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 					f.applyCommands(data.get(i));
 				
 				newSet.putQuick(i, true);
+				
+				if (f instanceof ProcessRegionPredicate && !(Boolean)data.get(i).iterator().next())
+					return;
 			}
 		}
 	}

@@ -57,7 +57,7 @@ public class PriceParameterSet extends GediParameterSet {
 	
 
 	public GediParameter<String> prefix = new GediParameter<String>(this,"prefix", "The prefix used for all output files", false, new StringParameterType());
-	public GediParameter<Integer> maxPos = new GediParameter<Integer>(this,"maxpos", "The position upstream of the p site with maximal probability", false, new IntParameterType());
+	public GediParameter<File> maxPos = new GediParameter<File>(this,"${prefix}.maxPos", "The position upstream of the p site with maximal probability", false, new FileParameterType());
 
 	public GediParameter<Integer> nthreads = new GediParameter<Integer>(this,"nthreads", "The number of threads to use for computations", false, new IntParameterType(), Runtime.getRuntime().availableProcessors());
 	public GediParameter<GenomicRegionStorage<AlignedReadsData>> reads = new GediParameter<GenomicRegionStorage<AlignedReadsData>>(this,"reads", "The mapped reads from the ribo-seq experiment.", false, new StorageParameterType<AlignedReadsData>());
@@ -65,6 +65,7 @@ public class PriceParameterSet extends GediParameterSet {
 	
 	public GediParameter<String> filter = new GediParameter<String>(this,"filter", "Use only reads matching the filter (e.g. 28:30)", false, new StringParameterType(),"");
 	public GediParameter<File> estimateData = new GediParameter<File>(this,"${prefix}.estimateData", "File containing the sufficient statistics to estimate model", false, new FileParameterType());
+	public GediParameter<Boolean> percond = new GediParameter<Boolean>(this,"percond", "Estimate models per condition", false, new BooleanParameterType());
 	
 	public GediParameter<Boolean> plot = new GediParameter<Boolean>(this,"plot", "Use R to produce various plots",false, new BooleanParameterType());
 	public GediParameter<Integer> maxiter = new GediParameter<Integer>(this,"maxiter", "The maximal number of iterations per repeat in the EM for estimating model parameters", false, new IntParameterType(), 1000);
@@ -100,14 +101,19 @@ public class PriceParameterSet extends GediParameterSet {
 	
 	public GediParameter<File> orfstsv = new GediParameter<File>(this,"${prefix}.orfs.tsv", "Table containing all ORFs.", false, new FileParameterType());
 	public GediParameter<File> orfsbin = new GediParameter<File>(this,"${prefix}.orfs.bin", "Binary file containing ORF information.", false, new FileParameterType()).setRemoveFile(true);
-	public GediParameter<DoubleArrayList> pvals = new GediParameter<DoubleArrayList>(this,"pvals", "Pvalues from OrfInference.", false, new InternalParameterType<>(DoubleArrayList.class));
+	public GediParameter<File> pvals = new GediParameter<File>(this,"${prefix}.orfs.pvals", "Pvalues from OrfInference.", false, new FileParameterType()).setRemoveFile(true);
 	
 	public GediParameter<Double> fdr = new GediParameter<Double>(this,"fdr", "Desired false discovery rate", false, new DoubleParameterType(), 0.1);
 	public GediParameter<File> orfstmp = new GediParameter<File>(this,"${prefix}.tmp.orfs.cit", "Temporary ORF index.", false, new FileParameterType()).setRemoveFile(true);
 	
 	public GediParameter<File> orfs = new GediParameter<File>(this,"${prefix}.orfs.cit", "ORF index.", false, new FileParameterType());
 
+	public GediParameter<File> optcodons = new GediParameter<File>(this,"${prefix}.opt.codons.cit", "Optimistic codon mapping.", false, new FileParameterType());
+	public GediParameter<Boolean> opt = new GediParameter<Boolean>(this,"opt", "Run optimistic codon mapping.", false, new BooleanParameterType());
+	
+	
+	public GediParameter<File> localTable = new GediParameter<File>(this,"${prefix}.localtest.tsv", "File containing the localtest output table", false, new FileParameterType());
+	public GediParameter<File> localCit = new GediParameter<File>(this,"${prefix}.localtest.cit", "File containing the localtest regions", false, new FileParameterType());
+	public GediParameter<Double> localTableMinCodonFraction = new GediParameter<Double>(this,"minFraction", "Minimal fraction of active codons to test an ORF", false, new DoubleParameterType(),0.5);
 
-	
-	
 }

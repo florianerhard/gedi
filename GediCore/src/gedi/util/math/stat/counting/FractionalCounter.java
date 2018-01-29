@@ -18,6 +18,7 @@
 
 package gedi.util.math.stat.counting;
 
+import gedi.util.ArrayUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
 import gedi.util.functions.EI;
@@ -155,6 +156,21 @@ public class FractionalCounter<T>  {
 		return true;
 	}
 	
+	/**
+	 * Adds a new element to this bag
+	 * @param o
+	 */
+	public boolean add(T o, double[] count) {
+		ArrayUtils.add(map.computeIfAbsent(o, k->new double[dim]),count);
+		ArrayUtils.add(total,count);
+		return true;
+	}
+	
+	public void add(FractionalCounter<T> other) {
+		for (T k : other.map.keySet())
+			add(k,other.map.get(k));
+	}
+	
 	
 	public double[] get(T o) {
 		double[] re = map.get(o);
@@ -219,6 +235,7 @@ public class FractionalCounter<T>  {
 	public double[] total() {
 		return total;
 	}
+	
 	public boolean contains(T o) {
 		return map.containsKey(o);
 	}

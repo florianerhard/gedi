@@ -1,0 +1,37 @@
+<GenomicRegionFeaturePipeline>
+	<Labels l="<?JS print(EI.wrap(labels).concat(',')) ?>" />
+
+	<AnnotationFeature id="Transcript" data="false" >
+		<Transcripts g="genomic" flank="50" />
+	</AnnotationFeature>
+	<ContainedFeature id="ContainedTranscript" input="Transcript" />
+	<MapFeature id="GeneId" input="ContainedTranscript">
+		<Field n='data' />
+		<Field n='geneId' />
+	</MapFeature>
+	<MapFeature id="TranscriptIdFolded" input="ContainedTranscript">
+		<Field n='data' />
+		<Field n='transcriptId' />
+	</MapFeature>
+	<UnfoldFeature id="TranscriptId" input="TranscriptIdFolded" />
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>genes.tsv" input="GeneId">
+		<Condition inputs="GeneId" cond="[U]" />
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>transcripts.tsv" input="TranscriptId">
+	</FeatureStatisticOutput>
+
+	<ClusterReads file="<?JS prefix ?>clusters.tsv">
+		<Genomic g="genomic" />
+	</ClusterReads>
+
+
+
+
+<?JS0
+includeExtensions("/resources/templates/stats/countreads");
+?>
+
+
+</GenomicRegionFeaturePipeline>
+

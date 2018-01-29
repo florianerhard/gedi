@@ -28,8 +28,4 @@ do
 done
 
 
-if [ "$e" != "" ]; then
-	java $xp$d$p$tmpfolder$add -Xmx8192m -Xms2048m -cp "`gedi_ccp`" $e"$@"
-else
-	echo "No parameters given, try gedi -h!"
-fi
+java $xp$d$p$tmpfolder$add -Xmx8192m -Xms2048m -cp "`gedi_ccp`" $e"$@"

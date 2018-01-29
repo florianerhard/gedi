@@ -72,7 +72,6 @@ public class OmlReader {
 			return parse(is);
 		}
 		
-		
 		InputSource is = new InputSource(new FileReader(file));
 		is.setPublicId(file.getPath());
 		return parse(is);

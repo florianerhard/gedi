@@ -53,7 +53,7 @@ public class GenomicRegionFeaturePipeline implements OmlInterceptor {
 
 
 	private String[] labels;
-
+	
 	
 	public GenomicRegionFeatureProgram getProgram() throws IOException {
 		GenomicRegionFeatureProgram re = new GenomicRegionFeatureProgram();
@@ -99,6 +99,8 @@ public class GenomicRegionFeaturePipeline implements OmlInterceptor {
 			HashMap<String, Object> context) {
 		if (o instanceof GenomicRegionFeature) {
 			id = ((GenomicRegionFeature)o).getId();
+			if (id!=null && idToInputs.containsKey(id))
+				return;
 			idToInputs.put(id,inputIds);
 			if (id==null) {
 				do {
@@ -114,7 +116,7 @@ public class GenomicRegionFeaturePipeline implements OmlInterceptor {
 	@Override
 	public void childProcessed(OmlNode parentNode, OmlNode childNode,
 			Object parent, Object child, HashMap<String, Object> context) {
-		if (parent instanceof GenomicRegionFeature && child instanceof GenomicRegionFeature && !parentNode.getAttributes().containsKey("input")) {
+		if (parent instanceof GenomicRegionFeature && child instanceof GenomicRegionFeature && !parentNode.getAttributes().containsKey("input") && parent!=child) {
 			
 			String id = ((GenomicRegionFeature)child).getId();
 			

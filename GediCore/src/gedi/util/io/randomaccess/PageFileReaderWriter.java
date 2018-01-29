@@ -83,6 +83,14 @@ public class PageFileReaderWriter implements AutoCloseable, BinaryReaderWriter {
 		return start;
 	}
 	
+	public boolean eof() {
+		try {
+			return position()>=file.length();
+		} catch (IOException e) {
+			return true;
+		}
+	}
+	
 	
 	public long position() {
 		return position;

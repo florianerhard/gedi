@@ -40,7 +40,7 @@ public class ParallelPipelineRunner implements PipelineRunner {
 	public int postrunner(LineWriter writer, String name,String paramFile, JS js) {
 		String o = js.getVariable("logfolder")+"/"+name+".out";
 		String e = js.getVariable("logfolder")+"/"+name+".err";
-		writer.write2(" >> "+o+" 2>> "+e+" &\nPIDS["+(++index)+"]=$!");
+		writer.write2(" >> "+o+" 2>> "+e+" &\nPIDS["+(++index)+"]=$!\n");
 		return index;
 	}
 

@@ -30,6 +30,8 @@ output.executable=true;
 var infos = ReadMappingReferenceInfo.writeTable(output.file.getParent()+"/"+name+".prio.csv",references,true,true,ReadMapper.STAR);
 processTemplate("merge_priority.oml",output.file.getParent()+"/"+name+".prio.oml");
 
+var genomes = EI.wrap(infos).filter(function(i) i.priority>1).map(function(i) i.getGenomic().getId()).reduce(function(a,b) a+" "+b);
+
 var test;
 
 ?>
@@ -103,7 +105,7 @@ echo $((leftreads-unali)) >> <?JS name ?>.reads.tsv
 mkdir -p <?JS wd ?>/report
 
 # Merging
-gedi -t . -e MergeSam -D -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit <?JS if (keepUnmapped) { print("-unmapped");} ?>
+gedi -t . -e MergeSam -D -genomic <?JS genomes ?> -t <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.csv -prio <?JS print(output.file.getParent()); ?>/<?JS name ?>.prio.oml -chrM -o <?JS name ?>.cit <?JS if (keepUnmapped) { print("-unmapped");} ?>
 echo -ne "Merged\t" >> <?JS name ?>.reads.tsv
 gedi Nashorn -e "println(EI.wrap(DynamicObject.parseJson(FileUtils.readAllText(new File('<?JS name ?>.cit.metadata.json'))).getEntry('conditions').asArray()).mapToDouble(function(d) d.getEntry('total').asDouble()).sum())" >> <?JS name ?>.reads.tsv
 

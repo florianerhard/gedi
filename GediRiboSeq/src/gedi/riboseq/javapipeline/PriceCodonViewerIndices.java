@@ -134,7 +134,7 @@ public class PriceCodonViewerIndices extends GediProgram {
 		
 	}
 	
-	private static void writeViewerIndices(String prefix, CenteredDiskIntervalTreeStorage<SparseMemoryFloatArray> cit, Progress progress) throws IOException {
+	static void writeViewerIndices(String prefix, CenteredDiskIntervalTreeStorage<SparseMemoryFloatArray> cit, Progress progress) throws IOException {
 		
 		int numCond = cit.getRandomRecord().length();
 		

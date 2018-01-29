@@ -20,10 +20,12 @@ package gedi.core.region.feature.output;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import cern.colt.bitvector.BitVector;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.features.AbstractFeature;
 import gedi.core.region.feature.special.UnfoldGenomicRegionStatistics;
@@ -36,6 +38,7 @@ public abstract class OutputFeature extends AbstractFeature<Void> {
 
 	
 	protected MutableTuple key;
+	protected BitVector hidden;
 	
 	
 	@Override
@@ -44,6 +47,7 @@ public abstract class OutputFeature extends AbstractFeature<Void> {
 		Class[] types = new Class[inputs.length];
 		Arrays.fill(types, Set.class);
 		key = new MutableTuple(types);
+		hidden = ((OutputFeature)from).hidden;
 	}
 	
 
@@ -53,14 +57,29 @@ public abstract class OutputFeature extends AbstractFeature<Void> {
 		Class[] types = new Class[inputs.length];
 		Arrays.fill(types, Set.class);
 		key = new MutableTuple(types);
+		if (hidden!=null)
+			hidden.setSize(inputs.length);
+		else
+			hidden = new BitVector(inputs.length);
 	}
 	
 	@Override
 	public <I> void setInput(int index, Set<I> input) {
 		super.setInput(index, input);
-		key.setQuick(index, input);
+		if (!hidden.getQuick(index))
+			key.setQuick(index, input);
+		else
+			key.setQuick(index, Collections.emptySet());
 	}
 
+	public void hideInput(int index) {
+		if (this.hidden==null)
+			this.hidden = new BitVector(index+1);
+		else if (this.hidden.size()<=index)
+			this.hidden.setSize(index+1);
+		this.hidden.putQuick(index, true);
+	}
+	
 
 	protected boolean mustUnfold(MutableTuple key) {
 		for (int i=0; i<key.size(); i++) {
