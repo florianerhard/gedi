@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package net.sf.cglib.transform.impl;
 
 public class Base {

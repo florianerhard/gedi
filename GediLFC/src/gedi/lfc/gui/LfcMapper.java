@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.lfc.gui;
 
 import gedi.core.data.mapper.GenomicRegionDataMapper;

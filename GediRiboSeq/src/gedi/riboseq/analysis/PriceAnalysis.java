@@ -15,11 +15,22 @@
  *   limitations under the License.
  * 
  */
+package gedi.riboseq.analysis;
 
-package gedi.region.bam;
+import java.io.IOException;
+import java.util.List;
 
-public enum Strandness {
+import gedi.util.io.text.LineWriter;
 
-	Unspecific, Specific, Inverted
+public interface PriceAnalysis<R> {
+
+	void header(LineWriter out) throws IOException;
+	R createContext();
+	void reduce(List<R> ctx, LineWriter out);
 	
+	
+	default void plot(String data, String prefix) throws IOException {}
+	
+	void process(MajorIsoform data, LineWriter out, R ctx);
+
 }

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region;
 
 import gedi.core.reference.Chromosome;
@@ -77,6 +76,11 @@ public class MutableReferenceGenomicRegion<D> implements ReferenceGenomicRegion<
 		return this;
 	}
 	
+	@Override
+	public boolean isMutable() {
+		return true;
+	}
+	
 	public MutableReferenceGenomicRegion<D> set(ReferenceSequence reference,
 			GenomicRegion region, Supplier<D> dataSupplier) {
 		this.reference = reference;
@@ -133,6 +137,11 @@ public class MutableReferenceGenomicRegion<D> implements ReferenceGenomicRegion<
 	
 	public MutableReferenceGenomicRegion<D> toPlusStrand() {
 		setReference(getReference().toPlusStrand());
+		return this;
+	}
+	
+	public MutableReferenceGenomicRegion<D> toOppositeStrand() {
+		setReference(getReference().toOppositeStrand());
 		return this;
 	}
 	

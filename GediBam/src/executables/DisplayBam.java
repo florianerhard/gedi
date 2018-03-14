@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import gedi.app.Gedi;
@@ -25,6 +24,7 @@ import gedi.core.data.reads.ReadCountMode;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
+import gedi.core.reference.Strandness;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
@@ -34,7 +34,6 @@ import gedi.gui.genovis.SwingGenoVisViewer;
 import gedi.gui.genovis.TrackSelectionTreeButton;
 import gedi.gui.genovis.VisualizationTrack;
 import gedi.region.bam.BamGenomicRegionStorage;
-import gedi.region.bam.Strandness;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.PaintUtils;
@@ -479,7 +478,7 @@ public class DisplayBam extends JPanel {
 		
 		DisplayBamTrack[] tracks = new DisplayBamTrack[bams.length];
 		for (int c=0; c<bams.length; c++) {
-			tracks[c] = new DisplayBamTrack(names[c], new DisplayBamExperiment[] {new DisplayBamExperiment(names[c], null, new String[] {bams[c]}, Color.black, Strandness.Specific)});
+			tracks[c] = new DisplayBamTrack(names[c], new DisplayBamExperiment[] {new DisplayBamExperiment(names[c], null, new String[] {bams[c]}, Color.black, Strandness.Sense)});
 		}
 			
 		return tracks;

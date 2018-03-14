@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.lfc.foldchange;
 
 import gedi.lfc.Log2FoldChange;

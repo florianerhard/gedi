@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import gedi.app.Config;

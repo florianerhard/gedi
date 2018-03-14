@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.functions;
 
 import gedi.core.data.table.Table;
@@ -489,6 +488,9 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 		return re;
 	}
 	
+	default String concat() {
+		return concat("");
+	}
 	default String concat(String sep) {
 		return concat(sep,s->s.toString());
 	}

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import gedi.app.Gedi;
@@ -23,6 +22,8 @@ import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;
 import gedi.core.data.annotation.ScoreAnnotation;
 import gedi.core.data.annotation.ScoreNameAnnotation;
 import gedi.core.data.annotation.Transcript;
+import gedi.core.data.reads.AlignedReadsData;
+import gedi.core.data.reads.DigitalAlignedReadsData;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
@@ -102,8 +103,9 @@ public class ViewCIT {
 		String nameExpr = null;
 		String scoreExpr = null;
 		String filterExpr = null;
+		String tExpr = null;
 		CitOutputMode mode = null;
-		
+		boolean debug = false;
 		boolean list = false;
 				
 		int i;
@@ -131,13 +133,18 @@ public class ViewCIT {
 			else if (args[i].equals("-score")) {
 				scoreExpr=checkParam(args, ++i);
 			}
+			else if (args[i].equals("-t")) {
+				tExpr=checkParam(args, ++i);
+			}
 			else if (args[i].equals("-filter")) {
 				filterExpr=checkParam(args, ++i);
 			}
 			else if (args[i].equals("-o")) {
 				output = new LineOrientedFile(checkParam(args, ++i));
 			}
-			else if (args[i].equals("-D")){} 
+			else if (args[i].equals("-D")){
+				debug = true;
+			} 
 			else if (!args[i].startsWith("-")) 
 					break;
 			else throw new UsageException("Unknown parameter: "+args[i]);
@@ -152,6 +159,9 @@ public class ViewCIT {
 		TriFunction<T, ReferenceSequence, GenomicRegion, Boolean> filter = filterExpr!=null?new JSTriFunction<T, ReferenceSequence, GenomicRegion, Boolean>(false,"function(d,ref,reg) "+filterExpr):null;
 		
 		CenteredDiskIntervalTreeStorage<T> storage = new CenteredDiskIntervalTreeStorage<T>(args[i]);
+		
+		if (debug)
+			System.err.println(storage.getExtendedJson());
 		
 		if (list) {
 			output.startWriting();
@@ -170,9 +180,13 @@ public class ViewCIT {
 		if (mode==CitOutputMode.Cit && output.isPipe())
 			throw new UsageException("For mode Cit, specify output file!");
 		
+		Class<T> type = storage.getType();
+		if (tExpr!=null) {
+			if (tExpr.equals("digital")) type = (Class<T>) DigitalAlignedReadsData.class;
+		}
 		
 		LineWriter wr = mode!=CitOutputMode.Cit?output.write():null;
-		CenteredDiskIntervalTreeStorage citout = mode==CitOutputMode.Cit?new CenteredDiskIntervalTreeStorage(output.getPath(), storage.getType()):null;
+		CenteredDiskIntervalTreeStorage citout = mode==CitOutputMode.Cit?new CenteredDiskIntervalTreeStorage(output.getPath(), type):null;
 		
 		
 		ExtendedIterator<ImmutableReferenceGenomicRegion<T>> it = storage.ei(query);
@@ -180,6 +194,15 @@ public class ViewCIT {
 			it = it.progress(progress, (int) storage.size(), r->r.toMutable().transformRegion(reg->reg.removeIntrons()).toLocationString());
 		if (filter!=null)
 			it = it.filter(rgr->filter.apply(rgr.getData(), rgr.getReference(), rgr.getRegion()));
+		if (tExpr!=null) {
+			if (tExpr.equals("digital")) {
+				it = it.map(rgr->{
+					MutableReferenceGenomicRegion<T> re = rgr.toMutable().transformData(ard->(T)DigitalAlignedReadsData.fromAlignedReadsData((AlignedReadsData)ard, true));
+					if (re.getData()==null) return null;
+					return re.toImmutable();
+				}).removeNulls();
+			}
+		}
 		
 		Consumer<ImmutableReferenceGenomicRegion<T>> sink = null;
 		
@@ -286,7 +309,7 @@ public class ViewCIT {
 					
 					if (trans.isCoding()) {
 						MutableReferenceGenomicRegion<T> cds = trans.getCds(rgr);
-						for (int p=0; p<rgr.getRegion().getNumParts(); p++) 
+						for (int p=0; p<cds.getRegion().getNumParts(); p++) 
 							wr.writef("%s\tgedi\tCDS\t%d\t%d\t.\t%s\t.\tgene_id \"%s\"; transcript_id \"%s\"; gene_biotype \"protein_coding\";\n",
 									cds.getReference().getName(),
 									cds.getRegion().getStart(p)+1,
@@ -383,6 +406,7 @@ public class ViewCIT {
 		System.err.println(" -q <location>\t\tOnly output elements overlapping the given query (i.e. whole reference or genomic region)");
 		System.err.println(" -o <file>\t\tSpecify output file (Default: stdout)");
 		System.err.println(" -m <mode>\t\toutput mode: Bed/Location/Cit/Genepred/Gtf (Default: location)");
+		System.err.println(" -t <js/name>\t\tname of a transformer or javascript function body transform reference genomic region (variable d is current data, ref the reference, reg the region; either return a data object or a reference genomic region object!)");
 		System.err.println(" -name <js>\t\tjavascript function body to generate name (variable d is current data, ref the reference, reg the region)");
 		System.err.println(" -score <js>\t\tjavascript function body to generate score (variable d is current data, ref the reference, reg the region)");
 		System.err.println(" -filter <js>\\t\tjavascript function body returning true for entries to use  (variable d is current data, ref the reference, reg the region)");

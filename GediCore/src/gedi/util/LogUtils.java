@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util;
 import java.io.InputStream;
 import java.net.URL;

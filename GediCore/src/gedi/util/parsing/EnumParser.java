@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.parsing;
 
 import gedi.core.reference.Strand;

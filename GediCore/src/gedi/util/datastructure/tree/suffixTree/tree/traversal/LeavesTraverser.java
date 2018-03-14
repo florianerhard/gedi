@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.tree.suffixTree.tree.traversal;
 
 import com.sun.org.apache.xerces.internal.util.IntStack;

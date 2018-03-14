@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx.dialog;
 
 import com.sun.javafx.scene.control.skin.ButtonBarSkin;

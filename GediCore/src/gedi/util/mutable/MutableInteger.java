@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.mutable;
 
 import gedi.util.io.randomaccess.BinaryReader;
@@ -36,6 +35,14 @@ public class MutableInteger extends Number implements Comparable<MutableInteger>
 	public MutableInteger set(int N) {
 		this.N = N;
 		return this;
+	}
+	
+	public void max(int other) {
+		this.N = Math.max(N, other);
+	}
+	
+	public void min(int other) {
+		this.N = Math.min(N, other);
 	}
 	
 	public int preIncrement() {

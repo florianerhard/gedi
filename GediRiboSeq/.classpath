@@ -6,5 +6,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/GediCenteredDiskIntervalTreeStorage"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediCommandLine"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GediSraGrep"/>
+	<classpathentry kind="lib" path="lib/fern.jar"/>
+	<classpathentry kind="lib" path="lib/jdom.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

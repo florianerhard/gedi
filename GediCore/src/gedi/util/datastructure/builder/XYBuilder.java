@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.builder;
 
 import java.io.IOException;

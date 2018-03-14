@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import java.io.IOException;
@@ -24,12 +23,16 @@ import java.util.LinkedHashMap;
 
 import gedi.app.extension.GlobalInfoProvider;
 import gedi.core.data.HasConditions;
+import gedi.core.data.annotation.Transcript;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.FunctorUtils;
+import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.dynamic.DynamicObject;
@@ -75,8 +78,11 @@ import gedi.util.math.stat.Ranking;
  * <p>12/9/15: Each distinct sequence may have an integer id. If read from BinaryFile, having or not having an id is decided based on an attribte in the reader's context.
  * The returned id is -1 otherwise.
  * </p>
+ * <p>31/1/18: second read: the genomic base is the one from the strand of the second read (i.e. from the opposite strand of the rgr); all read sequences naturally refer to the sequence of the read itself (also opposite strand of rgr, so to say); softclips are also defined by the direction, i.e. 3p softclip is a the end of the second reads (i.e. in 5' direction of rgr)
+ * </p>
  * 
  * If N is sequenced, a A->A mismatch is stored (if the genomic base is an A)!
+ * If N is sequenced and softclipped, an A is stored!
  * 
  * @author erhard
  *
@@ -85,6 +91,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 
 	public static final String HASIDATTRIBUTE = "HASIDATTRIBUTE";
 	public static final String HASWEIGHTATTRIBUTE = "HASWEIGHT";
+	public static final String HASGEOMETRYATTRIBUTE = "HASGEOMETRY";
 	public static final String CONDITIONSATTRIBUTE = "CONDITIONS";
 	public static final String SPARSEATTRIBUTE = "SPARSE";
 	
@@ -94,6 +101,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		LinkedHashMap<String, Integer> map = new LinkedHashMap<String, Integer>();
 		map.put(HASIDATTRIBUTE, hasId()?1:0);
 		map.put(HASWEIGHTATTRIBUTE, hasWeights()?1:0);
+		map.put(HASGEOMETRYATTRIBUTE, hasGeometry()?1:0);
 		map.put(CONDITIONSATTRIBUTE, getNumConditions());
 		map.put(SPARSEATTRIBUTE, getNumConditions()>5?1:0);
 		return DynamicObject.from(map);
@@ -111,8 +119,41 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 
 	float getWeight(int distinct);
 	boolean hasWeights();
+	boolean hasGeometry();
+	int getGeometryBeforeOverlap(int distinct);
+	int getGeometryOverlap(int distinct);
+	int getGeometryAfterOverlap(int distinct);
+	
+	default int getMappedLength(int distinct) {
+		return getGeometryBeforeOverlap(distinct)+getGeometryOverlap(distinct)+getGeometryAfterOverlap(distinct);
+	}
+	
+	default int getMappedLengthRead1(int distinct) {
+		return getGeometryBeforeOverlap(distinct)+getGeometryOverlap(distinct);
+	}
+	
+	default int getMappedLengthRead2(int distinct) {
+		return getGeometryAfterOverlap(distinct)+getGeometryOverlap(distinct);
+	}
 	
 	boolean isVariationFromSecondRead(int distinct, int index);
+	
+	default int getFirstReadClip(int d) {
+		int re = 0;
+		for (int v=0; v<getVariationCount(d); v++)
+			if (!isVariationFromSecondRead(d, v) && isSoftclip(d, v))
+				re+=getSoftclip(d, v).length();
+		return re;
+	}
+	
+	default int getSecondReadClip(int d) {
+		int re = 0;
+		for (int v=0; v<getVariationCount(d); v++)
+			if (isVariationFromSecondRead(d, v) && isSoftclip(d, v))
+				re+=getSoftclip(d, v).length();
+		return re;
+	}
+	
 	
 	default boolean hasMismatch(int distinct) {
 		for (int v=0; v<getVariationCount(distinct); v++)
@@ -128,13 +169,174 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		return false;
 	}
 	
+	default boolean isConsistentlyContained(ImmutableReferenceGenomicRegion<?> read,
+			ImmutableReferenceGenomicRegion<?> reference, int d) {
+		if (!hasGeometry())
+			return reference.getRegion().containsUnspliced(read.getRegion());
+		
+		return reference.getRegion().containsUnspliced(extractRead1(read, d).getRegion())
+				&& reference.getRegion().containsUnspliced(extractRead2(read, d).getRegion());
+	}
+
+	
+	default ReferenceGenomicRegion<Void> extractRead1(ReferenceGenomicRegion<?> read,int d) {
+		return new ImmutableReferenceGenomicRegion<>(
+				read.getReference(), 
+				read.map(new ArrayGenomicRegion(0,getMappedLengthRead1(d)))
+				);
+	}
+	
+	
+	default ReferenceGenomicRegion<Void> extractRead2(ReferenceGenomicRegion<?> read,int d) {
+		return new ImmutableReferenceGenomicRegion<>(
+				read.getReference(), 
+				read.map(new ArrayGenomicRegion(read.getRegion().getTotalLength()-getMappedLengthRead2(d),read.getRegion().getTotalLength()))
+				);
+	}
+	
+	
+	/**
+	 * Gets the end position of the first read in the mapped region
+	 * @param d
+	 * @param pos
+	 * @param readLength1
+	 * @return
+	 */
+	default int getReadLength1(int d) {
+		int l = getMappedLengthRead1(d);
+		for (int v=0; v<getVariationCount(d); v++)
+			if (isInsertion(d, v) && !isVariationFromSecondRead(d, v))
+				l+=getInsertion(d, v).length();
+			else if (isDeletion(d, v) && !isVariationFromSecondRead(d, v))
+				l-=getDeletion(d, v).length();
+			else if (isSoftclip(d, v) && !isVariationFromSecondRead(d, v))
+				l+=getSoftclip(d, v).length();
+		
+		return l;
+	}
+	
+	/**
+	 * Gets the length of the second read in the mapped region
+	 * @param d
+	 * @param pos
+	 * @param readLength2
+	 * @return
+	 */
+	default int getReadLength2(int d) {
+		int l = getMappedLengthRead2(d);
+		for (int v=0; v<getVariationCount(d); v++)
+			if (isInsertion(d, v) && isVariationFromSecondRead(d, v))
+				l+=getInsertion(d, v).length();
+			else if (isDeletion(d, v) && isVariationFromSecondRead(d, v))
+				l-=getDeletion(d, v).length();
+			else if (isSoftclip(d, v) && isVariationFromSecondRead(d, v))
+				l+=getSoftclip(d, v).length();
+		
+		return l;
+	}
+	
+	
+
+	/**
+	 * Maps from the coordinate system of the read mapping to read coordinates. Read coordinates is as if both read sequences had been concatenated (second reversed!)!
+	 * (paying attention to any insertion, softclips and mapping to genomic coordinates)
+	 * <br>
+	 * Caution: Is pos is an {@link #getInsertionPos(int, int)}, the end of the insertion is reported! This is necessary, because
+	 * an insertion and mismatch can have the same position (the mismatch occurrs right after the insertion)
+	 * 
+	 * @param d
+	 * @param pos
+	 * @param secondReadInOverlap if position is in overlap, report second read position?
+	 * @return
+	 */
+	default int mapToRead(int d, int pos, boolean secondReadInOverlap) {
+		return mapToRead(d, pos, secondReadInOverlap,-1);
+	}
+	
+	/**
+	 * Maps from the coordinate system of the read mapping to read coordinates. Read coordinates is as if both read sequences had been concatenated (second reversed!)!
+	 * (paying attention to any insertion, softclips and mapping to genomic coordinates)
+	 * <br>
+	 * Caution: Is pos is an {@link #getInsertionPos(int, int)}, the end of the insertion is reported! This is necessary, because
+	 * an insertion and mismatch can have the same position (the mismatch occurrs right after the insertion)
+	 * 
+	 * <br>
+	 * Here the read length of the first read must be given (important, if reads have been hardclipped (e.g. adapter trimmed) to have the first position of the second read always at the same position)
+	 * 
+	 * @param d
+	 * @param pos
+	 * @param secondReadInOverlap if position is in overlap, report second read position?
+	 * @return
+	 */
+	default int mapToRead(int d, int pos, boolean secondReadInOverlap, int readLength1) {
+		boolean inFirst = isPositionInFirstRead(d, pos);
+		boolean inSecond = isPositionInSecondRead(d, pos);
+		
+		boolean reportFirstRead = inFirst && (!inSecond || !secondReadInOverlap);
+		
+		if (reportFirstRead) 
+			return mapToRead1(d, pos);
+		
+		return readLength1<0 ? mapToRead2(d, pos) : mapToRead2(d, pos, readLength1);
+	}
+	
+	default boolean isPositionInFirstRead(int d, int pos) {
+		if (!hasGeometry()) return true;
+		int first = getMappedLengthRead1(d);
+		return pos<first;
+	}
+	
+	default boolean isPositionInOverlap(int d, int pos) {
+		if (!hasGeometry()) return false;
+		return isPositionInFirstRead(d, pos) && isPositionInSecondRead(d, pos);
+	}
+	
+	default boolean isPositionInSecondRead(int d, int pos) {
+		if (!hasGeometry()) return false;
+		int second = getMappedLengthRead2(d);
+		return pos>=getMappedLength(d)-second;
+	}
+	
+	
+	default int mapToRead1(int d, int pos) {
+		int add = 0;
+		for (int v=0; v<getVariationCount(d); v++)
+			if (isInsertion(d, v) && !isVariationFromSecondRead(d, v) && getInsertionPos(d, v)<=pos)
+				add+=getInsertion(d, v).length();
+			else if (isDeletion(d, v) && !isVariationFromSecondRead(d, v) && getInsertionPos(d, v)<=pos)
+				add-=getDeletion(d, v).length();
+			else if (isSoftclip(d, v) && isSoftclip5p(d, v) && !isVariationFromSecondRead(d, v))
+				add+=getSoftclip(d, v).length();
+		return pos+add;
+	}
+	default int mapToRead2(int d, int pos) {
+		return mapToRead2(d, pos, getReadLength1(d));
+	}
+	default int mapToRead2(int d, int pos, int readLength1) {
+		int add = -getGeometryBeforeOverlap(d)+readLength1;
+		for (int v=0; v<getVariationCount(d); v++)
+			if (isInsertion(d, v) && isVariationFromSecondRead(d, v) && getInsertionPos(d, v)<=pos)
+				add+=getInsertion(d, v).length();
+			else if (isDeletion(d, v) && isVariationFromSecondRead(d, v) && getInsertionPos(d, v)<=pos)
+				add-=getDeletion(d, v).length();
+			else if (isSoftclip(d, v) && isSoftclip5p(d, v) && isVariationFromSecondRead(d, v))
+				add+=getSoftclip(d, v).length();
+		return pos+add;
+	}
+	
+
+
+
+	default boolean isMismatchN(int distinct, int index) {
+		return StringUtils.equals(getMismatchGenomic(distinct, index),getMismatchRead(distinct, index));
+	}
 	boolean isMismatch(int distinct, int index);
 	int getMismatchPos(int distinct, int index);
 	CharSequence getMismatchGenomic(int distinct, int index);
 	CharSequence getMismatchRead(int distinct, int index);
 
 	boolean isSoftclip(int distinct, int index);
-	int getSoftclipPos(int distinct, int index);
+	boolean isSoftclip5p(int distinct, int index);
 	/**
 	 * This is a read sequence
 	 * @param distinct
@@ -721,9 +923,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 					sb.append('N');
 				p = d+1;
 			} else if (isSoftclip(distinct, v)) {
-				int d = getSoftclipPos(distinct, v);
 				sb.append(getSoftclip(distinct, v));
-				p = d;
 				throw new RuntimeException("Not tested!");
 			}
 		}
@@ -736,7 +936,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		if (isMismatch(distinct, index)) return new AlignedReadsMismatch(getMismatchPos(distinct, index), getMismatchGenomic(distinct, index), getMismatchRead(distinct, index),isVariationFromSecondRead(distinct, index));
 		if (isDeletion(distinct, index)) return new AlignedReadsDeletion(getDeletionPos(distinct, index), getDeletion(distinct, index),isVariationFromSecondRead(distinct, index));
 		if (isInsertion(distinct, index)) return new AlignedReadsInsertion(getInsertionPos(distinct, index), getInsertion(distinct, index),isVariationFromSecondRead(distinct, index));
-		if (isSoftclip(distinct, index)) return new AlignedReadsSoftclip(getSoftclipPos(distinct, index), getSoftclip(distinct, index),isVariationFromSecondRead(distinct, index));
+		if (isSoftclip(distinct, index)) return new AlignedReadsSoftclip(isSoftclip5p(distinct, index), getSoftclip(distinct, index),isVariationFromSecondRead(distinct, index));
 		return null;
 	}
 
@@ -760,6 +960,8 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 			sb.append(getMultiplicity(d));
 			if (hasWeights()) 
 				sb.append(" (w=").append(String.format("%.2f", getWeight(d))).append(")");
+			if (hasGeometry()) 
+				sb.append(String.format(" %d|%d|%d", getGeometryBeforeOverlap(d),getGeometryOverlap(d),getGeometryAfterOverlap(d)));
 			for (AlignedReadsVariation var : getVariations(d))
 				sb.append("\t"+var);
 			if (d<getDistinctSequences()-1) sb.append(" ~ ");
@@ -891,8 +1093,8 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 					out.putCShort(DefaultAlignedReadsData.encodeInsertion(getInsertionPos(i, j), getInsertion(i, j),isVariationFromSecondRead(i, j)));
 					ch = DefaultAlignedReadsData.encodeInsertionIndel(getInsertionPos(i, j), getInsertion(i, j));
 				} else if (isSoftclip(i, j)) {
-					out.putCShort(DefaultAlignedReadsData.encodeSoftclip(getSoftclipPos(i, j), getSoftclip(i, j),isVariationFromSecondRead(i, j)));
-					ch = DefaultAlignedReadsData.encodeSoftclipIndel(getSoftclipPos(i, j), getSoftclip(i, j));
+					out.putCShort(DefaultAlignedReadsData.encodeSoftclip(isSoftclip5p(i, j), getSoftclip(i, j),isVariationFromSecondRead(i, j)));
+					ch = DefaultAlignedReadsData.encodeSoftclipSequence(isSoftclip5p(i, j), getSoftclip(i, j));
 				} else throw new RuntimeException("Neither mismatch nor deletion nor insertion!");
 				out.putCInt(ch.length());
 				out.putAsciiChars(ch);
@@ -911,6 +1113,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		if (out.getContext().getGlobalInfo().getEntry(AlignedReadsData.HASWEIGHTATTRIBUTE).asInt()==1) {
 			for (int i=0; i<d; i++)
 				out.putFloat(getWeight(i));
+		} 
+		
+		if (out.getContext().getGlobalInfo().getEntry(AlignedReadsData.HASGEOMETRYATTRIBUTE).asInt()==1) {
+			for (int i=0; i<d; i++)
+				out.putCInt(DefaultAlignedReadsData.encodeGeometry(getGeometryBeforeOverlap(i),getGeometryOverlap(i),getGeometryAfterOverlap(i)));
 		} 
 		
 //		if (hasIntId()) {
@@ -953,20 +1160,6 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		return false;
 	}
 
-	public static String[] getConditionNames(GenomicRegionStorage<AlignedReadsData> reads) {
-		int numCond = reads.getRandomRecord().getNumConditions();
-		String[] conditions = new String[numCond];
-		if (reads.getMetaData().isNull()) {
-			for (int c=0; c<conditions.length; c++)
-				conditions[c] = c+"";
-		} else {
-			for (int c=0; c<conditions.length; c++) {
-				conditions[c] = reads.getMetaData().getEntry("conditions").getEntry(c).getEntry("name").asString();
-				if ("null".equals(conditions[c])) conditions[c] = c+"";
-			}
-		}
-		return conditions;
-	}
 	
 	
 	default ExtendedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>> iterateDistinct(ImmutableReferenceGenomicRegion<?> rgr) {
@@ -976,6 +1169,9 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	default ExtendedIterator<AlignedReadsData> iterateDistinct() {
 		return EI.seq(0, getDistinctSequences()).map(d->new OneDistinctSequenceAlignedReadsData(this, d));
 	}
+
+	
+	
 
 }
 

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.stat.testing;
 
 import gedi.util.math.stat.RandomNumbers;

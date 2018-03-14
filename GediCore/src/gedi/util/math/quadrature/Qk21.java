@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.quadrature;
 
 import java.util.function.DoubleUnaryOperator;

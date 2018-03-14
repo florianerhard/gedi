@@ -15,8 +15,9 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.stat.distributions;
+
+import org.apache.commons.math3.special.Gamma;
 
 import jdistlib.Beta;
 import jdistlib.math.MathFunctions;
@@ -43,6 +44,14 @@ public class LfcDistribution {
 	
 	public static double qlfc(double alpha, double a, double b, boolean lower_tail, boolean log_p) {
 		return Beta.quantile(alpha, a, b, lower_tail, log_p);
+	}
+	
+	public static double mean(double a, double b){
+		return (Gamma.digamma(a)-Gamma.digamma(b))/Math.log(2);
+	}
+	
+	public static double var(double a, double b){
+		return (Gamma.trigamma(a)+Gamma.trigamma(b))/Math.log(2)/Math.log(2);
 	}
 	
 }

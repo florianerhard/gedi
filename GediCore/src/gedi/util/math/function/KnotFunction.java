@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.function;
 
 import gedi.util.io.randomaccess.BinaryReader;

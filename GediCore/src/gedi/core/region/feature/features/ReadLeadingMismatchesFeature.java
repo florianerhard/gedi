@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region.feature.features;
 
 import gedi.core.data.reads.AlignedReadsData;
@@ -58,8 +57,8 @@ public class ReadLeadingMismatchesFeature extends AbstractFeature<Integer> {
 			if (d.isMismatch(0, i)) {
 				values.add(d.getMismatchPos(0, i));
 			}
-			else if (d.isSoftclip(0, i)) {
-				values.add(d.getSoftclipPos(0, i));
+			else if (d.isSoftclip(0, i) && d.isSoftclip5p(0, i)) {
+				values.add(0);
 			}
 		}
 		

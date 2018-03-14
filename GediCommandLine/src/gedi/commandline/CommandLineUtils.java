@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.commandline;
 
 import java.io.PrintWriter;

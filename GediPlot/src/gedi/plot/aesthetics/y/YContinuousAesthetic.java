@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.plot.aesthetics.y;
 
 import gedi.plot.aesthetics.Aesthetic2;

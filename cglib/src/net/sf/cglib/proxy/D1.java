@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package net.sf.cglib.proxy;
 
 class D1 implements DI1 {

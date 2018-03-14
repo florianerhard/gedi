@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.algorithm.string.suffixarray;
 
 import java.util.ArrayList;

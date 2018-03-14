@@ -15,9 +15,8 @@
  *   limitations under the License.
  * 
  */
+package gedi.util.io.randomaccess;
 
-package executables;
-
-public class ProbeSra {
+public interface DontCompress {
 
 }

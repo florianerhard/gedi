@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util;
 
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
@@ -167,16 +166,25 @@ public class ParseUtils {
 	public static <E> E parseEnumNameByPrefix(String name,
 			boolean ignoreCase, Class<E> enumClass) {
 		if (name==null || name.length()==0) return null;
-		E[] el = enumClass.getEnumConstants();
-		if (el==null) throw new IllegalArgumentException("Not an enum class!");
 		
-		Trie<E> trie = new Trie<E>();
-		for (E e : el)
-			trie.put(ignoreCase?e.toString().toLowerCase():e.toString(),e);
+		Trie<E> trie = getEnumTrie(enumClass, ignoreCase);
 		
 		E direct = trie.get(ignoreCase?name.toLowerCase():name);
 		if (direct!=null) return direct;
 		return trie.getUniqueWithPrefix(ignoreCase?name.toLowerCase():name);
+	}
+	
+	public static <E> Trie<E> getEnumTrie(Class<E> enumClass, boolean ignoreCase) {
+		E[] el = enumClass.getEnumConstants();
+		if (el==null) throw new IllegalArgumentException("Not an enum class!");
+		
+		Trie<E> trie = new Trie<E>();
+		for (E e : el) {
+			trie.put(ignoreCase?e.toString().toLowerCase():e.toString(),e);
+			trie.put(ignoreCase?((Enum)e).name().toLowerCase():((Enum)e).name(),e);
+		}
+		trie.remove("");
+		return trie;
 	}
 
 	public static double[] parseFunctionParameter(String f) {

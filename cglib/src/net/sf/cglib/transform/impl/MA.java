@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package net.sf.cglib.transform.impl;
 
 import java.io.ObjectStreamException;

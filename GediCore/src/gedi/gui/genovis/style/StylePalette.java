@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.genovis.style;
 
 import gedi.util.gui.ColorPalettes;

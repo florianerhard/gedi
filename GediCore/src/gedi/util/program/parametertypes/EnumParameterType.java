@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.program.parametertypes;
 
 
@@ -32,7 +31,9 @@ public class EnumParameterType<E extends Enum<E>> implements GediParameterType<E
 
 	@Override
 	public E parse(String s) {
-		return ParseUtils.parseEnumNameByPrefix(s, true, enumClass);
+		E re = ParseUtils.parseEnumNameByPrefix(s, true, enumClass);
+		if (re==null) throw new RuntimeException("Could not parse "+s+" as a "+enumClass.getName()+" (Available: "+ParseUtils.getEnumTrie(enumClass, true).keySet().toString()+")");
+		return re;
 	}
 
 	@Override

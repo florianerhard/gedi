@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx.docking;
 
 import javafx.beans.property.ReadOnlyBooleanProperty;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.mapper;
 
 import gedi.core.data.numeric.BigWigGenomicNumericProvider;

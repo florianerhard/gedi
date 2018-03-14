@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package jline.console.helper;
 
 import java.io.IOException;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.ensembl;
 
 import gedi.core.reference.ReferenceSequence;

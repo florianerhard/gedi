@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx.utils;
 
 import gedi.fx.utils.AutocompleteListener.AutoCompleteData;

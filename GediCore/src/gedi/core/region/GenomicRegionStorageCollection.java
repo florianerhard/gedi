@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region;
 
 import gedi.core.reference.ReferenceSequence;

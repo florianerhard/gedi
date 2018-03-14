@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import gedi.util.ArrayUtils;
@@ -29,6 +28,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.TreeSet;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 import cern.colt.bitvector.BitVector;
 
@@ -43,6 +44,7 @@ public class AlignedReadsDataFactory {
 	protected ArrayList<TreeSet<VarIndel>> var = new ArrayList<TreeSet<VarIndel>>();
 	protected IntArrayList multiplicity = new IntArrayList();
 	protected DoubleArrayList weights = new DoubleArrayList();
+	protected IntArrayList geometry = new IntArrayList();
 	protected IntArrayList ids = new IntArrayList();
 //	protected ArrayList ids = new ArrayList();
 
@@ -60,6 +62,7 @@ public class AlignedReadsDataFactory {
 		var.clear();
 		multiplicity.clear();
 		weights.clear();
+		geometry.clear();
 		ids.clear();
 		return this;
 	}
@@ -110,6 +113,14 @@ public class AlignedReadsDataFactory {
 		return this;
 	}
 	
+	public AlignedReadsDataFactory setGeometry(int before, int overlap, int after) {
+		checkDistinct();
+		if (geometry.size()<currentDistinct)
+			throw new RuntimeException("Call setGeometry for all distinct sequences!");
+		setGeometry(currentDistinct, before, overlap, after);
+		return this;
+	}
+	
 	public AlignedReadsDataFactory setCount(int[] count) {
 		checkDistinct();
 		System.arraycopy(count, 0, this.count.get(currentDistinct), 0, conditions);
@@ -143,6 +154,12 @@ public class AlignedReadsDataFactory {
 	public AlignedReadsDataFactory setWeight(int distinct,float weight) {
 		checkDistinct(distinct);
 		weights.set(distinct, weight);
+		return this;
+	}
+	
+	public AlignedReadsDataFactory setGeometry(int distinct,int before, int overlap, int after) {
+		checkDistinct(distinct);
+		geometry.set(distinct, DefaultAlignedReadsData.encodeGeometry(before, overlap, after));
 		return this;
 	}
 	
@@ -203,8 +220,8 @@ public class AlignedReadsDataFactory {
 		return this;
 	}
 	
-	public AlignedReadsDataFactory addSoftclip(int pos, CharSequence read, boolean isFromSecondRead) {
-		getCurrentVariationBuffer().add(createSoftclip(pos, read,isFromSecondRead));
+	public AlignedReadsDataFactory addSoftclip(boolean p5, CharSequence read, boolean isFromSecondRead) {
+		getCurrentVariationBuffer().add(createSoftclip(p5, read,isFromSecondRead));
 		return this;
 	}
 	
@@ -255,15 +272,15 @@ public class AlignedReadsDataFactory {
 		else if (vari.isMismatch())
 			addMismatch(vari.getPosition(), vari.getReferenceSequence().charAt(0),vari.getReadSequence().charAt(0),vari.isFromSecondRead());
 		else if (vari.isSoftclip())
-			addSoftclip(vari.getPosition(), vari.getReadSequence(),vari.isFromSecondRead());
+			addSoftclip(vari.getPosition()==0, vari.getReadSequence(),vari.isFromSecondRead());
 	}
 
-	public VarIndel createSoftclip(int pos, CharSequence read, boolean onSecondRead) {
+	public VarIndel createSoftclip(boolean p5, CharSequence read, boolean onSecondRead) {
 		checkDistinct();
 //		checkPos(pos);
 		VarIndel v = new VarIndel();
-		v.var = DefaultAlignedReadsData.encodeSoftclip(pos, read,onSecondRead);
-		v.indel = DefaultAlignedReadsData.encodeSoftclipIndel(pos, read);
+		v.var = DefaultAlignedReadsData.encodeSoftclip(p5, read,onSecondRead);
+		v.indel = DefaultAlignedReadsData.encodeSoftclipSequence(p5, read);
 		return v;
 	}
 	
@@ -301,6 +318,7 @@ public class AlignedReadsDataFactory {
 		@Override
 		public int compareTo(VarIndel o) {
 			int re = Integer.compare(DefaultAlignedReadsData.pos(var), DefaultAlignedReadsData.pos(o.var));
+			if (re==0) re = Short.compare(var, o.var);
 			if (re==0) re = StringUtils.compare(indel, o.indel);
 			return re;
 		}
@@ -337,8 +355,18 @@ public class AlignedReadsDataFactory {
 			return true;
 		}
 
+		
 		@Override
 		public String toString() {
+			if (DefaultAlignedReadsData.type(var)==DefaultAlignedReadsData.TYPE_MISMATCH) 
+				return new AlignedReadsMismatch(DefaultAlignedReadsData.pos(var), indel.subSequence(0, 1), indel.subSequence(1, 2),DefaultAlignedReadsData.isSecondRead(var)).toString();
+			if (DefaultAlignedReadsData.type(var)==DefaultAlignedReadsData.TYPE_DELETION) 
+				return new AlignedReadsDeletion(DefaultAlignedReadsData.pos(var), indel,DefaultAlignedReadsData.isSecondRead(var)).toString();
+			if (DefaultAlignedReadsData.type(var)==DefaultAlignedReadsData.TYPE_INSERTION) 
+				return new AlignedReadsInsertion(DefaultAlignedReadsData.pos(var), indel,DefaultAlignedReadsData.isSecondRead(var)).toString();
+			if (DefaultAlignedReadsData.type(var)==DefaultAlignedReadsData.TYPE_SOFTCLIP) 
+				return new AlignedReadsSoftclip(DefaultAlignedReadsData.pos(var)==0, indel,DefaultAlignedReadsData.isSecondRead(var)).toString();
+
 			return "VarIndel [var=" + var + ", indel=" + indel + "]";
 		}
 
@@ -374,6 +402,7 @@ public class AlignedReadsDataFactory {
 		var = restrict(var,keep);
 		multiplicity = restrict(multiplicity,keep);
 		weights = restrict(weights,keep);
+		geometry = restrict(geometry,keep);
 		ids = restrict(ids,keep);
 		
 		currentDistinct = count.size()-1;
@@ -401,6 +430,15 @@ public class AlignedReadsDataFactory {
 				re.add(l.getDouble(i));
 		return re;
 	}
+	
+	public static DefaultAlignedReadsData createSimple(int[] count) {
+		DefaultAlignedReadsData re = new DefaultAlignedReadsData();
+		re.count = new int[][] {count};
+		re.var = new short[1][0];
+		re.indels = new CharSequence[1][0];
+		re.multiplicity = new int[] {1};
+		return re;
+	}
 
 	public DefaultAlignedReadsData create() {
 		DefaultAlignedReadsData re = new DefaultAlignedReadsData();
@@ -417,6 +455,11 @@ public class AlignedReadsDataFactory {
 			re.weights = weights.toFloatArray();
 		else if (weights.size()>0)
 			throw new RuntimeException("Call setWeight for each distinct sequence or for none!");
+		
+		if (geometry.size()==re.count.length)
+			re.geometry = geometry.toIntArray();
+		else if (geometry.size()>0)
+			throw new RuntimeException("Call setGeometry for each distinct sequence or for none!");
 		
 		return re;
 	}
@@ -478,6 +521,29 @@ public class AlignedReadsDataFactory {
 		setMultiplicity(ard.getMultiplicity(distinct));
 		for (int i=0; i<ard.getVariationCount(distinct); i++)
 			addVariation(ard.getVariation(distinct, i));
+		if (ard.hasId())
+			setId(ard.getId(distinct));
+		if (ard.hasWeights())
+			setWeight(ard.getWeight(distinct));
+		return this;
+	}
+	
+	/**
+	 * 
+	 * @param ard
+	 * @param distinct take the distinct from ard!
+	 */
+	public AlignedReadsDataFactory add(AlignedReadsData ard, int distinct, UnaryOperator<AlignedReadsVariation> varPred) {
+		newDistinctSequence();
+		for (int i=0; i<ard.getNumConditions(); i++)
+			setCount(i, ard.getCount(distinct, i));
+		setMultiplicity(ard.getMultiplicity(distinct));
+		for (int i=0; i<ard.getVariationCount(distinct); i++) {
+			AlignedReadsVariation vari = ard.getVariation(distinct, i);
+			vari = varPred.apply(vari);
+			if (vari!=null)
+				addVariation(vari);
+		}
 		if (ard.hasId())
 			setId(ard.getId(distinct));
 		if (ard.hasWeights())

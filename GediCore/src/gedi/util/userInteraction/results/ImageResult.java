@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.userInteraction.results;
 
 import javafx.scene.image.Image;

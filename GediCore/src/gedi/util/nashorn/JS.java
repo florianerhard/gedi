@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.nashorn;
 import gedi.app.classpath.ClassPathCache;
 import gedi.util.FileUtils;

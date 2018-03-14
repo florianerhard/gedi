@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.javapipeline;
 
 import java.io.File;
@@ -112,8 +111,15 @@ public class PriceParameterSet extends GediParameterSet {
 	public GediParameter<Boolean> opt = new GediParameter<Boolean>(this,"opt", "Run optimistic codon mapping.", false, new BooleanParameterType());
 	
 	
+	public GediParameter<File> majorIsoformCit = new GediParameter<File>(this,"${prefix}.majorisoform.cit", "Major isoform data.", false, new FileParameterType());
+	
+	public GediParameter<Double> minRpc = new GediParameter<Double>(this,"minRpc", "Minimal reads per codon to test an ORF", false, new DoubleParameterType(),1.0);
+	
+	public GediParameter<String> removeGenes = new GediParameter<String>(this,"removeGenes", "remove genes in this file from analysis", false, new StringParameterType(),true);
+	
+	
 	public GediParameter<File> localTable = new GediParameter<File>(this,"${prefix}.localtest.tsv", "File containing the localtest output table", false, new FileParameterType());
 	public GediParameter<File> localCit = new GediParameter<File>(this,"${prefix}.localtest.cit", "File containing the localtest regions", false, new FileParameterType());
-	public GediParameter<Double> localTableMinCodonFraction = new GediParameter<Double>(this,"minFraction", "Minimal fraction of active codons to test an ORF", false, new DoubleParameterType(),0.5);
+	public GediParameter<String> localContrastsFile = new GediParameter<String>(this,"contrasts", "Contrasts to compute local changes", false, new StringParameterType(),true);
 
 }

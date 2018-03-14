@@ -15,26 +15,25 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import gedi.util.StringUtils;
 
 public class AlignedReadsSoftclip implements AlignedReadsVariation {
 
-	private int position;
+	private boolean p5;
 	private CharSequence read;
 	private boolean isFromSecondRead;
 	
-	public AlignedReadsSoftclip(int position, CharSequence read, boolean isFromSecondRead) {
-		this.position = position;
+	public AlignedReadsSoftclip(boolean p5, CharSequence read, boolean isFromSecondRead) {
+		this.p5 = p5;
 		this.read = read;
 		this.isFromSecondRead = isFromSecondRead;
 	}
 
 	@Override
 	public int getPosition() {
-		return position;
+		return p5?0:Integer.MAX_VALUE;
 	}
 
 	@Override
@@ -76,7 +75,7 @@ public class AlignedReadsSoftclip implements AlignedReadsVariation {
 	
 	@Override
 	public String toString() {
-		return (position==0?"5p":"3p")+read+(isFromSecondRead?"r":"");
+		return (p5?"5p":"3p")+read+(isFromSecondRead?"r":"");
 	}
 
 	@Override
@@ -93,7 +92,7 @@ public class AlignedReadsSoftclip implements AlignedReadsVariation {
 		if (getClass() != obj.getClass())
 			return false;
 		AlignedReadsSoftclip other = (AlignedReadsSoftclip) obj;
-		if (position != other.position)
+		if (p5 != other.p5)
 			return false;
 		if (isFromSecondRead != other.isFromSecondRead)
 			return false;

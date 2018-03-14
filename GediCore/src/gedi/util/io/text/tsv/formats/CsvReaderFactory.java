@@ -15,14 +15,16 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text.tsv.formats;
 
 import gedi.util.ArrayUtils;
+import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
 import gedi.util.io.text.HeaderLine;
 import gedi.util.io.text.LineIterator;
+import gedi.util.orm.Orm;
+import gedi.util.orm.Orm.OrmInfo;
 import gedi.util.parsing.BooleanParser;
 import gedi.util.parsing.DoubleParser;
 import gedi.util.parsing.GenomicRegionParser;
@@ -39,6 +41,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.zip.GZIPInputStream;
 
 import javafx.beans.property.IntegerProperty;
@@ -115,10 +118,6 @@ public class CsvReaderFactory  {
 		}
 		
 		
-		Parser[] p = new Parser[types.length];
-		for (int i=0; i<p.length; i++)
-			p[i] = parsers[types[i]];
-		
 		boolean hasHeader = header.get()==null?(minHeaderType==parsers.length-1 || oneGreater):header.get();
 		
 		String[] headerNames = new String[cols];
@@ -135,6 +134,25 @@ public class CsvReaderFactory  {
 			else 
 				it.next();
 		}
+		
+		
+		// setup parseToObject
+		if (getParseToClass()!=null) {
+			OrmInfo info = Orm.getInfo(getParseToClass());
+			for (int i=0; i<info.getNames().length; i++)
+				setType(info.getNames()[i],info.getClasses()[i]);
+		}
+		
+		Parser[] p = new Parser[types.length];
+		for (int i=0; i<p.length; i++) {
+			if (colToParser.get(i)!=null)
+				p[i] = colToParser.get(i);
+			else if (nameToParser.get(headerNames[i])!=null)
+				p[i] = nameToParser.get(headerNames[i]);
+			else
+				p[i] = parsers[types[i]];
+		}
+		
 		
 		return new CsvReader(name, fields,it,sep,maskQuotes, new HeaderLine(headerNames),p);
 		
@@ -165,8 +183,37 @@ public class CsvReaderFactory  {
 	private IntegerProperty skipLines = new SimpleIntegerProperty(this,"skipLines",0);
 	private ObjectProperty<Character> separator = new SimpleObjectProperty<Character>(this,"separator",null);
 	private ObjectProperty<Parser[]> parsers = new  SimpleObjectProperty<Parser[]>(this,"parsers",DEFAULT_PARSERS);
+	private ObjectProperty<Class<?>> parseToClass = new  SimpleObjectProperty<Class<?>>(this,"parseToClass",null);
+	
+	private HashMap<String,Parser> nameToParser = new HashMap<>();
+	private HashMap<Integer,Parser> colToParser = new HashMap<>();
 	
 	
+	public void setType(int col, Parser parser) {
+		this.colToParser.put(col, parser);
+	}
+	public void setType(String name, Parser parser) {
+		this.nameToParser.put(name, parser);
+	}
+	
+	public void setType(int col, Class<?> type) {
+		Parser[] parsers = getParsers();
+		for (int i=0; i<parsers.length; i++)
+			if (parsers[i].getParsedType()==type || ReflectionUtils.toPrimitveClass(parsers[i].getParsedType())==type) {
+				this.colToParser.put(col, parsers[i]);
+				return;
+			}
+		throw new IllegalArgumentException("No parser for "+type);
+	}
+	public void setType(String name, Class<?> type) {
+		Parser[] parsers = getParsers();
+		for (int i=0; i<parsers.length; i++)
+			if (parsers[i].getParsedType()==type || ReflectionUtils.toPrimitveClass(parsers[i].getParsedType())==type) {
+				this.nameToParser.put(name, parsers[i]);
+				return;
+			}
+		throw new IllegalArgumentException("No parser for "+type);
+	}
 	
 	
 	public static final char[] separators = {'\t',';',',',' ','|','#','&'};
@@ -282,5 +329,18 @@ public class CsvReaderFactory  {
 	}
 
 	
+	public final ObjectProperty<Class<?>> parseToClassProperty() {
+		return this.parseToClass;
+	}
+
+	public final Class<?> getParseToClass() {
+		return this.parseToClassProperty().get();
+	}
+
+	public final CsvReaderFactory setParseToClass(final Class<?> parsers) {
+		this.parseToClassProperty().set(parsers);
+		return this;
+	}
+
 	
 }

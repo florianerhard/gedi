@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.proteomics.digest;
 
 import java.util.function.Predicate;

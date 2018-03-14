@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region;
 
 import gedi.core.genomic.Genomic;
@@ -41,6 +40,11 @@ public class ImmutableReferenceGenomicRegion<D> implements ReferenceGenomicRegio
 		this.reference = reference;
 		this.region = region;
 		this.data = data;
+	}
+	
+	@Override
+	public boolean isMutable() {
+		return false;
 	}
 
 	public ReferenceSequence getReference() {

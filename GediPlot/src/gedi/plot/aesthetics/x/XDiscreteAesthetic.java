@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.plot.aesthetics.x;
 
 import java.util.function.ToDoubleFunction;

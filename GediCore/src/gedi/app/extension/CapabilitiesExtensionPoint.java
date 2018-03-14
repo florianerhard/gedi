@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.app.extension;
 
 import java.lang.reflect.InvocationTargetException;

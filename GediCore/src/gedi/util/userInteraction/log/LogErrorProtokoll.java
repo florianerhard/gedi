@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.userInteraction.log;
 
 import java.util.logging.Level;

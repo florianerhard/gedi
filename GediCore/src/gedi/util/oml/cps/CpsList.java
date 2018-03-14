@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.oml.cps;
 
 import gedi.util.dynamic.DynamicObject;

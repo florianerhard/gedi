@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.sra.probing;
 
 public interface Probing {

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.proteomics.molecules.properties.mass;
 
 public class Mass implements Comparable<Mass> {

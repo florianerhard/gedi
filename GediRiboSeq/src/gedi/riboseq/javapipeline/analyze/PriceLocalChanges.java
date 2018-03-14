@@ -15,14 +15,14 @@
  *   limitations under the License.
  * 
  */
-
-package gedi.riboseq.javapipeline;
+package gedi.riboseq.javapipeline.analyze;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleFunction;
 
@@ -39,7 +39,9 @@ import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.special.Downsampling;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
+import gedi.riboseq.javapipeline.PriceParameterSet;
 import gedi.util.ArrayUtils;
+import gedi.util.FileUtils;
 import gedi.util.SequenceUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
@@ -66,7 +68,8 @@ public class PriceLocalChanges extends GediProgram {
 		addInput(params.prefix);
 		addInput(params.optcodons);
 		addInput(params.genomic);
-		addInput(params.localTableMinCodonFraction);
+		addInput(params.localContrastsFile);
+		addInput(params.orfs);
 		
 		addOutput(params.localTable);
 		addOutput(params.localCit);
@@ -76,7 +79,24 @@ public class PriceLocalChanges extends GediProgram {
 		
 		File cfile = getParameter(1);
 		Genomic g = getParameter(2);
-		double minFrac = getDoubleParameter(3);
+		String contr = getParameter(3);
+		File orfs = getParameter(4);
+		
+		
+		
+		String[] conditions = new CenteredDiskIntervalTreeStorage<>(orfs.getAbsolutePath()).getMetaDataConditions();
+		HashMap<String, Integer> condIndex = ArrayUtils.createIndexMap(conditions);
+		
+		LinkedHashMap<String, MutablePair<ToDoubleFunction<NumericArray>, ToDoubleFunction<NumericArray>>> contrasts = new LinkedHashMap<>();
+		
+		if (contr==null && conditions.length==2)
+			contrasts.put(conditions[0]+"/"+conditions[1], new MutablePair<>(a->a.getDouble(0), a->a.getDouble(1)));
+		else if (contr!=null)
+			for (String[] a : EI.lines(contr).skip(1).map(s->StringUtils.split(s, '\t')).loop()) 
+				contrasts.put(a[0], new MutablePair<ToDoubleFunction<NumericArray>, ToDoubleFunction<NumericArray>>(createContrastPart(a[1],condIndex),createContrastPart(a[2],condIndex)));
+		else throw new RuntimeException("When the number of conditions is not 2, specify contrasts file!");
+		
+		String[] names = contrasts.keySet().toArray(new String[0]);
 		
 		CenteredDiskIntervalTreeStorage<SparseMemoryFloatArray> codons = new CenteredDiskIntervalTreeStorage<>(cfile.getAbsolutePath());
 		MemoryIntervalTreeStorage<Transcript> cds = new MemoryIntervalTreeStorage<>(Transcript.class);
@@ -88,13 +108,22 @@ public class PriceLocalChanges extends GediProgram {
 		
 		HashMap<String, String> t2g = g.getTranscripts().ei().index(r->r.getData().getTranscriptId(),r->r.getData().getGeneId());
 		
-		LineWriter writer = new LineOrientedFile(getOutputFile(0).getPath()).write();
-		writer.write("Location\tGene\tSymbol\tTranscript\tGenomic position\tPosterior\n");
+		
+		LineWriter[] writers = new LineWriter[names.length]; 
+		CenteredDiskIntervalTreeStorage<ScoreNameAnnotation>[] cits = new CenteredDiskIntervalTreeStorage[names.length];
+		IterateIntoSink<ImmutableReferenceGenomicRegion<ScoreNameAnnotation>>[] sinks = new IterateIntoSink[names.length];
+		
+		for (int i=0; i<writers.length; i++) {
+			LineWriter writer = new LineOrientedFile(FileUtils.insertSuffixBeforeExtension(getOutputFile(0).getPath(),"."+names[i])).write();
+			writer.write("Location\tGene\tSymbol\tTranscript\tGenomic position\tPosterior\n");
+			writers[i] = writer;
+			
+			cits[i] = new CenteredDiskIntervalTreeStorage<>(FileUtils.insertSuffixBeforeExtension(getOutputFile(1).getPath(),"."+names[i]),ScoreNameAnnotation.class);
+			sinks[i] = new IterateIntoSink<>(cits[i]::fill);
+		}
 
 		
 		
-		CenteredDiskIntervalTreeStorage<ScoreNameAnnotation> cit = new CenteredDiskIntervalTreeStorage<>(getOutputFile(1).getPath(),ScoreNameAnnotation.class);
-		IterateIntoSink<ImmutableReferenceGenomicRegion<ScoreNameAnnotation>> sink = new IterateIntoSink<>(cit::fill);
 		
 		Progress progress = context.getProgress();
 		progress.init();
@@ -118,46 +147,65 @@ public class PriceLocalChanges extends GediProgram {
 				if (map.size()>1)
 					removeNonMaximal(map,a->a==null?0:a.sum());
 
-				if (map.size()>0 && fraction>=minFrac){
+				if (map.size()>0 && fraction>=0.5){
+					
 					GenomicRegion region = map.keySet().iterator().next();
 					NumericArray[] profile = map.get(region);
 					
-					String trans = group.get(region).getTranscriptId();
-					
-//					if (g.getGeneTable("symbol").apply(t2g.get(trans)).equals("APEX1"))
-//						System.out.println();
-//					ArrayList<MutablePair<GenomicRegion, double[]>> regions = computeLocalPvalues(profile,1E-5,0,Downsampling.No,Downsampling.Max);
-					ArrayList<MutablePair<GenomicRegion,MutableDouble>> regions = computeLocalPosterior(profile,0.9,0.01,Downsampling.No,Downsampling.No);
-					ImmutableReferenceGenomicRegion<Void> parent = new ImmutableReferenceGenomicRegion<>(ref, region);
-					
-					for (MutablePair<GenomicRegion,MutableDouble> reg : regions) {
-						ImmutableReferenceGenomicRegion<ScoreNameAnnotation> rgr = new ImmutableReferenceGenomicRegion<>(ref, 
-								parent.map(reg.Item1.pep2dna()), new ScoreNameAnnotation(trans, reg.Item2.N));
-						sink.put(rgr);
+					for (int i=0; i<names.length; i++) {
 						
-						writer.writef2("%s\t%s\t%s\t%s\t%s\t%.5f\n", 
-								orf.setRegion(region),
-								t2g.get(trans),
-								g.getGeneTable("symbol").apply(t2g.get(trans)),
-								trans,
-								rgr.toLocationString(),
-								reg.Item2.N
-								);
-						n++;
+						String trans = group.get(region).getTranscriptId();
+						
+	//					if (g.getGeneTable("symbol").apply(t2g.get(trans)).equals("APEX1"))
+	//						System.out.println();
+	//					ArrayList<MutablePair<GenomicRegion, double[]>> regions = computeLocalPvalues(profile,1E-5,0,Downsampling.No,Downsampling.Max);
+						ArrayList<MutablePair<GenomicRegion,MutableDouble>> regions = computeLocalPosterior(profile,0.9,0.01,Downsampling.No,Downsampling.No,contrasts.get(names[i]).Item1,contrasts.get(names[i]).Item2);
+						ImmutableReferenceGenomicRegion<Void> parent = new ImmutableReferenceGenomicRegion<>(ref, region);
+						
+						for (MutablePair<GenomicRegion,MutableDouble> reg : regions) {
+							ImmutableReferenceGenomicRegion<ScoreNameAnnotation> rgr = new ImmutableReferenceGenomicRegion<>(ref, 
+									parent.map(reg.Item1.pep2dna()), new ScoreNameAnnotation(trans, reg.Item2.N));
+							sinks[i].put(rgr);
+							
+							writers[i].writef2("%s\t%s\t%s\t%s\t%s\t%.5f\n", 
+									orf.setRegion(region),
+									t2g.get(trans),
+									g.getGeneTable("symbol").apply(t2g.get(trans)),
+									trans,
+									rgr.toLocationString(),
+									reg.Item2.N
+									);
+							n++;
+						}
 					}
 					
 				}
 				progress.incrementProgress();
 			}
 		}
-		
-		sink.finish();
+		for (IterateIntoSink<ImmutableReferenceGenomicRegion<ScoreNameAnnotation>> sink : sinks)
+			sink.finish();
 		progress.finish();
 		
-		writer.close();
+		for (LineWriter writer : writers)
+			writer.close();
 		
 		
 		return null;
+	}
+
+
+	private ToDoubleFunction<NumericArray> createContrastPart(String d, HashMap<String, Integer> condIndex) {
+		int[] ind = EI.split(d, '+').mapToDouble(condIndex::get).toIntArray();
+		if (ind.length==0)
+			return a->a.getDouble(ind[0]);
+		else
+			return a->{
+				double re = 0;
+				for (int i : ind)
+					re+=a.getDouble(i);
+				return re;
+			};
 	}
 
 	public static double posteriorDifferentProportions(double a, double b, double c,double d, double priorDifferent) {
@@ -175,14 +223,21 @@ public class PriceLocalChanges extends GediProgram {
 	}
 
 	
-	private ArrayList<MutablePair<GenomicRegion,MutableDouble>> computeLocalPosterior(NumericArray[] profile, double cutoff, double priorDifferent, Downsampling innerDownsampling, Downsampling outerDownsampling) {
+	private ArrayList<MutablePair<GenomicRegion,MutableDouble>> computeLocalPosterior(NumericArray[] profile, double cutoff, double priorDifferent, Downsampling innerDownsampling, Downsampling outerDownsampling, ToDoubleFunction<NumericArray> a, ToDoubleFunction<NumericArray> b) {
 		
 		IntervalTree<GenomicRegion, Double> re = new IntervalTree<>(null);
+		int d = EI.wrap(profile).removeNulls().first().length();
 		
-		NumericArray all = EI.wrap(profile).removeNulls().reduce(NumericArray.createMemory(2, NumericArrayType.Double),(a,ret)->{ret.add(outerDownsampling.downsample(a.copy())); return ret;});
-		NumericArray buffer = NumericArray.createMemory(2, NumericArrayType.Double);
+		NumericArray all = EI.wrap(profile).removeNulls()
+				.reduce(NumericArray.createMemory(d, NumericArrayType.Double),
+						(arr,ret)->{
+							ret.add(outerDownsampling.downsample(arr.copy())); 
+							return ret;
+							}
+						);
+		NumericArray buffer = NumericArray.createMemory(d, NumericArrayType.Double);
 		
-		NumericArray inner = NumericArray.createMemory(2, NumericArrayType.Double);
+		NumericArray inner = NumericArray.createMemory(d, NumericArrayType.Double);
 		
 		for (int i=0; i<profile.length; i++) {
 			
@@ -195,7 +250,7 @@ public class PriceLocalChanges extends GediProgram {
 					inner.add(innerDownsampling.downsample(profile[i+l].copy()));
 //					double pval = DirichletLikelihoodRatioTest.testMultinomials(inner.toDoubleArray(),buffer.toDoubleArray());
 //					double es = DirichletLikelihoodRatioTest.effectSizeMultinomials(inner.toDoubleArray(),buffer.toDoubleArray());
-					double post = posteriorDifferentProportions(inner.getDouble(0), inner.getDouble(1), buffer.getDouble(0), buffer.getDouble(1), priorDifferent);
+					double post = posteriorDifferentProportions(a.applyAsDouble(inner), b.applyAsDouble(inner), a.applyAsDouble(buffer), b.applyAsDouble(buffer), priorDifferent);
 					if (post>=cutoff)
 						re.put(new ArrayGenomicRegion(i,i+l+1),post);
 				}

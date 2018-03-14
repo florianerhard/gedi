@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package net.sf.cglib.proxy;
 
 class DBean2 {

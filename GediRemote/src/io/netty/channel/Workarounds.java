@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package io.netty.channel;
 
 import io.netty.channel.ChannelHandler;

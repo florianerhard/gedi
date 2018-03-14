@@ -60,7 +60,7 @@ for (var name in nameToModeAndFiles) {
 	var mode = nameToModeAndFiles[name][0];
 	var files = EI.wrap(nameToModeAndFiles[name][1]).concat(" ");
 	adapter = nameToModeAndFiles[name][2];
-	trimmed = nameToModeAndFiles[name][3];
+	trimmed = trimmed||nameToModeAndFiles[name][3];
 	barcodes = nameToModeAndFiles[name][4];
 	processTemplate("shortread_mapping1.sh",output.file.getParent()+"/"+name+".bash");
 	prerunner(name); print(output.file.getParent()+"/"+name+".bash"); tokens.push(postrunner(name)); println(""); 

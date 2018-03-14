@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.tree.suffixTree.tree.index;
 
 public abstract class AbstractDoubleIndexer extends AbstractIndexer<double[]> {

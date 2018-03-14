@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.analysis;
 
 import gedi.core.region.feature.GenomicRegionFeature;

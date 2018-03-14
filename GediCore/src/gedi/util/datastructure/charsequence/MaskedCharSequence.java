@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.charsequence;
 
 import gedi.core.region.ArrayGenomicRegion;

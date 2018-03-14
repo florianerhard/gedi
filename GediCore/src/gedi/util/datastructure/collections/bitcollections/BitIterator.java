@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.collections.bitcollections;
 
 import cern.colt.bitvector.BitVector;

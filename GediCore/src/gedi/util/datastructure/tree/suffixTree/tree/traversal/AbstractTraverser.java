@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.tree.suffixTree.tree.traversal;
 
 import gedi.util.datastructure.tree.suffixTree.tree.SuffixTree;

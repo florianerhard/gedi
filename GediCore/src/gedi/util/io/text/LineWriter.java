@@ -15,11 +15,12 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text;
 
+import gedi.util.FileUtils;
 import gedi.util.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
 
@@ -120,6 +121,12 @@ public interface LineWriter extends AutoCloseable {
 			public void close() throws IOException {
 			}
 		};
+	}
+	
+	public static LineWriter tmp(boolean deleteOnExit) throws IOException {
+		File f = File.createTempFile("tmp", ".tmp");
+		if (deleteOnExit) f.deleteOnExit();
+		return new LineOrientedFile(f.getPath()).write();
 	}
 	
 }

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.processing;
 
 import java.io.IOException;
@@ -53,6 +52,10 @@ public class FillStorageProcessor implements GenomicRegionProcessor {
 		@Override
 		public Object getData() {
 			return null;
+		}
+		
+		public boolean isMutable() {
+			return false;
 		}
 	};
 	

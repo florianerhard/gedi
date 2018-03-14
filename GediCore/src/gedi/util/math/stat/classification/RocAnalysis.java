@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.stat.classification;
 
 import gedi.util.io.text.LineOrientedFile;

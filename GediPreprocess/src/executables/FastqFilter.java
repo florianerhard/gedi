@@ -15,16 +15,23 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 
 import gedi.app.Gedi;
+import gedi.core.region.ArrayGenomicRegion;
+import gedi.core.region.GenomicRegion;
 import gedi.core.region.feature.output.PlotReport;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
+import gedi.util.SequenceUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
@@ -35,6 +42,7 @@ import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.io.text.LineIterator;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.io.text.LineWriter;
 import gedi.util.math.stat.binning.IntegerBinning;
 import gedi.util.math.stat.counting.Counter;
 import gedi.util.math.stat.counting.ItemCount;
@@ -79,11 +87,13 @@ public class FastqFilter {
 			System.err.println(message);
 			System.err.println();
 		}
-		System.err.println("FastqFilter [-ld <file>] [-min <length>] <input.fastq>");
+		System.err.println("FastqFilter [-ld <file>] [-min <length>] <input.fastq> [<partner.fastq>]");
 		System.err.println();
 		System.err.println("Filters fastq files for read length, writes length distribution and reindexes reads (integral).");
 		System.err.println("Options:");
 		System.err.println(" -min <length>\t\t\tMinimal length to keep reads (default: 18)");
+		System.err.println(" -extract <from-to>\t\t\tExtract from read (trimming; e.g. 10-60: remove first 10 bases, take only next 50 bases)");
+		System.err.println(" -overwrite\t\t\tInstead of writing to stdout, overwrite the input files!");
 		System.err.println(" -ld <file>\t\t\tWrite length distribution (and plot it)");
 		System.err.println(" -h\t\t\tShow this message");
 		System.err.println(" -D\t\t\tOutput debugging information");
@@ -113,9 +123,10 @@ public class FastqFilter {
 		
 		Gedi.startup(true);
 		
-		
+		boolean overwrite = false;
 		int len = 18;
 		String ld = null;
+		ArrayGenomicRegion extract = null;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -127,6 +138,12 @@ public class FastqFilter {
 			else if (args[i].equals("-min")) {
 				len = checkIntParam(args, ++i);
 			}
+			else if (args[i].equals("-overwrite")) {
+				overwrite = true;
+			}
+			else if (args[i].equals("-extract")) {
+				extract = GenomicRegion.parse(checkParam(args, ++i));
+			}
 			else if (args[i].equals("-ld")) {
 				ld = checkParam(args, ++i);
 			}
@@ -136,26 +153,89 @@ public class FastqFilter {
 				break;
 		}
 		
-		String inp = checkParam(args, i);
+		String inp = checkParam(args, i++);
+		String inp2 = i<args.length?checkParam(args, i):null;
 
 		Counter<Integer> histo = new Counter<>("Read length",1);
 		
+		LineWriter out1;
+		LineWriter out2;
+		Runnable finish = ()->{};
+		if(!overwrite) {
+			out1 = out2 = new LineOrientedFile().write();
+		} else {
+			out1 = LineWriter.tmp(true);
+			out2 = inp2!=null?LineWriter.tmp(true):null;
+			finish = ()->{
+				try {
+					Files.move(Paths.get(out1.toString()), Paths.get(inp), StandardCopyOption.REPLACE_EXISTING);
+					if (inp2!=null)
+						Files.move(Paths.get(out2.toString()), Paths.get(inp2), StandardCopyOption.REPLACE_EXISTING);
+				} catch (IOException e) {
+					throw new RuntimeException("Could not overwrite!",e);
+				}
+				
+			};
+		}
+		
 		int n = 0;
 		LineIterator it = new LineOrientedFile(inp).lineIterator();
-		while (it.hasNext()) {
-			it.next();
-			String seq = it.next();
-			it.next();
-			String q = it.next();
-			histo.add(seq.length());
-			if (seq.length()>=len) {
-				System.out.print("@");
-				System.out.println(n++);
-				System.out.println(seq);
-				System.out.println("+");
-				System.out.println(q);
+		if (inp2==null) {
+			
+			while (it.hasNext()) {
+				it.next();
+				String seq = it.next();
+				it.next();
+				String q = it.next();
+				if (extract!=null) {
+					q = SequenceUtils.extractSequence(extract, q);
+					seq = SequenceUtils.extractSequence(extract, seq);
+				}
+				histo.add(seq.length());
+				if (seq.length()>=len) {
+					out1.writeLine("@"+n++);
+					out1.writeLine(seq);
+					out1.writeLine("+");
+					out1.writeLine(q);
+				}
 			}
+			out1.close();
 		}
+		else {
+			LineIterator it2 = new LineOrientedFile(inp2).lineIterator();
+			while (it.hasNext() && it2.hasNext()) {
+				it.next();					it2.next();
+				String seq1 = it.next(); 	String seq2 = it2.next();
+				it.next();					it2.next();
+				String q1 = it.next();		String q2 = it2.next();
+				histo.add(seq1.length()+seq2.length());
+				
+				if (extract!=null) {
+					q1 = SequenceUtils.extractSequence(extract, q1);
+					seq1 = SequenceUtils.extractSequence(extract, seq1);
+				}
+				
+				if (extract!=null) {
+					q2 = SequenceUtils.extractSequence(extract, q2);
+					seq2 = SequenceUtils.extractSequence(extract, seq2);
+				}
+				if (seq1.length()+seq2.length()>=len) {
+					out1.writeLine("@"+n);
+					out1.writeLine(seq1);
+					out1.writeLine("+");
+					out1.writeLine(q1);
+					out2.writeLine("@"+n++);
+					out2.writeLine(seq2);
+					out2.writeLine("+");
+					out2.writeLine(q2);
+				}
+			}
+			if (it.hasNext() || it2.hasNext())
+				throw new RuntimeException("Input files do not match!");
+			out1.close(); out2.close();
+		}
+		
+		finish.run();
 		
 		if (ld!=null) {
 			histo.sort();

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.program;
 
 import java.io.File;
@@ -32,6 +31,8 @@ import java.util.logging.Logger;
 import gedi.app.Gedi;
 import gedi.util.StringUtils;
 import gedi.util.functions.EI;
+import gedi.util.io.text.LineOrientedFile;
+import gedi.util.io.text.LineWriter;
 import gedi.util.job.ExecutionContext;
 import gedi.util.job.Job;
 import gedi.util.job.PetriNet;
@@ -158,6 +159,12 @@ public abstract class GediProgram {
 		return outputSpec.get(i).getFile();
 	}
 
+	public LineWriter getOutputWriter(int i) {
+		String path = getOutputFile(i).getAbsolutePath();
+		return new LineOrientedFile(path).write();
+	}
+
+	
 	public String getName() {
 		return name;
 	}

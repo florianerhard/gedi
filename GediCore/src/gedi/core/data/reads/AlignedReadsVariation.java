@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import gedi.util.StringUtils;
@@ -102,10 +101,10 @@ public interface AlignedReadsVariation extends Comparable<AlignedReadsVariation>
 			return new AlignedReadsDeletion(pos, rest,second);
 		
 		if (s.startsWith("5"))
-			return new AlignedReadsSoftclip(pos, rest,second);
+			return new AlignedReadsSoftclip(true, rest,second);
 		
 		if (s.startsWith("3"))
-			return new AlignedReadsSoftclip(pos, rest,second);
+			return new AlignedReadsSoftclip(false, rest,second);
 		
 		throw new IllegalArgumentException("Must start with M/I/D: "+s);
 	}

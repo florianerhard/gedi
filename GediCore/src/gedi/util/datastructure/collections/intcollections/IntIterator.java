@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.collections.intcollections;
 
 import gedi.util.FunctorUtils.FilteredIntIterator;

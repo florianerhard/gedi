@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region.feature.output;
 
 import gedi.core.region.feature.GenomicRegionFeature;
@@ -214,9 +213,9 @@ public class FeatureStatisticOutput extends OutputFeature {
 	public void end() {
 	}
 	
-	public boolean needsMelt() {
-		return total.length()>1;
-	}
+//	public boolean needsMelt() {
+//		return total.length()>1;
+//	}
 	
 	@Override
 	public FeatureStatisticOutput addResultProducers(ArrayList<ResultProducer> re) {
@@ -372,7 +371,7 @@ public class FeatureStatisticOutput extends OutputFeature {
 			
 			for (Barplot plot : plots) {
 				plot.setName(getId());
-				plot.plot(out,isFinal,inputs,needsMelt());
+				plot.plot(out,isFinal,inputs,true);
 			}
 			
 		} catch (IOException e) {

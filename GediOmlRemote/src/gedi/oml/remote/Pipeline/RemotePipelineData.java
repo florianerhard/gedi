@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.oml.remote.Pipeline;
 
 import gedi.core.reference.Chromosome;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.lfc.localtest.javapipeline;
 
 import java.io.File;

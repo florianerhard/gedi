@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.startup;
 
 import gedi.app.Startup;

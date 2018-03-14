@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.algorithm.clustering.hierarchical;
 
 import java.util.ArrayList;

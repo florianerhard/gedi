@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.gtracks.rendering.target;
 
 import java.awt.Dimension;

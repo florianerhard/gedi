@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import gedi.app.Config;
@@ -258,13 +257,17 @@ public class IndexGenome {
 				
 				
 				for (GenbankFeature f : file.featureIterator(features).loop()) {
-					ImmutableReferenceGenomicRegion<String[]> r = new ImmutableReferenceGenomicRegion<>(
-							ref.toStrand(f.getPosition().getStrand()),
-							f.getPosition().toGenomicRegion(), new String[] {f.getStringValue(ename),f.getStringValue("protein_id")});
-					HashMap<String, ImmutableReferenceGenomicRegion<String[]>> map = featureMap.computeIfAbsent(f.getStringValue(elabel), x->new HashMap<>());
-					if (map.containsKey(f.getFeatureName()))
-						throw new RuntimeException(f.getStringValue(elabel)+" contains more than one "+f.getFeatureName());
-					map.put(f.getFeatureName(), r);
+					String key = f.getStringValue(elabel);
+					key = key.replaceAll(" ", "_");
+					if (key!=null) {
+						ImmutableReferenceGenomicRegion<String[]> r = new ImmutableReferenceGenomicRegion<>(
+								ref.toStrand(f.getPosition().getStrand()),
+								f.getPosition().toGenomicRegion(), new String[] {key,f.getStringValue("protein_id")});
+						HashMap<String, ImmutableReferenceGenomicRegion<String[]>> map = featureMap.computeIfAbsent(key, x->new HashMap<>());
+						if (map.containsKey(f.getFeatureName()))
+							throw new RuntimeException(f.getStringValue(elabel)+" contains more than one "+f.getFeatureName());
+						map.put(f.getFeatureName(), r);
+					}
 				}
 				
 			} else {
@@ -516,6 +519,11 @@ public class IndexGenome {
 							progress.init().setDescription("Downloading fasta from ensembl: "+ensemblOrg+" "+ensemblVer);
 							String path = "ftp://ftp.ensembl.org/pub/release-"+ensemblVer+"/fasta/"+ensemblOrg+"/dna/";
 							String file = EI.wrap(FileUtils.getFtpFolder(path)).filter(s->s.endsWith(".dna.primary_assembly.fa.gz")).first();
+							if (file==null) {
+								file = EI.wrap(FileUtils.getFtpFolder(path)).filter(s->s.endsWith(".dna.toplevel.fa.gz")).first();
+								if (file!=null)
+									System.err.println("Warning: Downloading toplevel version of genome. Check for patches and haplotypes!");
+							}
 							FileUtils.downloadGunzip(new File(fastaPath),path+file,progress);
 							progress.finish();
 						}

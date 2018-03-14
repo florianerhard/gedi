@@ -28,3 +28,4 @@ do
 done
 
 java $xp$d$p$tmpfolder$add -Xmx8192m -Xms2048m -cp `dirname $0`/gedi.jar:`dirname $0`/lib/.* $e"$@"
+

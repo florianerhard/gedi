@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.job.pipeline;
 
 import gedi.util.io.text.LineWriter;

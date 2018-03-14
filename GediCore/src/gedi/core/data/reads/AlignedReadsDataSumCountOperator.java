@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import java.util.function.BinaryOperator;

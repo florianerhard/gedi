@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import gedi.app.Gedi;
@@ -40,6 +39,7 @@ import gedi.util.FileUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
+import gedi.util.datastructure.tree.Trie;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -166,7 +166,7 @@ public class MergeSam {
 			else if (args[i].equals("-t")) {
 				table = checkParam(args,++i);
 			}
-			else if (args[i].equals("-g")) {
+			else if (args[i].equals("-genomic")) {
 				ArrayList<String> gnames = new ArrayList<>();
 				i = checkMultiParam(args, ++i, gnames);
 				genomic = gnames.toArray(new String[0]);
@@ -262,10 +262,14 @@ public class MergeSam {
 			uprioPipeline.begin();
 		}
 		
+		Trie<String> genotrie = new Trie<String>();
+		for (String gg : genomic)
+			genotrie.put(gg, gg);
+		
 		boolean uremoveNonStandard = removeNonStandard;
 		ExtendedIterator<ReferenceGenomicRegion<MergeData>>[] iterators = 
 				EI.wrap(mo).map(m->m.iterator()
-						.iff(uremoveNonStandard, ei->ei.filter(rgr->rgr.getReference().isStandard()))
+						.iff(uremoveNonStandard, ei->ei.filter(rgr->rgr.getReference().isStandard() || !genotrie.getByPrefix(rgr.getReference().getName()).isEmpty()))
 						).toArray(new ExtendedIterator[0]);
 		
 		LineWriter unmappedOut = unmapped?new LineOrientedFile(FileUtils.getFullNameWithoutExtension(output)+".unmapped.fasta").write():null;
@@ -653,6 +657,7 @@ public class MergeSam {
 			HashMap<String, Object> map = new HashMap<String,Object>();
 			map.put(AlignedReadsData.HASIDATTRIBUTE,1);
 			map.put(AlignedReadsData.HASWEIGHTATTRIBUTE,0);
+			map.put(AlignedReadsData.HASGEOMETRYATTRIBUTE,0);
 			map.put(AlignedReadsData.CONDITIONSATTRIBUTE,1);
 			out.getContext().setGlobalInfo(DynamicObject.from(map));
 		}
@@ -662,6 +667,7 @@ public class MergeSam {
 			HashMap<String, Object> map = new HashMap<String,Object>();
 			map.put(AlignedReadsData.HASIDATTRIBUTE,1);
 			map.put(AlignedReadsData.HASWEIGHTATTRIBUTE,0);
+			map.put(AlignedReadsData.HASGEOMETRYATTRIBUTE,0);
 			map.put(AlignedReadsData.CONDITIONSATTRIBUTE,1);
 			in.getContext().setGlobalInfo(DynamicObject.from(map));
 		}

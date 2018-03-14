@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region.feature.output;
 
 import gedi.core.region.feature.GenomicRegionFeatureProgram;

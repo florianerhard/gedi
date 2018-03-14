@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.mapper;
 
 import gedi.core.data.annotation.MappedReferenceSequencesProvider;
@@ -110,6 +109,9 @@ public class StorageSource<D> implements GenomicRegionDataSource<IntervalTree<Ge
 					storage.getRegionsIntersecting(reference.toPlusStrand(), region, re);
 				if (filter==null || filter==Strand.Minus)
 					storage.getRegionsIntersecting(reference.toMinusStrand(), region, re);
+				if (filter==Strand.Plus && !storage.getReferenceSequences().contains(reference.toPlusStrand()) && storage.getReferenceSequences().contains(reference))
+					storage.getRegionsIntersecting(reference, region, re);
+				
 			}
 			
 		return re;

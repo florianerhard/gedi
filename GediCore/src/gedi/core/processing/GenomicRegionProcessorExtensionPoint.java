@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.processing;
 
 import gedi.app.extension.DefaultExtensionPoint;

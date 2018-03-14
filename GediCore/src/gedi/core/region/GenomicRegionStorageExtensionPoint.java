@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region;
 
 import gedi.app.extension.CapabilitiesExtensionPoint;

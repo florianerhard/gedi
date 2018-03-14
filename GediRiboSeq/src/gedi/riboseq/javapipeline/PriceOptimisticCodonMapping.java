@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.javapipeline;
 
 import java.io.File;
@@ -120,7 +119,7 @@ public class PriceOptimisticCodonMapping extends GediProgram {
 		CodonInference ci = new CodonInference(model,g)
 		.setFilter(filter)
 		.setRegularization(delta)
-		.setAllowedOrfs(allowed,0.01);
+		.setAllowedOrfs(allowed,0.0);
 		
 		
 		context.getLog().log(Level.INFO, "Optimistically map codons to identified or annotated ORFs");

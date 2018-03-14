@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region;
 
 import gedi.core.data.annotation.GenomicRegionMappable;
@@ -59,6 +58,8 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	default <T> ImmutableReferenceGenomicRegion<T> toImmutable(T data) {
 		return new ImmutableReferenceGenomicRegion<T>(getReference(), getRegion(), data);
 	}
+	
+	boolean isMutable();
 	
 	default int compareTo(ReferenceGenomicRegion<D> o) {
 		int re = getReference().compareTo(o.getReference());

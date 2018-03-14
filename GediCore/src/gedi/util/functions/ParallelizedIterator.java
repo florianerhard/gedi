@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.functions;
 
 import java.lang.reflect.Array;

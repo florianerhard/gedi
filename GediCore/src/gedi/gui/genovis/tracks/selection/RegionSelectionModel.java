@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.genovis.tracks.selection;
 
 import gedi.core.region.ImmutableReferenceGenomicRegion;

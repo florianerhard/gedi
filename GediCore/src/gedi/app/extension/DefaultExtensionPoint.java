@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.app.extension;
 
 import java.lang.reflect.InvocationTargetException;
@@ -64,6 +63,10 @@ public class DefaultExtensionPoint<C,T> implements ExtensionPoint<C,T> {
 	
 	public ExtendedIterator<T> getExtensions(ExtensionContext ctx) {
 		return EI.wrap(ext.keySet()).map(k->get(ctx,k));
+	}
+	
+	public ExtendedIterator<Class<? extends T>> getExtensionClasses() {
+		return EI.wrap(ext.values());
 	}
 	
 	

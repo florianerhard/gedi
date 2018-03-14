@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.stat.kernel;
 
 public class SingletonKernel implements Kernel {

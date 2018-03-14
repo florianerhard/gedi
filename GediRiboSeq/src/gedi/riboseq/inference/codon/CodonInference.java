@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.inference.codon;
 
 import gedi.core.data.reads.AlignedReadsData;
@@ -376,7 +375,7 @@ public class CodonInference {
 		
 		MultiConditionReadsXCodonMatrix m;
 		if (allowedOrfs!=null) {
-			m = new MultiConditionReadsXCodonMatrix(model,ReadCountMode.Unique,1E-3,allowedProbCutoff);
+			m = new MultiConditionReadsXCodonMatrix(model,ReadCountMode.Weight,1E-3,allowedProbCutoff);
 			m.setAllowed(allowedOrfs.getTree(reference));
 		} else {
 			m = new MultiConditionReadsXCodonMatrix(model,ReadCountMode.Weight,1E-3,allowedProbCutoff);

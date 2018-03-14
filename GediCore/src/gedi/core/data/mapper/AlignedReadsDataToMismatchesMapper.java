@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.mapper;
 
 import gedi.core.data.numeric.GenomicNumericProvider.SpecialAggregators;
@@ -62,7 +61,7 @@ public class AlignedReadsDataToMismatchesMapper implements GenomicRegionDataMapp
 			}
 			@Override
 			public int getTotal(int conditions) {
-				return 4;
+				return 5;
 			}
 		};
 
@@ -123,7 +122,14 @@ public class AlignedReadsDataToMismatchesMapper implements GenomicRegionDataMapp
 						NumericArray vals = re.getValues(block);
 						for (int c=0; c<numCond; c++) {
 							
-							int t = type.getIndex(c,ard.getMismatchGenomic(d, v).charAt(0),ard.getMismatchRead(d, v).charAt(0));
+							char g = ard.getMismatchGenomic(d, v).charAt(0);
+							char r = ard.getMismatchRead(d, v).charAt(0);
+							if (ard.isVariationFromSecondRead(d, v)) {
+								g = SequenceUtils.getDnaComplement(g);
+								r = SequenceUtils.getDnaComplement(r);
+							}
+							
+							int t = type.getIndex(c,g,r);
 							
 							double p = vals.getDouble(t);
 							if (Double.isNaN(p))

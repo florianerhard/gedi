@@ -15,16 +15,21 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.sra.processing;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
+
+import gedi.util.io.text.LineWriter;
 
 public class DebugSraProcessor implements SraProcessor {
 
+
 	@Override
-	public String process(String sra, Function<SraTopLevel, Object> parser, Function<SraTopLevel, String> src) {
-		return "debug";
+	public boolean process(String sra, Function<SraTopLevel, Object> parser, Function<SraTopLevel, String> src,
+			LineWriter out) {
+		out.write2("debug");
+		return false;
 	}
 
 }

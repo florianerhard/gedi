@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.oml.petrinet;
 
 import gedi.core.region.feature.GenomicRegionFeature;

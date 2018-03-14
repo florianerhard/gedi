@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.dynamic;
 
 import java.io.File;
@@ -36,6 +35,7 @@ import java.util.function.Function;
 import javax.json.Json;
 import javax.lang.model.type.NullType;
 
+import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.ParseUtils;
 import gedi.util.ReflectionUtils;
@@ -304,6 +304,15 @@ public interface DynamicObject {
 		return new DoubleDynamicObject(a);
 	}
 
+	public static DynamicObject from(double[] a) {
+		return new ArrayDynamicObject(ArrayUtils.box(a));
+	}
+
+	public static DynamicObject from(int[] a) {
+		return new ArrayDynamicObject(ArrayUtils.box(a));
+	}
+
+	
 	public static DynamicObject from(boolean a) {
 		return new BooleanDynamicObject(a);
 	}
@@ -320,6 +329,8 @@ public interface DynamicObject {
 		if (o instanceof Double) return from(((Double)o).doubleValue());
 		if (o instanceof Boolean) return from(((Boolean)o).booleanValue());
 		if (o instanceof List) return from(((List)o).toArray());
+		if (o instanceof int[]) return from((int[])o);
+		if (o instanceof double[]) return from((double[])o);
 		if (o.getClass().isArray()) return from((Object[])o);
 		if (o instanceof Map) return from((Map)o);
 		return new ObjectDynamicObject(o);

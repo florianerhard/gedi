@@ -15,15 +15,19 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.util.ArrayUtils;
+import gedi.util.FunctorUtils;
+import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
 
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Iterator;
 
 import org.h2.util.IntIntHashMap;
 
@@ -68,6 +72,26 @@ public class AlignedReadsDataMerger {
 		}
 		return new ImmutableReferenceGenomicRegion<DefaultAlignedReadsData>(ref,region,merge(d2));
 	}
+	
+	private static class DistinctSeq implements Comparable<DistinctSeq> {
+		int d;
+		AlignedReadsVariation[] var;
+		public DistinctSeq(int d, AlignedReadsVariation[] var) {
+			this.d = d;
+			this.var = var;
+			Arrays.sort(var);
+		}
+		@Override
+		public int compareTo(DistinctSeq o) {
+			int n = Math.min(var.length,o.var.length);
+			for (int i=0; i<n; i++) {
+				int r = var[i].compareTo(o.var[i]);
+				if (r!=0)
+					return r;
+			}
+			return var.length-o.var.length;
+		}
+	}
 
 	public DefaultAlignedReadsData merge(AlignedReadsData... data) {
 //		if (fac==null) {
@@ -83,45 +107,90 @@ public class AlignedReadsDataMerger {
 			if (data[i]!=null)
 				max = Math.max(max,data[i].getDistinctSequences());
 		
-		BitVector done = new BitVector(data.length*max);
 		
-		// do a linear search, as only few variations are expected!
-		for (int i=0; i<data.length; i++)
+		Iterator<DistinctSeq>[] it = new Iterator[data.length];
+		for (int i=0; i<data.length; i++) 
 			if (data[i]!=null) {
-				for (int v=0; v<data[i].getDistinctSequences(); v++) {
-					if (done.getQuick(i+v*data.length)) continue;
-					fac.newDistinctSequence();
-					fac.setId(getId(i,data[i].getId(v), data[i].getMultiplicity(v)>1));
-					fac.setMultiplicity(data[i].getMultiplicity(v));
-					fac.setWeight(data[i].getWeight(v));
+				DistinctSeq[] vars = new DistinctSeq[data[i].getDistinctSequences()];
+				for (int v=0; v<data[i].getDistinctSequences(); v++) 
+					vars[v] = new DistinctSeq(v,data[i].getVariations(v));
+				Arrays.sort(vars);
+				it[i] = EI.wrap(vars);
+			} else
+				it[i] = EI.empty();
+		
+		
+		ExtendedIterator<DistinctSeq[]> pit = EI.parallel(DistinctSeq.class, FunctorUtils.naturalComparator(), it);
+		while (pit.hasNext()) {
+			DistinctSeq[] n = pit.next();
+			
+			int i;
+			for (i=0;n[i]==null; i++);
+			int v = n[i].d;
+			
+			fac.newDistinctSequence();
+			fac.setId(getId(i,data[i].getId(v), data[i].getMultiplicity(v)>1));
+			fac.setMultiplicity(data[i].getMultiplicity(v));
+			if (data[i].hasWeights())
+				fac.setWeight(data[i].getWeight(v));
+			if (data[i].hasGeometry())
+				fac.setGeometry(data[i].getGeometryBeforeOverlap(v), data[i].getGeometryOverlap(v),data[i].getGeometryAfterOverlap(v));
+			for (int c=0; c<data[i].getNumConditions(); c++)
+				fac.setCount(offsets[i]+c, data[i].getCount(v, c));
+			
+			for (AlignedReadsVariation vari : n[i].var)
+				fac.addVariation(vari);
+			
+			
+			for (i++ ; i<n.length; i++) {
+				if (n[i]!=null) {
 					for (int c=0; c<data[i].getNumConditions(); c++)
-						fac.setCount(offsets[i]+c, data[i].getCount(v, c));
-					
-					AlignedReadsVariation[] vars = data[i].getVariations(v);
-					Arrays.sort(vars);
-					
-					for (AlignedReadsVariation vari : vars)
-						fac.addVariation(vari);
-					
-					for (int j=i+1; j<data.length; j++) 
-						if (data[j]!=null) {
-							for (int w=0; w<data[j].getDistinctSequences(); w++) {
-								if (done.getQuick(j+w*data.length)) continue;
-								
-								AlignedReadsVariation[] wars = data[j].getVariations(w);
-								Arrays.sort(wars);
-								
-								if (Arrays.equals(vars, wars)) {
-									for (int c=0; c<data[j].getNumConditions(); c++)
-										fac.setCount(offsets[j]+c, data[j].getCount(w, c));
-									done.putQuick(j+w*data.length,true);
-									break;
-								}
-							}
-						}
-					
+						fac.setCount(offsets[i]+c, data[i].getCount(n[i].d, c));
 				}
 			}
+		}
+//		
+//		BitVector done = new BitVector(data.length*max);
+//		// do a linear search, as only few variations are expected! HAHAHA, you fool! is 1231723520 "few"???
+//		for (int i=0; i<data.length; i++)
+//			if (data[i]!=null) {
+//				for (int v=0; v<data[i].getDistinctSequences(); v++) {
+//					if (done.getQuick(i+v*data.length)) continue;
+//					fac.newDistinctSequence();
+//					fac.setId(getId(i,data[i].getId(v), data[i].getMultiplicity(v)>1));
+//					fac.setMultiplicity(data[i].getMultiplicity(v));
+//					if (data[i].hasWeights())
+//						fac.setWeight(data[i].getWeight(v));
+//					if (data[i].hasGeometry())
+//						fac.setGeometry(data[i].getGeometryBeforeOverlap(v), data[i].getGeometryOverlap(v),data[i].getGeometryAfterOverlap(v));
+//					for (int c=0; c<data[i].getNumConditions(); c++)
+//						fac.setCount(offsets[i]+c, data[i].getCount(v, c));
+//					
+//					AlignedReadsVariation[] vars = data[i].getVariations(v);
+//					Arrays.sort(vars);
+//					
+//					for (AlignedReadsVariation vari : vars)
+//						fac.addVariation(vari);
+//					
+//					for (int j=i+1; j<data.length; j++) 
+//						if (data[j]!=null) {
+//							for (int w=0; w<data[j].getDistinctSequences(); w++) {
+//								if (done.getQuick(j+w*data.length)) continue;
+//								
+//								AlignedReadsVariation[] wars = data[j].getVariations(w);
+//								Arrays.sort(wars);
+//								
+//								if (Arrays.equals(vars, wars)) {
+//									for (int c=0; c<data[j].getNumConditions(); c++)
+//										fac.setCount(offsets[j]+c, data[j].getCount(w, c));
+//									done.putQuick(j+w*data.length,true);
+//									break;
+//								}
+//							}
+//						}
+//					
+//				}
+//			}
 		
 		DefaultAlignedReadsData re = fac.create();
 //		System.out.println(Arrays.toString(data)+" -> "+re);

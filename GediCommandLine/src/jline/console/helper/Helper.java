@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package jline.console.helper;
 
 public interface Helper {

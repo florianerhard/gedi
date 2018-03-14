@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.plot.aesthetics.x;
 
 import gedi.plot.GPlotContext;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.remote;
 
 import io.netty.buffer.ByteBuf;

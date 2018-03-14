@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.commandline.completer;
 
 import gedi.app.classpath.ClassPathCache;

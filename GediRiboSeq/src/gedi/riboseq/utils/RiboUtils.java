@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.utils;
 
 import gedi.core.data.reads.AlignedReadsData;
@@ -51,7 +50,7 @@ public class RiboUtils {
 		for (int i=0; i<ard.getVariationCount(distinct); i++) {
 			if (ard.isMismatch(distinct, i) && ard.getMismatchPos(distinct, i)==0)
 				return true;
-			if (ard.isSoftclip(distinct, i) && ard.getSoftclipPos(distinct, i)==0 && ard.getSoftclip(distinct, i).length()==1)
+			if (ard.isSoftclip(distinct, i) && ard.isSoftclip5p(distinct, i) && ard.getSoftclip(distinct, i).length()==1)
 				return false;
 		}
 		throw new RuntimeException("No leading mismatch!");
@@ -61,7 +60,7 @@ public class RiboUtils {
 		for (int i=0; i<ard.getVariationCount(distinct); i++) {
 			if (ard.isMismatch(distinct, i) && ard.getMismatchPos(distinct, i)==0)
 				return true;
-			if (ard.isSoftclip(distinct, i) && ard.getSoftclipPos(distinct, i)==0 && ard.getSoftclip(distinct, i).length()==1)
+			if (ard.isSoftclip(distinct, i) && ard.isSoftclip5p(distinct, i) && ard.getSoftclip(distinct, i).length()==1)
 				return true;
 		}
 		return false;
@@ -71,7 +70,7 @@ public class RiboUtils {
 		for (int i=0; i<ard.getVariationCount(distinct); i++) {
 			if (ard.isMismatch(distinct, i) && ard.getMismatchPos(distinct, i)==0)
 				return ard.getMismatchRead(distinct, i).charAt(0);
-			if (ard.isSoftclip(distinct, i) && ard.getSoftclipPos(distinct, i)==0 && ard.getSoftclip(distinct, i).length()==1)
+			if (ard.isSoftclip(distinct, i) && ard.isSoftclip5p(distinct, i) && ard.getSoftclip(distinct, i).length()==1)
 				return 'N';
 		}
 		return '\0';

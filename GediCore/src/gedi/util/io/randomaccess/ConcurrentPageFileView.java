@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.randomaccess;
 
 import gedi.app.extension.ExtensionContext;
@@ -104,7 +103,7 @@ public class ConcurrentPageFileView implements BinaryReader, LineReader {
 		int eindex = getIndex(pos+length-1);
 		int boffset = getOffset(pos);
 
-		synchronized (this) {
+		synchronized (file) {
 			// this must be synchronized, as the position may be overwritten!
 			for (int index=sindex; index<=eindex; index++) {
 				ByteBuffer buffer = file.getBuffer(index);

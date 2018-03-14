@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import java.io.BufferedInputStream;
@@ -47,6 +46,7 @@ import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
+import gedi.util.io.text.StringLineWriter;
 import gedi.util.program.CommandLineHandler;
 import gedi.util.program.GediParameter;
 import gedi.util.program.GediParameterSet;
@@ -76,6 +76,7 @@ public class ProcessSra {
 			addInput(params.sra);
 			addInput(params.json);
 			addInput(params.report);
+			addInput(params.root);
 			addOutput(params.oreport);
 		}
 
@@ -83,6 +84,7 @@ public class ProcessSra {
 		public String execute(GediProgramContext context) throws Exception {
 			String sra = getParameter(0);
 			ArrayList<String> json = getParameters(1);
+			String root = getParameter(3);
 
 			SraProcessor[] processors = EI.wrap(json).map(f->{
 				try {
@@ -110,10 +112,34 @@ public class ProcessSra {
 			.progress(sf->sf.getName()+" @"+StringUtils.getShortHumanReadableMemory(tis.getCurrentOffset()))
 			//			.parallelized(ei->ei
 			.map(sf->{
-				StringBuilder sb = new StringBuilder();
-				sb.append(sf.getName());
-				for (SraProcessor p : processors)
-					sb.append("\t").append(p.process(sf.getName(), sf::parse, sf::get));
+				LineWriter sb = new StringLineWriter();
+				sb.write2(sf.getName());
+				boolean write = false;
+				
+				for (SraProcessor p : processors) {
+					sb.write2("\t");
+					write |= p.process(sf.getName(), sf::parse, sf::get, sb);
+				}
+				
+				if (write) {
+					String prepath = root+"/"+sf.name.substring(0,6);
+					String path = prepath+"/"+sf.name;
+					
+					new File(path).mkdirs();
+					
+					try {
+						sf.writeFile(path, SraTopLevel.Submission);
+						sf.writeFile(path, SraTopLevel.Study);
+						sf.writeFile(path, SraTopLevel.Experiment);
+						sf.writeFile(path, SraTopLevel.Sample);
+						sf.writeFile(path, SraTopLevel.Run);
+						
+					} catch (Exception e) {
+						throw new RuntimeException("Could not write xml files!",e);
+					}
+					
+					
+				}
 				return sb.toString();
 			})
 			//			)
@@ -179,6 +205,14 @@ public class ProcessSra {
 				throw new RuntimeException("Unexpected name: "+n);
 			return re;
 		}
+		
+		public boolean writeFile(String path, SraTopLevel type) throws IOException {
+			String cont = get(type);
+			if (cont==null) return false;
+			String fn = path+"/"+name+"."+type+".xml";
+			FileUtils.writeAllText(cont, new File(fn));
+			return true;
+		}
 
 		public String get(SraTopLevel type) {
 			String name = type.name().toLowerCase();
@@ -207,6 +241,7 @@ public class ProcessSra {
 	public static class ProcessSraParameterSet extends GediParameterSet {
 		public GediParameter<String> json = new GediParameter<String>(this,"i", "Input json file", true, new StringParameterType());
 		public GediParameter<String> sra = new GediParameter<String>(this,"sra", "SRA metadata file (from ftp://ftp-trace.ncbi.nlm.nih.gov/sra/reports/Metadata/)", false, new StringParameterType());
+		public GediParameter<String> root = new GediParameter<String>(this,"root", "Root folder for output files", false, new StringParameterType(),"./SRA");
 		public GediParameter<String> report = new GediParameter<String>(this,"report", "Output file", false, new StringParameterType());
 
 		public GediParameter<File> oreport = new GediParameter<File>(this,"${report}", "Report file", false, new FileParameterType());

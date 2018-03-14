@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import java.io.IOException;
@@ -78,7 +77,7 @@ public class ReadCount {
 		GenomicRegionStorage<? extends AlignedReadsData> in = (GenomicRegionStorage<? extends AlignedReadsData>) loader.load(p);
 		
 		int numCond = in.getRandomRecord().getNumConditions();
-		NumericArray total = NumericArray.createDisk(numCond, NumericArrayType.Double);
+		NumericArray total = NumericArray.createMemory(numCond, NumericArrayType.Double);
 		
 		ReadCountMode imode = mode;
 		in.ei().iff(progress,ei->ei.progress(new ConsoleProgress(System.err), -1, r->"Processing "+r.toLocationStringRemovedIntrons()+" "+total.formatArray("%.2g",",")))

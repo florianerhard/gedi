@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.centeredDiskIntervalTree;
 
 import java.io.File;

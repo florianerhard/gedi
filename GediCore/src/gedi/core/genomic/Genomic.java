@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.genomic;
 
 
@@ -31,6 +30,7 @@ import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
 import gedi.core.sequence.CompositeSequenceProvider;
+import gedi.core.sequence.FastaIndexSequenceProvider;
 import gedi.core.sequence.SequenceProvider;
 import gedi.core.workspace.loader.WorkspaceItemLoader;
 import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
@@ -77,6 +77,13 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	
 	private NameIndex nameIndex;
 	
+	
+	public ExtendedIterator<String> getGenomicFastaFiles() {
+		return EI.wrap(sequence.getProviders())
+				.cast(FastaIndexSequenceProvider.class)
+				.unfold(fi->fi.getFiles().iterator())
+				.map(f->f.getFastaFile().getPath());
+	}
 	
 	public void merge(Genomic other) {
 		HashSet<ReferenceSequence> or = other.iterateReferenceSequences().set();
@@ -169,9 +176,9 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 		return id;
 	}
 	
-	public CharSequence reconstructRead(ReferenceGenomicRegion<? extends AlignedReadsData> r, int distinct) {
-		return r.getData().genomeToRead(distinct,getSequence(r));
-	}
+//	public CharSequence reconstructRead(ReferenceGenomicRegion<? extends AlignedReadsData> r, int distinct) {
+//		return r.getData().genomeToRead(distinct,getSequence(r));
+//	}
 
 	@SuppressWarnings("unchecked")
 	public MemoryIntervalTreeStorage<Transcript> getMajorTranscripts() {

@@ -15,11 +15,12 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
+import gedi.util.io.randomaccess.DontCompress;
 
 import java.io.IOException;
 
@@ -31,7 +32,7 @@ import cern.colt.bitvector.BitVector;
  * @author erhard
  *
  */
-public class DigitalAlignedReadsData implements AlignedReadsData {
+public class DigitalAlignedReadsData implements AlignedReadsData, DontCompress {
 	
 	BitVector count;
 
@@ -40,8 +41,10 @@ public class DigitalAlignedReadsData implements AlignedReadsData {
 	
 	@Override
 	public void serialize(BinaryWriter out) throws IOException {
-		out.putCInt(count.size());
-		for (int b=0; b<count.size(); b+=8)
+		DynamicObject gi = out.getContext().getGlobalInfo();
+		if (!gi.hasProperty(CONDITIONSATTRIBUTE))
+			out.putCInt(count.size());
+		for (int b=0; b<count.size(); b+=8) 
 			out.putByte((int)count.getLongFromTo(b, Math.min(b+7,count.size()-1)));
 	}
 	
@@ -56,11 +59,37 @@ public class DigitalAlignedReadsData implements AlignedReadsData {
 		if (m==0) return 1;
 		return 1.0f/m;
 	}
+	
+	@Override
+	public boolean hasGeometry() {
+		return false;
+	}
+	
+	@Override
+	public int getGeometryAfterOverlap(int distinct) {
+		throw new RuntimeException("Read geometry information not available!");
+	}
+	
+	@Override
+	public int getGeometryBeforeOverlap(int distinct) {
+		throw new RuntimeException("Read geometry information not available!");
+	}
+	
+	@Override
+	public int getGeometryOverlap(int distinct) {
+		throw new RuntimeException("Read geometry information not available!");
+	}
 
 	@Override
 	public void deserialize(BinaryReader in) throws IOException {
-		int size = in.getCInt();
-		count = new BitVector(size);
+		int c;
+		DynamicObject gi = in.getContext().getGlobalInfo();
+		if (!gi.hasProperty(CONDITIONSATTRIBUTE))
+			c = in.getCInt();//conditions
+		else
+			c = gi.getEntry(CONDITIONSATTRIBUTE).asInt();
+		
+		count = new BitVector(c);
 		for (int b=0; b<count.size(); b+=8)
 			count.putLongFromTo(in.getByte(), b, Math.min(b+7,count.size()-1));
 	}
@@ -164,8 +193,8 @@ public class DigitalAlignedReadsData implements AlignedReadsData {
 
 
 	@Override
-	public int getSoftclipPos(int distinct, int index) {
-		return 0;
+	public boolean isSoftclip5p(int distinct, int index) {
+		return false;
 	}
 
 
@@ -175,5 +204,18 @@ public class DigitalAlignedReadsData implements AlignedReadsData {
 	}
 
 
+	public static DigitalAlignedReadsData fromAlignedReadsData(AlignedReadsData ard, boolean removeMultimappers) {
+		DigitalAlignedReadsData re = new DigitalAlignedReadsData();
+		re.count = new BitVector(ard.getNumConditions());
+		for (int d=0; d<ard.getDistinctSequences(); d++) {
+			if (removeMultimappers && ard.getMultiplicity(d)>1) continue;
+			for (int i=0; i<ard.getNumConditions(); i++) {
+				if (ard.getCount(d, i)>0)
+					re.count.putQuick(i, true);
+			}
+		}
+		if (re.getTotalCountOverallInt(ReadCountMode.All)==0) return null;
+		return re;
+	}
 
 }

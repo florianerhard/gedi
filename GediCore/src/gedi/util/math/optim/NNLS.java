@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.optim;
 
 import org.apache.commons.math3.exception.TooManyIterationsException;

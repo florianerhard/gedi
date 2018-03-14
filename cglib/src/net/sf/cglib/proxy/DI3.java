@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package net.sf.cglib.proxy;
 
 interface DI3 extends DI2 {

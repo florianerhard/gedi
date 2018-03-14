@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.program.parametertypes;
 
 import gedi.util.parsing.DoubleParser;

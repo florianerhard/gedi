@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.bam.tools;
 
 import gedi.core.data.annotation.Transcript;

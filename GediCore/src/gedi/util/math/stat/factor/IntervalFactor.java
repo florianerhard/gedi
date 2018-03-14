@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.stat.factor;
 
 import gedi.util.math.stat.binning.Binning;

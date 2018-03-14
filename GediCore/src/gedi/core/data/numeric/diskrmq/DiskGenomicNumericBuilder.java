@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.numeric.diskrmq;
 
 import gedi.core.data.reads.AlignedReadsData;

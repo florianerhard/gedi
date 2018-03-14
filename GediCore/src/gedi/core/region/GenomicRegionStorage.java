@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region;
 
 import gedi.core.data.HasConditions;
@@ -25,6 +24,7 @@ import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
+import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
@@ -411,6 +411,5 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 		}
 		return new String[0];
 	}
-
 	
 }

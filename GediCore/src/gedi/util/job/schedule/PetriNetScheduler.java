@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.job.schedule;
 
 import gedi.util.job.ExecutionContext;

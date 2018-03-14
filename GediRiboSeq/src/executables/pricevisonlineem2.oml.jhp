@@ -116,7 +116,7 @@
 		<Rmq file="<?JS print(mergedrmq[e]) ?>" agg="Max"/>
 	</NumericSource>
 	<ToFramesTransformer id="+.<?JS print(experimentNames[e]) ?>.cod" input="+.<?JS print(experimentNames[e]) ?>.cod1" strand="+"/>
-	<ToFramesTransformer id="-.<?JS print(experimentNames[e]) ?>.cod" input="-.<?JS print(experimentNames[e]) ?>.cod1" strand="-">
+	<ToFramesTransformer id="-.<?JS print(experimentNames[e]) ?>.cod" input="-.<?JS print(experimentNames[e]) ?>.cod1" strand="-"/>
 	
 	<?JS  
 		for (var i=0; i<names[e].length; i++) {
@@ -129,9 +129,9 @@
 	<NumericSource id="-.<?JS print(experimentNames[e]) ?>.cod1.nn.<?JS print(names[e][i]); ?>" strand="-">
 		<Rmq file="<?JS print(conditionrmq[e][i]) ?>" agg="Max"/>
 	</NumericSource>
-	<ToFramesTransformer id="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.cod1.nn.<?JS print(names[e][i]); ?>" strand="-">
+	<ToFramesTransformer id="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.cod1.nn.<?JS print(names[e][i]); ?>" strand="-" />
 	<NumericNormalize id="-.<?JS print(experimentNames[e]) ?>.cod.<?JS print(names[e][i]); ?>" input="-.<?JS print(experimentNames[e]) ?>.cod.nn.<?JS print(names[e][i]); ?>" totals="<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>,<?JS print(totals[e][i]); ?>" />
-	<?JS  }} ?>
+	<?JS  } ?>
 
 	<NumericSource id="+.<?JS print(experimentNames[e]) ?>.cod1" strand="+">
 		<Rmq file="<?JS print(mergedrmq[e]) ?>" agg="Max"/>

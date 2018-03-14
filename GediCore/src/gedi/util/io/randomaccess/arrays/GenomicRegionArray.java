@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.randomaccess.arrays;
 
 import gedi.core.region.ArrayGenomicRegion;

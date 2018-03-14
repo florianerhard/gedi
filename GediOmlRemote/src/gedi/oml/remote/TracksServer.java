@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.oml.remote;
 
 import gedi.app.Gedi;

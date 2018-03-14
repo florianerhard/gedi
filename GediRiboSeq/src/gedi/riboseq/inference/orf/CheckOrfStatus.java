@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.inference.orf;
 
 public enum CheckOrfStatus {

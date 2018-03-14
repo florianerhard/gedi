@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.inference.clustering;
 
 import gedi.util.io.randomaccess.BinaryReader;

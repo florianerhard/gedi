@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.userInteraction.progress;
 
 import java.util.function.Supplier;

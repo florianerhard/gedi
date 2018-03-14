@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import java.util.logging.Logger;
@@ -28,7 +27,6 @@ import gedi.riboseq.javapipeline.PriceCollectSufficientStatistics;
 import gedi.riboseq.javapipeline.PriceDetermineDelta;
 import gedi.riboseq.javapipeline.PriceEstimateModel;
 import gedi.riboseq.javapipeline.PriceIdentifyMaxPos;
-import gedi.riboseq.javapipeline.PriceLocalChanges;
 import gedi.riboseq.javapipeline.PriceMultipleTestingCorrection;
 import gedi.riboseq.javapipeline.PriceNoiseTraining;
 import gedi.riboseq.javapipeline.PriceOptimisticCodonMapping;
@@ -39,6 +37,7 @@ import gedi.riboseq.javapipeline.PriceSetupOrfInference;
 import gedi.riboseq.javapipeline.PriceSignalToNoise;
 import gedi.riboseq.javapipeline.PriceStartPredictionTraining;
 import gedi.riboseq.javapipeline.PriceWriteCodons;
+import gedi.riboseq.javapipeline.analyze.PriceLocalChanges;
 import gedi.util.program.CommandLineHandler;
 import gedi.util.program.GediProgram;
 

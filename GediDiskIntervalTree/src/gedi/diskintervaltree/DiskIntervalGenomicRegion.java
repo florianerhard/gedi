@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.diskintervaltree;
 
 import gedi.core.region.ArrayGenomicRegion;

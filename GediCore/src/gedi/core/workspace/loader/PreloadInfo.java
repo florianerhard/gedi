@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.workspace.loader;
 
 public class PreloadInfo<T,P> {

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.proteomics.molecules.properties.mass;
 
 import java.util.AbstractList;

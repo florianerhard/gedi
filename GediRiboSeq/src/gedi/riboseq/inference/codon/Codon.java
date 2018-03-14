@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.inference.codon;
 
 import gedi.core.region.ArrayGenomicRegion;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.ambiguity.clustering;
 
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;

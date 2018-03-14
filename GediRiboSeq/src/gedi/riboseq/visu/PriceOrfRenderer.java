@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.visu;
 
 import gedi.core.reference.ReferenceSequence;

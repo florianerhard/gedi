@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util;
 
 import gedi.core.reference.Chromosome;
@@ -27,6 +26,7 @@ import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.functions.EI;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
+import gedi.util.io.randomaccess.DontCompress;
 import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
@@ -64,6 +64,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.LongFunction;
 import java.util.function.UnaryOperator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.utils.IOUtils;
@@ -180,6 +182,12 @@ public class FileUtils {
 			return "";
 	}
 	
+	public static String insertSuffixBeforeExtension(String path, String suffix) {
+		return getFullNameWithoutExtension(path)+suffix+"."+getExtension(path);
+	}
+
+
+	
 	public static String getFullNameWithoutExtension(String path) {
 		int dotIndex = path.lastIndexOf('.');
 		int slashIndex = path.lastIndexOf(File.separatorChar);
@@ -199,6 +207,29 @@ public class FileUtils {
 	}
 
 
+	public static File findPartnerFile(String path, String regex) throws IOException {
+		Pattern p = Pattern.compile(regex);
+		String name = new File(path).getName();
+		Matcher pm = p.matcher(name);
+		if (!pm.find()) throw new IllegalArgumentException("Given path does not match the regular expression: "+name+" "+regex);
+		
+		String pk = EI.seq(1, 1+pm.groupCount()).map(g->pm.group(g)).concat();
+		
+		String folder = new File(path).getAbsoluteFile().getParent();
+		String rename = EI.files(folder)
+				.map(f->f.getName())
+				.filter(s->!s.equals(name))
+				.filter(s->{
+					Matcher sm = p.matcher(s);
+					if (!sm.find()) return false;
+					String sk = EI.seq(1, 1+sm.groupCount()).map(g->sm.group(g)).concat();
+					return sk.equals(pk);
+				})
+				.getUniqueResult("More than one matching file found ("+path+")!", "No matching file found ("+path+")!");
+		
+		return new File(new File(path).getParent(),rename);
+	}
+	
 	public static void writeStringArray(BinaryWriter f, String[] a) throws IOException {
 		f.putInt(a.length);
 		for (int i=0; i<a.length; i++) 
@@ -244,6 +275,12 @@ public class FileUtils {
 		f.putInt(a.length);
 		for (int i=0; i<a.length; i++) 
 			f.putInt(a[i]);
+	}
+	
+	public static void writeCIntArray(BinaryWriter f, int[] a) throws IOException {
+		f.putCInt(a.length);
+		for (int i=0; i<a.length; i++) 
+			f.putCInt(a[i]);
 	}
 	
 	public static void writeNumber(BinaryWriter out, Number d) throws IOException {
@@ -306,6 +343,13 @@ public class FileUtils {
 		int[] re = new int[f.getInt()];
 		for (int i=0; i<re.length; i++) 
 			re[i] = f.getInt();
+		return re;
+	}
+	
+	public static int[] readCIntArray(BinaryReader f) throws IOException {
+		int[] re = new int[f.getCInt()];
+		for (int i=0; i<re.length; i++) 
+			re[i] = f.getCInt();
 		return re;
 	}
 	
@@ -439,10 +483,12 @@ public class FileUtils {
 		return re.toArray(new String[0]);
 	}
 
+	static Object lock = new Object();
 	public static <D> D deserialize(D obj, BinaryReader in) throws IOException {
 		
 		if (in.getContext().getGlobalInfo().getEntry("compress").asBoolean()) {
 			BinaryBlob blob = new BinaryBlob();
+			blob.setContext(in.getContext());
 			
 			int size = in.getCInt();
 			int rsize = in.getCInt();
@@ -450,7 +496,8 @@ public class FileUtils {
 			byte[] buff = new byte[rsize];
 			byte[] cbuff = new byte[size];
 			in.get(buff,0,rsize);
-			ArrayUtils.decompress(buff, 0, cbuff, 0, size);
+			ArrayUtils.decompress(buff, 0, cbuff, 0, size);	
+			
 			
 			blob.put(cbuff, 0, cbuff.length);
 			blob.finish(false);
@@ -473,8 +520,9 @@ public class FileUtils {
 	
 	public static <D> D serialize(D obj, BinaryWriter out) throws IOException {
 		
-		if (out.getContext().getGlobalInfo().getEntry("compress").asBoolean()) {
+		if (out.getContext().getGlobalInfo().getEntry("compress").asBoolean() && !(obj instanceof DontCompress)) {
 			BinaryBlob blob = new BinaryBlob();
+			blob.setContext(out.getContext());
 			if (obj instanceof BinarySerializable) {
 				((BinarySerializable) obj).serialize(blob);
 			} else
@@ -666,5 +714,5 @@ public class FileUtils {
         return re;
 	}
 
-
+	
 }

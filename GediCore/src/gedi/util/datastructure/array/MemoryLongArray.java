@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.array;
 
 import gedi.util.io.randomaccess.BinaryReader;

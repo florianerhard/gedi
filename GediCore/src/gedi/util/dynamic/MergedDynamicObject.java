@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.dynamic;
 
 import gedi.util.ArrayUtils;

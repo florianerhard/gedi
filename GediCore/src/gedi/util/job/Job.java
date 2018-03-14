@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.job;
 
 import gedi.util.dynamic.DynamicObject;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import gedi.app.Gedi;
@@ -103,7 +102,7 @@ public class CIT2Bam {
 		Progress prog = progress?new ConsoleProgress():new NoProgress();
 		Genomic g = Genomic.get(genomes);
 		GenomicRegionStorage<AlignedReadsData> reads = loader.load(path);
-		String[] conditions = AlignedReadsData.getConditionNames(reads);
+		String[] conditions = reads.getMetaDataConditions();
 		
 		
 		for (Output outp : makeOutputs(out,g, conditions, pool, reads.getRandomRecord())) {

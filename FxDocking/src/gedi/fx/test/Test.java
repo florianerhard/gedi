@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx.test;
 
 import gedi.fx.docking.DockGroup;

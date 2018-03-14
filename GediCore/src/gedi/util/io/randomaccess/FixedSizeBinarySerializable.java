@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.randomaccess;
 
 import gedi.util.io.randomaccess.serialization.BinarySerializable;

@@ -15,14 +15,21 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.collections.doublecollections;
 
+import java.util.function.DoublePredicate;
+
 import gedi.util.MathUtils;
+import gedi.util.FunctorUtils.FilteredDoubleIterator;
 import gedi.util.functions.ExtendedIterator;
 
 public interface DoubleIterator extends ExtendedIterator<Double> {
 
+	
+	default DoubleIterator filterDouble(DoublePredicate predicate) {
+		return new FilteredDoubleIterator(this,predicate);
+	}
+	
 	default Double next() {
 		return nextDouble();
 	}

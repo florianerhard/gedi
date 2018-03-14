@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.genovis.pixelMapping;
 
 import java.io.IOException;
@@ -50,11 +49,14 @@ public class PixelBlockToValuesMap implements BinarySerializable {
 		int n = 0;
 		for (int i=0; i<c.size(); i++) {
 			PixelBlockToValuesMap p = c.get(i);
-			n+=p.values[0].length();
+			n+=p.values==null?0:p.values[0].length();
 		}
 		int off = 0;
 		for (int i=0; i<c.size(); i++) {
 			PixelBlockToValuesMap p = c.get(i);
+			if (p.values==null) 
+				continue;
+			
 			if (blocks==null) {
 				blocks = p.blocks;
 				this.values = new NumericArray[blocks.size()];

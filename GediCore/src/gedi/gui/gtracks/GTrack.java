@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.gtracks;
 
 import gedi.core.data.mapper.DisablingGenomicRegionDataMapper;

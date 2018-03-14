@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.quadrature;
 
 /** qagse.java, qags.java, qelg.java, qk21.java, and qpsrt.java are

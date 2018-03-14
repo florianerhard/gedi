@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util;
 
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
@@ -423,7 +422,8 @@ public class ArrayUtils {
 	public static <T> T[] concat(T[]... arrays) {
 		ArrayList<T> re = new ArrayList<T>();
 		for (T[] a : arrays)
-			re.addAll(Arrays.asList(a));
+			if (a!=null)
+				re.addAll(Arrays.asList(a));
 		return re.toArray((T[]) Array.newInstance(arrays.getClass().getComponentType().getComponentType(), re.size()));
 	}
 
@@ -5682,6 +5682,20 @@ public class ArrayUtils {
 		T[] re = (T[]) Array.newInstance(a.getClass().getComponentType(), indices.length);
 		for (int i=0; i<indices.length; i++)
 			re[i] = a[indices[i]];
+		return re;
+	}
+
+	public static Double[] box(double[] a) {
+		Double[] re = new Double[a.length];
+		for (int i=0; i<re.length; i++)
+			re[i] = a[i];
+		return re;
+	}
+	
+	public static Integer[] box(int[] a) {
+		Integer[] re = new Integer[a.length];
+		for (int i=0; i<re.length; i++)
+			re[i] = a[i];
 		return re;
 	}
 

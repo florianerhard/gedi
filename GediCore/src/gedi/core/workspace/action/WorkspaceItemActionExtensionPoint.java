@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.workspace.action;
 
 import gedi.app.extension.DefaultExtensionPoint;

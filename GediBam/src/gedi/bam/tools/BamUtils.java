@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.bam.tools;
 
 import gedi.core.data.reads.AlignedReadsData;
@@ -23,6 +22,7 @@ import gedi.core.data.reads.ReadCountMode;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
+import gedi.core.reference.Strandness;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
@@ -30,7 +30,6 @@ import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.sequence.SequenceProvider;
 import gedi.region.bam.FactoryGenomicRegion;
 import gedi.region.bam.RecordsGenomicRegion;
-import gedi.region.bam.Strandness;
 import gedi.util.SequenceUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
@@ -124,7 +123,7 @@ public class BamUtils {
 		
 	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, int minIntronLength) {
 		IntArrayList coords = minIntronLength>=0?getGenomicRegionCoordinatesByBlocks(r, minIntronLength):getGenomicRegionCoordinates(r);
-		FactoryGenomicRegion re = new FactoryGenomicRegion(coords, cumNumCond,ignoreVariation,needReadNames);
+		FactoryGenomicRegion re = new FactoryGenomicRegion(coords, cumNumCond,ignoreVariation,needReadNames,false);
 		re.setUseBlocks(minIntronLength);
 		return re;
 	}
@@ -145,21 +144,16 @@ public class BamUtils {
 			// missing information
 			IntArrayList reg = minIntronLength>=0?getGenomicRegionCoordinatesByBlocks(r1, minIntronLength):getGenomicRegionCoordinates(r1);
 			FactoryGenomicRegion re = new FactoryGenomicRegion(reg.toIntArray(), cumNumCoord, 
-					true,ignoreVariation,needReadNames,-1,r1.getMateAlignmentStart()<r1.getAlignmentStart()?-1:1);
+					true,ignoreVariation,needReadNames,-1,r1.getMateAlignmentStart()<r1.getAlignmentStart()?-1:1, join);
 			return re;
-		}
-		if (r1.getAlignmentStart()>r2.getAlignmentStart()) {
-			SAMRecord s = r1;
-			r1 = r2;
-			r2 = s;
 		}
 		IntArrayList coords1 = minIntronLength>=0?getGenomicRegionCoordinatesByBlocks(r1, minIntronLength):getGenomicRegionCoordinates(r1);
 		IntArrayList coords2 = minIntronLength>=0?getGenomicRegionCoordinatesByBlocks(r2, minIntronLength):getGenomicRegionCoordinates(r2);
 		GenomicRegion re1 = new ArrayGenomicRegion(coords1);
 		GenomicRegion re2 = new ArrayGenomicRegion(coords2);
-		boolean cons = re1.isIntronConsistent(re2);
+		boolean cons = re1.isIntronConsistent(re2) && isProperlyOriented(r1.getReadNegativeStrandFlag(),re1,re2);
 		if (!cons && throwOnNonconsistent)
-			throw new RuntimeException("Pair "+r1+" "+r2+" are not intron consistent:"+re1+" "+re2);
+			throw new RuntimeException("Pair "+r1+" "+r2+" are not consistent:"+re1+" "+re2);
 		
 		int pairedEndIntron = -1;
 		ArrayGenomicRegion reg = re1.union(re2);
@@ -168,6 +162,13 @@ public class BamUtils {
 				Math.max(re1.getStart(),re2.getStart())
 				));
 		else {
+			
+			if (r1.getAlignmentStart()>r2.getAlignmentStart()) {
+				GenomicRegion s = re1;
+				re1 = re2;
+				re2 = s;
+			}
+			
 			pairedEndIntron = reg.getEnclosingPartIndex(re1.getStop());
 			if (reg.getStop(pairedEndIntron)!=re1.getStop() || pairedEndIntron==reg.getNumParts()-1) 
 				pairedEndIntron = -1;
@@ -177,11 +178,18 @@ public class BamUtils {
 				pairedEndIntron = -1;
 		}
 		
-		FactoryGenomicRegion re = new FactoryGenomicRegion(reg.getBoundaries(), cumNumCoord, cons,ignoreVariation,needReadNames,pairedEndIntron,0);
+		FactoryGenomicRegion re = new FactoryGenomicRegion(reg.getBoundaries(), cumNumCoord, cons,ignoreVariation,needReadNames,pairedEndIntron,0,join);
 		re.setUseBlocks(minIntronLength);
 		return re;
 	}
 	
+	private static boolean isProperlyOriented(boolean negative, GenomicRegion re1, GenomicRegion re2) {
+		if (!negative)
+			return re1.getStart()<=re2.getStart() && re1.getStop()<=re2.getStop();
+		return re2.getStart()<=re1.getStart() && re2.getStop()<=re1.getStop();
+	}
+
+
 	public static String getPairId(SAMRecord rec) {
 		String re = rec.getReadName();
 		if (re.endsWith("/1") || re.endsWith("/2")) return re.substring(0, re.length()-2);
@@ -191,7 +199,7 @@ public class BamUtils {
 	
 	public static boolean isValidStrand(Strand strand, Strandness strandness, SAMRecord first, SAMRecord second) {
 		if (strand==Strand.Independent || strandness==Strandness.Unspecific) return true;
-		if (strandness==Strandness.Specific) {
+		if (strandness==Strandness.Sense) {
 			if (first!=null)
 				return first.getReadNegativeStrandFlag()==(strand==Strand.Minus);
 			else
@@ -631,6 +639,13 @@ public class BamUtils {
 				lenStart = index;
 		}
 		return re;
+	}
+
+
+	public static boolean checkMatesIdIsEqual(SAMRecord a, SAMRecord b) {
+		return 
+				a.getAlignmentStart()==b.getMateAlignmentStart()
+				&& b.getAlignmentStart()==a.getMateAlignmentStart();
 	}
 	
 }

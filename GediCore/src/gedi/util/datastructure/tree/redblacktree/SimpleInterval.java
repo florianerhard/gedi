@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.tree.redblacktree;
 
 public class SimpleInterval implements Interval{

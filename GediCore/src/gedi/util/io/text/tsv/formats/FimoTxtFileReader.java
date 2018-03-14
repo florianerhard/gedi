@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text.tsv.formats;
 
 import java.util.Arrays;

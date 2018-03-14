@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.preprocess.readmapping;
 
 import gedi.core.genomic.Genomic;
@@ -73,14 +72,21 @@ public enum ReadMapper {
 		}
 		
 		public String getRnaSeqCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, boolean shared) {
-			String re = String.format("STAR --runMode alignReads --runThreadN %d --genomeDir %s %s--readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType Local  --outSAMattributes nM MD  %s\n",
+			String re = String.format("STAR --runMode alignReads --runThreadN %d --genomeDir %s %s--readFilesIn %s --outSAMmode NoQS --outSAMtype BAM SortedByCoordinate --alignEndsType Local --outSAMattributes nM MD  %s\n",
 										nthreads,info.index,shared?"--genomeLoad LoadAndKeep ":"",input,unmapped!=null?"--outReadsUnmapped Fastx":"");
 			if (output==null || output.equals("/dev/null"))
-				re = re+"rm Aligned.out.sam";
+				re = re+"rm Aligned.sortedByCoord.out.bam";
 			else
-				re = re+"mv Aligned.out.sam "+output;
-			if (unmapped!=null)
-				re = re+"\nmv Unmapped.out.mate1 "+unmapped;
+				re = re+"mv Aligned.sortedByCoord.out.bam "+output;
+			if (unmapped!=null) {
+				if (input.matches("[^\\] ")) {
+					re = re+"\nmv Unmapped.out.mate1 "+unmapped.replaceFirst("\\.([^.]+)$", "_1.$1");
+					re = re+"\nmv Unmapped.out.mate2 "+unmapped.replaceFirst("\\.([^.]+)$", "_2.$1");
+				} else {
+					re = re+"\nmv Unmapped.out.mate1 "+unmapped;
+				}
+			}
+				
 			return re;
 		}
 			

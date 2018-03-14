@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.gui;
 
 import gedi.util.functions.EI;

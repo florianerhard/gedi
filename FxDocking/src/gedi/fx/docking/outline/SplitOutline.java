@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx.docking.outline;
 
 import java.util.ArrayList;

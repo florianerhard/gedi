@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.plot.renderables.legend;
 
 import gedi.plot.GPlotRenderable;

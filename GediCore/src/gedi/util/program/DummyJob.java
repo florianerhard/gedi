@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.program;
 
 import java.util.concurrent.atomic.AtomicInteger;

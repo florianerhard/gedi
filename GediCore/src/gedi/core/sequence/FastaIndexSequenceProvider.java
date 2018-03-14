@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.sequence;
 
 import gedi.core.reference.Chromosome;
@@ -27,6 +26,7 @@ import gedi.util.io.text.fasta.index.FastaIndexFile.FastaIndexEntry;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
@@ -57,6 +57,10 @@ public class FastaIndexSequenceProvider implements SequenceProvider {
 //			System.out.println(n+"\t"+f.getEntry(n).length());
 			index.put(Chromosome.obtain(n).getName(), f.getEntry(n));
 		}
+	}
+	
+	public Collection<FastaIndexFile> getFiles() {
+		return Collections.unmodifiableCollection(files);
 	}
 	
 	private FastaIndexEntry getEntry(String name) {

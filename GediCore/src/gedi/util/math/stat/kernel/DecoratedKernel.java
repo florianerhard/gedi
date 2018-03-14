@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.stat.kernel;
 
 import java.util.function.DoubleBinaryOperator;

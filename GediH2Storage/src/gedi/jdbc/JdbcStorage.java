@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.jdbc;
 
 import gedi.core.reference.Chromosome;

@@ -15,14 +15,16 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.sra.processing;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
+
+import gedi.util.io.text.LineWriter;
 
 @FunctionalInterface
 public interface SraProcessor {
 
-	String process(String sra, Function<SraTopLevel, Object> parser, Function<SraTopLevel, String> src);
+	boolean process(String sra, Function<SraTopLevel, Object> parser, Function<SraTopLevel, String> src, LineWriter out);
 	
 }

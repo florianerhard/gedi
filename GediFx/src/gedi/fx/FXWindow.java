@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx;
 
 import gedi.fx.docking.Dockable;

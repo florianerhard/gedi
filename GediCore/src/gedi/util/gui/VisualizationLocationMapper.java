@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.gui;
 
 import gedi.core.region.ArrayGenomicRegion;

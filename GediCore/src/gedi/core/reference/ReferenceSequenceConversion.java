@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.reference;
 
 import gedi.util.StringUtils;

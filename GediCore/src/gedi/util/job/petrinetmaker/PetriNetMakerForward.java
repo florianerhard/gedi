@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.job.petrinetmaker;
 
 import gedi.util.job.Job;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 import gedi.app.Gedi;
 import gedi.app.classpath.ClassPathCache;
 import gedi.util.FileUtils;

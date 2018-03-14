@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.proteomics.molecules.properties.hydrophobicity;
 
 import gedi.proteomics.molecules.Polymer;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.startup;
 
 import java.lang.reflect.Modifier;

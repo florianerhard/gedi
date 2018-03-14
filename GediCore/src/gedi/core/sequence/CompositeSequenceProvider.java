@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.sequence;
 
 import gedi.core.region.GenomicRegion;

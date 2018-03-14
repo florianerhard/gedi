@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.genovis.tracks;
 
 import gedi.core.data.annotation.NameAnnotation;
@@ -245,6 +244,7 @@ public class AnnotateRegionsTrack extends PackRegionTrack<NameProvider> {
 		men.addSeparator();
 		men.add(createMenItem("Load...",true,()->{
 			JFileChooser cho = new JFileChooser(System.getProperty("user.dir"));
+			cho.setDialogTitle("Load "+getId());
 			cho.setFileFilter(new FileFilter() {
 				
 				@Override
@@ -270,6 +270,7 @@ public class AnnotateRegionsTrack extends PackRegionTrack<NameProvider> {
 		}));
 		men.add(createMenItem("Save as...",true,()->{
 			JFileChooser cho = new JFileChooser(System.getProperty("user.dir"));
+			cho.setDialogTitle("Save "+getId());
 			cho.setFileFilter(new FileFilter() {
 				
 				@Override

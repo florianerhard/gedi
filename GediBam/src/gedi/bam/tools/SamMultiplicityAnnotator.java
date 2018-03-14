@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.bam.tools;
 
 import gedi.util.FunctorUtils;

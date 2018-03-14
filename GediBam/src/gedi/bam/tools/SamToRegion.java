@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.bam.tools;
 
 import gedi.core.data.reads.AlignedReadsData;
@@ -64,7 +63,8 @@ public class SamToRegion<O> implements Function<SAMRecord,ReferenceGenomicRegion
 			return new ImmutableReferenceGenomicRegion<O>(Chromosome.UNMAPPED, new ArrayGenomicRegion(0,r.getReadLength()),d);
 		}
 		FactoryGenomicRegion region = BamUtils.getFactoryGenomicRegion(r, c, false, true);
-		DefaultAlignedReadsData ard = region.add(r,0).create();
+		region.add(r,0);
+		DefaultAlignedReadsData ard = region.create();
 		O d = data.apply(ard, r);
 		return new ImmutableReferenceGenomicRegion<O>(BamUtils.getReference(r), new ArrayGenomicRegion(region), d);
 	}

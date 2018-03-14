@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.region.bam;
 
 import gedi.core.data.reads.DefaultAlignedReadsData;
@@ -45,20 +44,20 @@ public class FactoryGenomicRegion extends ArrayGenomicRegion implements MissingI
 	 * @param pairedEndIntron
 	 * @param missingEnd
 	 */
-	public FactoryGenomicRegion(int[] coords, int[] cumNumCond, boolean consistent, boolean ignoreVariation, boolean needReadNames, int pairedEndIntron, int missingEnd) {
+	public FactoryGenomicRegion(int[] coords, int[] cumNumCond, boolean consistent, boolean ignoreVariation, boolean needReadNames, int pairedEndIntron, int missingEnd, boolean join) {
 		super(coords);
 		this.pairedEndIntron = pairedEndIntron;
 		if (pairedEndIntron+1>=getNumParts())
 			throw new RuntimeException();
-		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames);
+		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames,join);
 		factory.start();
 		this.consistent = consistent;
 		this.missingEnd = missingEnd;
 	}
 	
-	public FactoryGenomicRegion(IntArrayList coords, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames) {
+	public FactoryGenomicRegion(IntArrayList coords, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, boolean join) {
 		super(coords);
-		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames);
+		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames, join);
 		factory.start();
 	}
 	

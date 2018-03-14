@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.unionFind;
 
 import gedi.util.datastructure.collections.intcollections.IntArrayList;

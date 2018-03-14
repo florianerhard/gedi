@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.table;
 
 import gedi.util.orm.Orm;

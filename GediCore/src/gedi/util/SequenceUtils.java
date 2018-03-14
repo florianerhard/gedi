@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util;
 
 import gedi.core.data.annotation.Transcript;
@@ -383,6 +382,7 @@ public class SequenceUtils {
 	}
 	public static String extractSequence(GenomicRegion coord,
 			CharSequence seq) {
+		coord = coord.intersect(new ArrayGenomicRegion(0,seq.length()));
 		StringBuilder sb = new StringBuilder();
 		for (int i=0; i<coord.getNumParts(); i++)
 			sb.append(seq.subSequence(coord.getStart(i), coord.getEnd(i)));
@@ -429,11 +429,18 @@ public class SequenceUtils {
 	 */
 	public static boolean checkCompleteCodingTranscript(Genomic genomic,
 			ReferenceGenomicRegion<Transcript> t) {
+		return checkCompleteCodingTranscript(genomic, t, 0, 0,false);
+	}
+	public static boolean checkCompleteCodingTranscript(Genomic genomic,
+			ReferenceGenomicRegion<Transcript> t, int min5utr, int min3utr, boolean checkInternalStop) {
 		if (!t.getData().isCoding()) return false;
 		MutableReferenceGenomicRegion<Transcript> cds = t.getData().getCds(t);
 		if (cds.getRegion().getTotalLength()%3!=0) return false;
 		GenomicRegion stop = cds.map(new ArrayGenomicRegion(cds.getRegion().getTotalLength()-3,cds.getRegion().getTotalLength()));
-		return translate(genomic.getSequence(t.getReference(), stop)).equals("*");
+		if (!translate(genomic.getSequence(t.getReference(), stop)).equals("*")) return false;
+		if (checkInternalStop && StringUtils.removeFooter(translate(genomic.getSequence(cds).toString()),"*").contains("*")) return false;
+		if (t.getData().get5Utr(t).getRegion().getTotalLength()<min5utr || t.getData().get3Utr(t).getRegion().getTotalLength()<min3utr) return false;
+		return true;
 	}
 	
 }

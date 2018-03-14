@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text.genbank;
 
 import gedi.core.data.annotation.Gff3Element;

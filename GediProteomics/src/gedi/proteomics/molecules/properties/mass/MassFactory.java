@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.proteomics.molecules.properties.mass;
 
 import java.util.HashMap;
@@ -175,6 +174,10 @@ public class MassFactory {
 	public double getMass(long mass) {
 		return mass*Math.pow(10,exp);
 	}
+	
+	public long getMass(double mass) {
+		return (long) (mass*Math.pow(10,-exp));
+	}
 
 	public long getMass(String formula) {
 		long re = 0L;
@@ -277,6 +280,16 @@ public class MassFactory {
 			mass += m.getMass();
 		}
 		return getMass(mass);
+	}
+	
+	public long getPeptideMassLong(String seq) {
+		long mass = 0;
+		for (int i=0; i<seq.length(); i++) {
+			Mass m = getMassByShortName(seq.substring(i,i+1));
+			if (m==null) throw new RuntimeException("Unknown amino acid: "+seq.substring(i, i+1));
+			mass += m.getMass();
+		}
+		return mass;
 	}
 
 	public MassList getPeptide(String seq) {

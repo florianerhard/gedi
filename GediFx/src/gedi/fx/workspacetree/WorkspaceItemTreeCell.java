@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx.workspacetree;
 
 import java.lang.ref.WeakReference;

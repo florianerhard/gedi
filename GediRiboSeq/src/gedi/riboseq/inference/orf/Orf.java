@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.riboseq.inference.orf;
 
 import gedi.core.data.annotation.Transcript;

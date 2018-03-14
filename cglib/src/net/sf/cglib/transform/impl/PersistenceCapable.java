@@ -16,7 +16,6 @@
  * 
  */
 
-
 package net.sf.cglib.transform.impl;
 
 /**

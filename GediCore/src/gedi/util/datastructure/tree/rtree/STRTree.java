@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.tree.rtree;
 
 import gedi.util.datastructure.tree.priorityQueue.FibonacciHeap;

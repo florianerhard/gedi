@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.tree;
 
 
@@ -112,11 +111,12 @@ public class Trie<T> implements Map<String,T> {
 				i++;
 			}
 		}
+		if (i<key.length())
+			size++;
 		for (; i<key.length(); i++) 
 			n = n.addChild(key.charAt(i));
 		
 		n.value = value==null?nullValue:value;
-		size++;
 		return value;
 	}
 	
@@ -130,6 +130,7 @@ public class Trie<T> implements Map<String,T> {
 	public void clear() {
 		suffixLinks = null;
 		root.clear();
+		size=0;
 	}
 
 	@Override
@@ -169,10 +170,12 @@ public class Trie<T> implements Map<String,T> {
 				for (int i=1; i<sorter.size(); i++) 
 					sorter.get(i-1).sibling = sorter.get(i);
 				sorter.get(sorter.size()-1).sibling=null;
-				for (Node nn : sorter)
-					dfs.push(nn);
 				sorter.clear();
 			}
+			if (n.child!=null)
+				for (Node nn=n.child; nn!=null; nn=nn.sibling)
+					dfs.push(nn);
+				
 		}
 		return this;
 	}
@@ -582,7 +585,8 @@ public class Trie<T> implements Map<String,T> {
 			if (start.value!=null) 
 				cur = new AbstractMap.SimpleEntry<String, T>(sb.toString(),start.value==nullValue?null:(T) start.value);
 			list = new NodeList(null,start.child);
-			sb.append(start.child.c);
+			if (start.child!=null) // happens only if trie is empty
+				sb.append(start.child.c);
 		}
 		
 		@Override
@@ -603,6 +607,7 @@ public class Trie<T> implements Map<String,T> {
 		@SuppressWarnings("unchecked")
 		private void lookAhead() {
 			if (cur==null) {
+				if (list.node==null)return; // happens only if trie is empty
 				do {
 					if (list.node.child!=null) {
 						list = new NodeList(list,list.node.child);

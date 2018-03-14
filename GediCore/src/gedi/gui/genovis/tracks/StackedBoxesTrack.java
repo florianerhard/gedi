@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.genovis.tracks;
 
 import gedi.core.data.mapper.GenomicRegionDataMapping;
@@ -65,10 +64,9 @@ public class StackedBoxesTrack extends NumericValuesTrack implements BarNumericV
 				}
 			}
 		}
-
 		for (int row=0; row<value.length(); row++) {
 			if (value.getDouble(row)>0) {
-				context.g2.setPaint(PaintUtils.parseColor(getStyles().get("["+row+"].color").asString()));
+				context.g2.setPaint(PaintUtils.parseColor(getStyles().get("["+row+"].fill").asString()));
 				cstack+=Double.isNaN(value.getDouble(row))?0:value.getDouble(row);
 				
 				double y = getY(transform(cstack),min,max);

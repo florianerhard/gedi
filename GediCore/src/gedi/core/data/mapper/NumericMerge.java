@@ -15,11 +15,14 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.mapper;
 
 import java.util.Collection;
 import java.util.function.DoubleBinaryOperator;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
+
+import javax.script.ScriptException;
 
 import gedi.core.data.numeric.DenseGenomicNumericProvider;
 import gedi.core.data.numeric.GenomicNumericProvider;
@@ -31,16 +34,35 @@ import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.mutable.MutablePair;
 import gedi.util.mutable.MutableTuple;
+import gedi.util.nashorn.JSFunction;
 
 @GenomicRegionDataMapping(fromType=MutableTuple.class,toType=PixelBlockToValuesMap.class)
 public class NumericMerge implements GenomicRegionDataMapper<MutableTuple, PixelBlockToValuesMap>{
 
+	
+	private Function<NumericArray,NumericArray> computer = null;
+	
+	
+	public void setCompute(String js) throws ScriptException {
+		this.computer = new JSFunction(false, "function(data) "+js);
+	}
+	
 
 	@Override
 	public PixelBlockToValuesMap map(ReferenceSequence reference,
 			GenomicRegion region,PixelLocationMapping pixelMapping,
-			MutableTuple data) {
-		return new PixelBlockToValuesMap(data);
+			MutableTuple data2) {
+		PixelBlockToValuesMap data = new PixelBlockToValuesMap(data2);
+		if (computer==null) 
+			return data;
+		
+		NumericArray[] values = new NumericArray[data.size()];
+		for (int i=0; i<values.length; i++)
+			values[i] = computer.apply(data.getValues(i));
+		
+		
+		return new PixelBlockToValuesMap(data, values);
+		
 		
 	}
 

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.proteomics.digest;
 
 public class EmptyDigestIterator implements DigestIterator{

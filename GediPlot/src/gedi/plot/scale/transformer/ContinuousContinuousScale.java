@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.plot.scale.transformer;
 
 import java.util.function.Function;

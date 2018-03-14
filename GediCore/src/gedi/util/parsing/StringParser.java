@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.parsing;
 
 public class StringParser implements Parser<String> {

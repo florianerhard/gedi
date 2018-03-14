@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.lfc;
 
 import gedi.core.data.annotation.Transcript;

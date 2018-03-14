@@ -15,13 +15,11 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
-import gedi.util.sequence.DnaSequence;
 
 import java.io.IOException;
 
@@ -34,6 +32,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	int[] multiplicity;
 	int[] ids;
 	float[] weights;
+	int[] geometry;
 	
 	public DefaultAlignedReadsData() {}
 
@@ -82,8 +81,8 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 						var[i][v] = encodeDeletion(data.getDeletionPos(i, v), data.getDeletion(i, v), data.isVariationFromSecondRead(i, v));
 						indels[i][v] = encodeDeletionIndel(data.getDeletionPos(i, v), data.getDeletion(i, v));
 					} else if (isSoftclip(i, v)) {
-						var[i][v] = DefaultAlignedReadsData.encodeSoftclip(getSoftclipPos(i, v), getSoftclip(i, v), data.isVariationFromSecondRead(i, v));
-						indels[i][v] = DefaultAlignedReadsData.encodeSoftclipIndel(getSoftclipPos(i, v), getSoftclip(i, v));
+						var[i][v] = DefaultAlignedReadsData.encodeSoftclip(isSoftclip5p(i, v), getSoftclip(i, v), data.isVariationFromSecondRead(i, v));
+						indels[i][v] = DefaultAlignedReadsData.encodeSoftclipSequence(isSoftclip5p(i, v), getSoftclip(i, v));
 					} else throw new RuntimeException("Neither mismatch nor insertion nor deletion!");
 				}
 			}
@@ -101,12 +100,41 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 				for (int i=0; i<weights.length; i++)
 					weights[i] = data.getWeight(i);
 			}
+			
+			if (data.hasGeometry()) {
+				geometry = new int[distinct];
+				for (int i=0; i<geometry.length; i++)
+					geometry[i] = encodeGeometry(data.getGeometryBeforeOverlap(i), data.getGeometryOverlap(i), data.getGeometryAfterOverlap(i));
+			}
 		}
 	}
 
 	@Override
 	public boolean hasWeights() {
 		return weights!=null;
+	}
+	
+	@Override
+	public boolean hasGeometry() {
+		return geometry!=null;
+	}
+	
+	@Override
+	public int getGeometryBeforeOverlap(int distinct) {
+		if (geometry==null) throw new RuntimeException("Read geometry information not available!");
+		return beforeGeom(geometry[distinct]);
+	}
+	
+	@Override
+	public int getGeometryOverlap(int distinct) {
+		if (geometry==null) throw new RuntimeException("Read geometry information not available!");
+		return overlapGeom(geometry[distinct]);
+	}
+	
+	@Override
+	public int getGeometryAfterOverlap(int distinct) {
+		if (geometry==null) throw new RuntimeException("Read geometry information not available!");
+		return afterGeom(geometry[distinct]);
 	}
 	
 	@Override
@@ -239,7 +267,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 				char[] ca = new char[in.getCInt()];
 				for (int cr=0; cr<ca.length; cr++)
 					ca[cr] = in.getAsciiChar();
-				indels[i][j] = new DnaSequence(ca); 
+				indels[i][j] = new String(ca); 
 			}
 		}
 		
@@ -263,7 +291,39 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 				weights[0] = 1;
 		} 
 		
+		geometry = null;
+		if (in.getContext().getGlobalInfo().getEntry(AlignedReadsData.HASGEOMETRYATTRIBUTE).asInt()==1) {
+			geometry = new int[d];
+			for (int i=0; i<d; i++)
+				geometry[i] = in.getCInt();
+		} 
+		
 	}
+	
+	private static void checkGeometryEncoding(int l) {
+		if (l<0 || l>=1<<10) throw new RuntimeException("Cannot encode geometries >="+(1<<10));
+	}
+	
+	static int encodeGeometry(int before, int overlap, int after) {
+		checkGeometryEncoding(before);
+		checkGeometryEncoding(overlap);
+		checkGeometryEncoding(after);
+		return after<<20 | overlap<<10 | before;
+	}
+	
+	private static short geommask = (1<<10)-1;
+	static int beforeGeom(int mask) {
+		return (mask>>>0)&geommask;
+	}
+	
+	static int overlapGeom(int mask) {
+		return (mask>>>10)&geommask;
+	}
+
+	static int afterGeom(int mask) {
+		return (mask>>>20)&geommask;
+	}
+
 	
 	private static void checkPositionEncoding(int pos) {
 		if (pos>=1<<11) throw new RuntimeException("Cannot encode positions >"+(1<<11));
@@ -274,8 +334,8 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 		return (short) (TYPE_MISMATCH<<13 | (secondRead?1:0) << 12 | pos);
 	}
 	static CharSequence encodeMismatchIndel(int pos, char genomic, char read) {
-		if (read=='N') read=genomic;
-		return new DnaSequence(genomic, read);
+//		if (read=='N') read=genomic;
+		return new String(new char[] {genomic, read});
 	}
 	
 	static short encodeDeletion(int pos, CharSequence genomic, boolean secondRead) {
@@ -283,7 +343,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 		return (short) (TYPE_DELETION<<13 | (secondRead?1:0) << 12 | pos);
 	}
 	static CharSequence encodeDeletionIndel(int pos, CharSequence genomic) {
-		return new DnaSequence(genomic);
+		return genomic;
 	}
 	
 	static short encodeInsertion(int pos, CharSequence read, boolean secondRead) {
@@ -291,15 +351,14 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 		return (short) (TYPE_INSERTION<<13 | (secondRead?1:0) << 12 | pos);
 	}
 	static CharSequence encodeInsertionIndel(int pos, CharSequence read) {
-		return new DnaSequence(read);
+		return read;
 	}
 	
-	static short encodeSoftclip(int pos, CharSequence read, boolean secondRead) {
-		checkPositionEncoding(pos);
-		return (short) (TYPE_SOFTCLIP<<13 | (secondRead?1:0) << 12 | pos);
+	static short encodeSoftclip(boolean p5, CharSequence read, boolean secondRead) {
+		return (short) (TYPE_SOFTCLIP<<13 | (secondRead?1:0) << 12 | (p5?0:1));
 	}
-	static CharSequence encodeSoftclipIndel(int pos, CharSequence read) {
-		return new DnaSequence(read);
+	static CharSequence encodeSoftclipSequence(boolean p5, CharSequence read) {
+		return read;
 	}
 	
 	static boolean isSecondRead(short mask) {
@@ -312,10 +371,10 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	static int pos(int mask) {
 		return mask & bytemask;
 	}
-	private static final int TYPE_MISMATCH = 0;
-	private static final int TYPE_INSERTION = 1;
-	private static final int TYPE_DELETION = 2;
-	private static final int TYPE_SOFTCLIP = 3;
+	static final int TYPE_MISMATCH = 0;
+	static final int TYPE_INSERTION = 1;
+	static final int TYPE_DELETION = 2;
+	static final int TYPE_SOFTCLIP = 3;
 	
 	static int type(short mask) {
 		int smask = mask & 0xFFFF;
@@ -340,9 +399,6 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	
 	@Override
 	public boolean isVariationFromSecondRead(int distinct, int index) {
-		
-		if (distinct>=var.length || index>=var[distinct].length)
-			System.out.println(isMismatch(distinct, index));
 		return isSecondRead(var[distinct][index]);
 	}
 	
@@ -393,8 +449,8 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	
 	@Override
-	public int getSoftclipPos(int distinct, int index) {
-		return pos(var[distinct][index]);
+	public boolean isSoftclip5p(int distinct, int index) {
+		return pos(var[distinct][index])==0;
 	}
 	
 	@Override

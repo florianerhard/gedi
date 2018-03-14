@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.region.bam;
 
 import gedi.bam.tools.BamUtils;
@@ -45,13 +44,15 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 	private boolean needReadNames;
 	
 	private int minIntronLength = -1;
+	private boolean join;
 	
-	public BamAlignedReadDataFactory(GenomicRegion region, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames) {
+	public BamAlignedReadDataFactory(GenomicRegion region, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, boolean join) {
 		super(cumNumCond[cumNumCond.length-1]);
 		this.cumNumCond = cumNumCond;
 		this.region = region;
 		this.ignoreVariation = ignoreVariation;
 		this.needReadNames = needReadNames;
+		this.join = join;
 	}
 	
 	public void setUseBlocks(int minIntronLength) {
@@ -176,12 +177,15 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 		GenomicRegion reg2 = minIntronLength>=0?BamUtils.getArrayGenomicRegionByBlocks(record2,minIntronLength):BamUtils.getArrayGenomicRegion(record2);
 		
 		if (!region.isIntronConsistent(reg1) || !region.isIntronConsistent(reg2) || !reg1.isIntronConsistent(reg2) 
-				|| !region.contains(reg1) || !region.contains(reg2) )
+				|| !region.contains(reg1) || !region.contains(reg2) ) {
 //				|| region.induce(reg1.getStart())!=0 || region.induce(reg2.getStop())!=region.getTotalLength()-1)
 			// can be for softclipped reads
+			
+			// Stupid STAR: this happens!!! 4776729-4776803 and 4776750-4776801|4777524-4777549 are pairs
 			throw new RuntimeException("Record and regions do not match: \n"
 					+ "Region: "+region+"\nRecord1: "+reg1+"\t"+record1.getSAMString()
 					+"Record2: "+reg2+"\t"+record2.getSAMString());
+		}
 		
 		String key = getKey(record1)+getKey(record2);
 		if (record1.getAlignmentStart()>record2.getAlignmentStart() ||
@@ -204,16 +208,26 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 			else
 				setMultiplicity(s, 0);
 			
+			if (!join)
+				setGeometry(s, reg1.subtract(reg2).getTotalLength(), reg1.intersect(reg2).getTotalLength(), reg2.subtract(reg1).getTotalLength());
+			
 			if (reg1.intersects(reg2)) {
 				
-				GenomicRegion overlap = region.induce(reg1.intersect(reg2));
-				if (overlap.getNumParts()!=1)
-					throw new RuntimeException("Cannot be!");
-				GenomicRegion off = region.induce(reg1.subtract(reg2));
+//				GenomicRegion off = region.induce(reg1.subtract(reg2));
+				int off1, off2;
+				if (!record1.getReadNegativeStrandFlag()) {
+					off1 = region.induce(reg1.getStart());
+					off2 = region.induce(reg2.getStart());
+				} else {
+					off1 = region.getTotalLength()-1-region.induce(reg1.getStop());
+					off2 = region.getTotalLength()-1-region.induce(reg2.getStop());
+				}
 
 				if (!ignoreVariation) {
-					addVariations(record1,record1.getReadNegativeStrandFlag(),record1.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
-					addVariations(record2,record1.getReadNegativeStrandFlag(),record2.getReadNegativeStrandFlag(),off.getTotalLength(),getCurrentVariationBuffer());
+//					addVariations(record1,record1.getReadNegativeStrandFlag(),record1.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
+//					addVariations(record2,record1.getReadNegativeStrandFlag(),record2.getReadNegativeStrandFlag(),off.getTotalLength(),getCurrentVariationBuffer());
+					addVariations(record1,record1.getReadNegativeStrandFlag(),record1.getReadNegativeStrandFlag(),off1,getCurrentVariationBuffer());
+					addVariations(record2,record1.getReadNegativeStrandFlag(),record2.getReadNegativeStrandFlag(),off2,getCurrentVariationBuffer());
 					
 					// to merge variations in the overlap;
 					/*
@@ -298,7 +312,6 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				to.add(createVarIndel(v));
 			return;
 		}
-		
 		int coveredGenomic = getCoveredGenomicLength(record);
 		
 		int pos;
@@ -310,7 +323,9 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 			switch (e.getOperator()){
 			case I: 
 				pos = (invertPos?coveredGenomic-lr:lr);
-				vread = complement?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
+				vread = complement?SequenceUtils.getDnaComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
+				if (invertPos)
+					vread = StringUtils.reverse(vread);
 				ls+=e.getLength(); 
 				to.add(createInsertion(pos+offset, vread, record.getReadPairedFlag() && record.getSecondOfPairFlag()));
 				break;
@@ -335,8 +350,10 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				break;
 			case S:
 				pos = (invertPos?coveredGenomic-lr:lr);
-				vread = complement?SequenceUtils.getDnaReverseComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
-				to.add(createSoftclip(pos+offset, vread, record.getReadPairedFlag() && record.getSecondOfPairFlag()));
+				vread = complement?SequenceUtils.getDnaComplement(getReadSequence(record,ls,ls+e.getLength())):getReadSequence(record,ls,ls+e.getLength());;
+				if (invertPos)
+					vread = StringUtils.reverse(vread);
+				to.add(createSoftclip(pos==0, vread, record.getReadPairedFlag() && record.getSecondOfPairFlag()));
 				
 				ls+=e.getLength();
 				

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region.intervalTree;
 
 import gedi.core.data.annotation.ReferenceSequenceLengthProvider;

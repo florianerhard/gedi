@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region.feature;
 
 import gedi.core.data.reads.AlignedReadsData;
@@ -37,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -345,8 +345,16 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 				Runner runner = freeRunner.take();
 				runner.setTasks(block);
 				block.clear();
-				while (runner.tasks!=null)
+				
+				boolean done = false;
+				while (!done) {
+					done = true;
+					for (Runner r : runners) {
+						if (r.tasks!=null)
+							done = false;
+					}
 					Thread.yield();
+				}
 
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
@@ -382,8 +390,24 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 				f.produceResults(null);
 		}
 		else {
-			for (int i=0; i<features.size(); i++) 
-				features.get(i).produceResults(runnerFeatures[i]);
+			
+			for (GenomicRegionFeature<?> f : features) {
+				f.end();
+			}
+			ExecutorService pool = Executors.newFixedThreadPool(threads);
+			CountDownLatch latch = new CountDownLatch(features.size());
+			for (int i=0; i<features.size(); i++)  {
+				int ui = i;
+				pool.execute(()->{
+					features.get(ui).produceResults(runnerFeatures[ui]);
+					latch.countDown();
+				});
+			}
+			pool.shutdown();
+			try {
+				latch.await();
+			} catch (InterruptedException e) {
+			}
 		}
 	}
 	

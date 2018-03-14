@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text.jhp;
 
 import gedi.util.io.text.LineWriter;

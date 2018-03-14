@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text.jhp.display;
 
 import gedi.core.data.numeric.diskrmq.DiskGenomicNumericProvider;

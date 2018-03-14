@@ -15,9 +15,9 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.sra;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import gedi.sra.processing.SraProcessor;
@@ -30,6 +30,7 @@ import gedi.util.datastructure.tree.Trie;
 import gedi.util.datastructure.tree.Trie.AhoCorasickResult;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.io.text.LineWriter;
 
 public class PriceSraProcessor implements SraProcessor {
 
@@ -66,17 +67,21 @@ public class PriceSraProcessor implements SraProcessor {
 		return s.toLowerCase();
 	}
 	
+
 	@Override
-	public String process(String sra, Function<SraTopLevel, Object> parser, Function<SraTopLevel, String> src) {
+	public boolean process(String sra, Function<SraTopLevel, Object> parser, Function<SraTopLevel, String> src,
+			LineWriter out) {
 		String srca = src.apply(SraTopLevel.Study);
 		ExtendedIterator<AhoCorasickResult<String>> it = checker.iterateAhoCorasick(lc(srca));
 		if (!it.hasNext()) {
 			
 			srca = src.apply(SraTopLevel.Experiment);
 			it = checker.iterateAhoCorasick(lc(srca));
-			if (it.hasNext()) 
-				return "Exp";
-			return "-";
+			if (it.hasNext()) {
+				out.write2("Exp");
+				return true;
+			}
+			return false;
 		}
 		
 		SampleSetType sst = (SampleSetType) parser.apply(SraTopLevel.Sample);
@@ -89,19 +94,25 @@ public class PriceSraProcessor implements SraProcessor {
 			org=org+"\t"+s.getAccession();
 			
 			it = checker.iterateAhoCorasick(lc(s.getDESCRIPTOR().getSTUDYTITLE()));
-			if (it.hasNext())
-				return "Title "+it.next().getValue()+"\t"+org;
+			if (it.hasNext()) {
+				out.write2("Title "+it.next().getValue()+"\t"+org);
+				return true;
+			}
 			
 			it = checker.iterateAhoCorasick(lc(s.getDESCRIPTOR().getSTUDYABSTRACT()));
-			if (it.hasNext())
-				return "Abstract "+it.next().getValue()+"\t"+org;
+			if (it.hasNext()){
+				out.write2("Abstract "+it.next().getValue()+"\t"+org);
+				return true;
+			}
 			
 			it = checker.iterateAhoCorasick(lc(s.getDESCRIPTOR().getSTUDYDESCRIPTION()));
-			if (it.hasNext())
-				return "Description "+it.next().getValue()+"\t"+org;
+			if (it.hasNext()){
+				out.write2("Description "+it.next().getValue()+"\t"+org);
+				return true;
+			}
 			
 		}
-		return "-";
+		return false;
 	}
 
 }

@@ -15,10 +15,10 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text.tsv.formats;
 
 import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.io.text.LineIterator;
 import gedi.util.parsing.BooleanParser;
 import gedi.util.parsing.DoubleParser;
 import gedi.util.parsing.IntegerParser;
@@ -83,4 +83,28 @@ public class Csv {
 		}
 	}
 
+	
+	public static DataFrame toDataFrame(LineIterator it) throws IOException {
+		return toDataFrame(it, null, true, 0, null);
+	}
+	
+	public static DataFrame toDataFrame(LineIterator it, Progress progress) throws IOException {
+		return toDataFrame(it, null, true, 0, progress);
+	}
+	
+	public static DataFrame toDataFrame(LineIterator it, Boolean header, boolean stringsAsFactors, int skip, Progress progress) throws IOException {
+			CsvReaderFactory fac = new CsvReaderFactory();
+		fac.setParsers(new Parser[] {
+				new BooleanParser(),
+				new IntegerParser(),
+				new DoubleParser(),
+				new StringParser()
+		});
+		fac.setSkipLines(skip);
+		fac.setHeader(header);
+		CsvReader reader = fac.createReader(it);
+		if (progress!=null) reader.setProgress(progress);
+		
+		return reader.readDataFrame();
+	}
 }

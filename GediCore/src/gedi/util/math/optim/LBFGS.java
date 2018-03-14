@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.math.optim;
 
 import gedi.util.math.optim.LBFGS.Params;

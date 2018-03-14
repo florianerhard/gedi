@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.centeredDiskIntervalTree;
 
 
@@ -96,6 +95,14 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 		}
 	}
 	
+	public String getExtendedJson() {
+		return extendedJson;
+	}
+	
+	public boolean isCompressed() {
+		return compression;
+	}
+	
 	/**
 	 * Equivalent to the constructor, but IOExceptions are wrapped into a RuntimeException
 	 * @param file
@@ -156,8 +163,11 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 		
 		if (extended) {
 			extendedJson = file.getString();
-			if (extendedJson.length()>0)
+			if (extendedJson.length()>0) {
 				file.getContext().setGlobalInfo(DynamicObject.parseJson(extendedJson));
+				compression = file.getContext().getGlobalInfo().get("compress").asBoolean();
+			}
+			
 		}
 		
 		for (CenteredDiskIntervalTree<D> tree : pages.values())

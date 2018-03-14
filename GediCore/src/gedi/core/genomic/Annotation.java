@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.genomic;
 
 import gedi.core.region.GenomicRegionStorage;

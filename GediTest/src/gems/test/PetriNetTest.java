@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gems.test;
 
 import gedi.core.data.mapper.GenomicRegionDataMapper;

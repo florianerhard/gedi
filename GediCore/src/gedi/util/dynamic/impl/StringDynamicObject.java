@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.dynamic.impl;
 
 import gedi.util.StringUtils;

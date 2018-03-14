@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.processing.sources;
 
 import gedi.core.data.annotation.Transcript;

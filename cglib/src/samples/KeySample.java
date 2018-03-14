@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package samples;
 import net.sf.cglib.core.KeyFactory;
 public class KeySample {

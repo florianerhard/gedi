@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util;
 
 import gedi.util.parsing.Parser;
@@ -548,10 +547,19 @@ public class ReflectionUtils {
 	
 	public static <T,O> O getStatic(Class<T> o, String field) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
 		Field f = findAnyField(o, field, true);
+		if (f==null) throw new NoSuchFieldException(field);
 		if (!Modifier.isPublic(f.getModifiers()))
 			f.setAccessible(true);
 		return (O) f.get(null);
 	}
+	public static <T,O> O getStatic2(Class<T> o, String field)  {
+		try {
+			return getStatic(o, field);
+		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+			return null;
+		}
+	}
+	
 	public static <T,O> void setStatic(Class<T> o, String field, O toset) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
 		Field f = findAnyField(o, field, true);
 		if (!Modifier.isPublic(f.getModifiers()))

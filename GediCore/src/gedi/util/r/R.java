@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.r;
 
 import java.awt.image.BufferedImage;

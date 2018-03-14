@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.io.text.genbank;
 
 import gedi.util.functions.ExtendedIterator;
@@ -74,7 +73,7 @@ public class GenbankFeatureIterator implements ExtendedIterator<GenbankFeature> 
 			StringBuilder posBuilder = new StringBuilder();
 			posBuilder.append(spaceIndex>=0 ? line.substring(spaceIndex).trim() : "");
 			
-			while (!features[currentLine+1].trim().startsWith("/") && Character.isWhitespace(features[currentLine+1].charAt(featureIndent.length()+1)))
+			while (currentLine+1<features.length && !features[currentLine+1].trim().startsWith("/") && Character.isWhitespace(features[currentLine+1].charAt(featureIndent.length()+1)))
 				posBuilder.append(features[++currentLine].trim());
 			
 			

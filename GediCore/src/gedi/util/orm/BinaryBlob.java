@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.orm;
 
 import gedi.app.extension.ExtensionContext;
@@ -82,6 +81,10 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
     
     public ByteBuffer getBuffer() {
 		return buffer;
+	}
+    
+    public void setContext(ExtensionContext context) {
+		this.context = context;
 	}
     
     @Override

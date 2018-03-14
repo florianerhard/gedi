@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.gtracks.picking;
 
 public class CharSequencePickObject {

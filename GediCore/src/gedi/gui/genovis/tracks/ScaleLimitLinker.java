@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.genovis.tracks;
 
 import gedi.gui.genovis.GenoVisViewer;

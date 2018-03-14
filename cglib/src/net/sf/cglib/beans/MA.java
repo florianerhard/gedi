@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package net.sf.cglib.beans;
 
 import java.io.ObjectStreamException;

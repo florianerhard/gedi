@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import gedi.core.data.HasConditions;
@@ -51,6 +50,28 @@ public class ConditionMappedAlignedReadsData implements AlignedReadsData {
 	public float getWeight(int distinct) {
 		return parent.getWeight(distinct);
 	}
+	
+	@Override
+	public boolean hasGeometry() {
+		return parent.hasGeometry();
+	}
+
+	@Override
+	public int getGeometryBeforeOverlap(int distinct) {
+		return parent.getGeometryBeforeOverlap(distinct);
+	}
+
+	@Override
+	public int getGeometryOverlap(int distinct) {
+		return parent.getGeometryOverlap(distinct);
+	}
+
+	@Override
+	public int getGeometryAfterOverlap(int distinct) {
+		return parent.getGeometryAfterOverlap(distinct);
+	}
+
+
 	
 	@Override
 	public boolean isVariationFromSecondRead(int distinct, int index) {
@@ -151,8 +172,8 @@ public class ConditionMappedAlignedReadsData implements AlignedReadsData {
 	}
 
 	@Override
-	public int getSoftclipPos(int distinct, int index) {
-		return parent.getSoftclipPos(distinct, index);
+	public boolean isSoftclip5p(int distinct, int index) {
+		return parent.isSoftclip5p(distinct, index);
 	}	
 	
 	@Override
@@ -176,8 +197,5 @@ public class ConditionMappedAlignedReadsData implements AlignedReadsData {
 		return toString2();
 	}
 
-
-	
-	
 	
 }

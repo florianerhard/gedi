@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.algorithm.string.search;
 
 import gedi.util.datastructure.collections.intcollections.IntIterator;

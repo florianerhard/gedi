@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.fx.html;
 
 import java.net.MalformedURLException;

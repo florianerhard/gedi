@@ -51,6 +51,13 @@ var mbppp = mbppp?mbppp:1000;
 			<ReadCountMode m="<?JS readmode ?>" />
 	</AlignedReadsDataToMismatchesMapper>
 	
+	<NumericMerge input="+.<?JS id ?>.coveragenn,+.<?JS id ?>.mismatches" id="+.<?JS id ?>.mismatchfrac">
+		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
+	</NumericMerge>
+	<NumericMerge input="-.<?JS id ?>.coveragenn,-.<?JS id ?>.mismatches" id="-.<?JS id ?>.mismatchfrac">
+		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
+	</NumericMerge>
+	
 	
 	<NumericTrackGroup id="+.<?JS id ?>.Normalized.Data" class="<?JS id ?>">
 		<LogScale base="10" />
@@ -92,6 +99,13 @@ var mbppp = mbppp?mbppp:1000;
 		</StackedBoxesTrack>
 		<Hidden h="true" />
 	</NumericTrackGroup>
+	
+	<StackedBoxesTrack input="+.<?JS id ?>.mismatchfrac" id="+.<?JS id ?>.Mismatches.Fraction" class="basecolors">
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<FixedMin min="0"/>
+		<FixedMax min="0.1"/>
+	</StackedBoxesTrack>
+		
 
 	<PackRegionTrack input="+.<?JS id ?>.data" id="+.<?JS id ?>.Reads"  >
 		<Hspace space="0" />
@@ -149,6 +163,13 @@ var mbppp = mbppp?mbppp:1000;
 		<Hidden h="true" />
 	</NumericTrackGroup>
 
+	<StackedBoxesTrack input="-.<?JS id ?>.mismatchfrac" id="-.<?JS id ?>.Mismatches.Fraction" class="basecolors">
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<FixedMin min="0"/>
+		<FixedMax min="0.1"/>
+	</StackedBoxesTrack>
+		
+		
 	<PackRegionTrack input="-.<?JS id ?>.data" id="-.<?JS id ?>.Reads"  >
 		<Hspace space="0" />
 		<Vspace space="0" />

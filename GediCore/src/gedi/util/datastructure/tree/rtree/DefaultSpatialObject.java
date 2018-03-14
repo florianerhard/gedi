@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.datastructure.tree.rtree;
 
 import java.awt.geom.Point2D;

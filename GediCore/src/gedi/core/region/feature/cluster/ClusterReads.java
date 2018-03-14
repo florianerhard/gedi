@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.region.feature.cluster;
 
 import gedi.core.genomic.Genomic;

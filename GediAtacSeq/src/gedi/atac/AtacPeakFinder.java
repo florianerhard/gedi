@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.atac;
 
 import java.io.File;

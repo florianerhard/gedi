@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.plot.aesthetics;
 
 import gedi.plot.renderables.legend.DoubleLegend;

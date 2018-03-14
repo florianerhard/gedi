@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.app;
 
 import gedi.app.classpath.ClassPath;

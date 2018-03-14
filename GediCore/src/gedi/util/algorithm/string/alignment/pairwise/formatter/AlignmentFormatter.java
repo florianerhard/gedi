@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.algorithm.string.alignment.pairwise.formatter;
 
 import gedi.util.algorithm.string.alignment.pairwise.Alignment;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package executables;
 
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;
@@ -93,6 +92,7 @@ public class MergeCIT {
 				EI.wrap(args)
 					.map(CenteredDiskIntervalTreeStorage::load)
 					.toArray(new CenteredDiskIntervalTreeStorage[0]);
+		boolean compressed = EI.wrap(storages).mapToInt(cit->cit.isCompressed()?1:0).sum()>=storages.length/2;
 		
 		DynamicObject[] metas = EI.wrap(storages).map(CenteredDiskIntervalTreeStorage::getMetaData).filter(d->!d.isNull()).toArray(DynamicObject.class);
 		DynamicObject meta = metas.length==storages.length?DynamicObject.merge(metas):DynamicObject.getEmpty();
@@ -108,8 +108,8 @@ public class MergeCIT {
 		
 		ParallellIterator<ImmutableReferenceGenomicRegion<? extends AlignedReadsData>> pit = (ParallellIterator<ImmutableReferenceGenomicRegion<? extends AlignedReadsData>>) FunctorUtils.parallellIterator((Iterator[])iterators, FunctorUtils.naturalComparator(), ImmutableReferenceGenomicRegion.class);
 		
-		CenteredDiskIntervalTreeStorage<DefaultAlignedReadsData> outCit = new CenteredDiskIntervalTreeStorage<DefaultAlignedReadsData>(out, DefaultAlignedReadsData.class);
-		outCit.fill(pit.map(merger::merge).iff(progress, ei->ei.progress(new ConsoleProgress(System.err),-1,e->e.toLocationString())),new ConsoleProgress(System.err));
+		CenteredDiskIntervalTreeStorage<DefaultAlignedReadsData> outCit = new CenteredDiskIntervalTreeStorage<DefaultAlignedReadsData>(out, DefaultAlignedReadsData.class,compressed);
+		outCit.fill(pit.map(merger::merge).iff(progress, ei->ei.progress(new ConsoleProgress(System.err),-1,e->e.toLocationString()+e.getData())),new ConsoleProgress(System.err));
 		if (!meta.isNull())
 			outCit.setMetaData(meta);
 		

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.program;
 
 import java.nio.file.Path;
@@ -50,58 +49,61 @@ public class CommandLineHandler {
 	 */
 	@SuppressWarnings("rawtypes")
 	public String parse(GediParameterSpec spec, GediParameterSet set) {
-		
-		spec.add("Commandline", getProgress(set),getD(set),getH(set),getHh(set),getHhh(set),getDry(set),getKeep(set));
-		
-		int i;
-		for (i=0; i<args.length; i++) {
+		try {
+			spec.add("Commandline", getProgress(set),getD(set),getH(set),getHh(set),getHhh(set),getDry(set),getKeep(set));
 			
-			if (args[i].startsWith("-")) {
+			int i;
+			for (i=0; i<args.length; i++) {
 				
-				String name = args[i].substring(1);
-				if (name.startsWith("-")) name = name.substring(1);
-				
-				String value = null;
-				if (name.indexOf('=')>=0) {
-					int ind = name.indexOf('=');
-					value = name.substring(ind+1);
-					name = name.substring(0, ind);
-				}
-				
-				GediParameter param = spec.get(name);
-				if (param==null)
-					return "Unknown parameter: "+args[i];
-				if (param.getType().hasValue() && value==null) {
-					++i;
-					if (i>=args.length || args[i].startsWith("-")) {
-						return "Missing argument for "+args[i-1];
+				if (args[i].startsWith("-")) {
+					
+					String name = args[i].substring(1);
+					if (name.startsWith("-")) name = name.substring(1);
+					
+					String value = null;
+					if (name.indexOf('=')>=0) {
+						int ind = name.indexOf('=');
+						value = name.substring(ind+1);
+						name = name.substring(0, ind);
 					}
-					value = args[i];
 					
-					if (param.isMulti() && param.getType().parsesMulti()) {
-						StringBuilder sb = new StringBuilder().append(value);
-						while (i+1<args.length && !args[i+1].startsWith("-")) 
-							sb.append(" ").append(args[++i]);
-						param.set(param.getType().parse(sb.toString()));
-					} else {
-					
-						param.set(param.getType().parse(value));
-						if (param.isMulti()) {
-							while (i+1<args.length && !args[i+1].startsWith("-")) {
-								param.set(param.getType().parse(args[++i]));
+					GediParameter param = spec.get(name);
+					if (param==null)
+						return "Unknown parameter: "+args[i];
+					if (param.getType().hasValue() && value==null) {
+						++i;
+						if (i>=args.length || args[i].startsWith("-")) {
+							return "Missing argument for "+args[i-1];
+						}
+						value = args[i];
+						
+						if (param.isMulti() && param.getType().parsesMulti()) {
+							StringBuilder sb = new StringBuilder().append(value);
+							while (i+1<args.length && !args[i+1].startsWith("-")) 
+								sb.append(" ").append(args[++i]);
+							param.set(param.getType().parse(sb.toString()));
+						} else {
+						
+							param.set(param.getType().parse(value));
+							if (param.isMulti()) {
+								while (i+1<args.length && !args[i+1].startsWith("-")) {
+									param.set(param.getType().parse(args[++i]));
+								}
 							}
 						}
-					}
-				} 
-				else
-					param.set(param.getType().parse(value));
+					} 
+					else
+						param.set(param.getType().parse(value));
+				}
+				else {
+					return "Unknown parameter: "+args[i];
+				}
 			}
-			else {
-				return "Unknown parameter: "+args[i];
-			}
+			
+			return null;
+		} catch (Throwable e) {
+			return e.getMessage();
 		}
-		
-		return null;
 	}
 
 

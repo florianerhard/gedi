@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.gui.genovis;
 
 import gedi.core.data.mapper.GenomicRegionDataMappingJob;

@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.orm;
 
 import gedi.util.functions.ExtendedIterator;

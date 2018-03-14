@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util.nashorn;
 
 import gedi.util.functions.TriFunction;

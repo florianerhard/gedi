@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.motif.splice;
 
 import java.io.InputStream;

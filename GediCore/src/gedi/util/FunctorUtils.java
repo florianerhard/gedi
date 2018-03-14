@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.util;
 
 
@@ -52,6 +51,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
+import java.util.function.DoublePredicate;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
@@ -584,6 +584,38 @@ public class FunctorUtils {
 				boolean valid = false;
 				isnull = false;
 				for (next = it.nextInt(); !(valid = predicate.test(next))&&it.hasNext(); next = it.nextInt());
+				if (!valid) isnull = true;
+			}
+		}
+		
+	}
+	
+	public static class FilteredDoubleIterator implements DoubleIterator {
+		private DoubleIterator it;
+		private DoublePredicate predicate;
+		private double next;
+		private boolean isnull = true;
+		
+		public FilteredDoubleIterator(DoubleIterator it, DoublePredicate predicate) {
+			this.it = it;
+			this.predicate = predicate;
+		}
+		@Override
+		public boolean hasNext() {
+			lookAhead();
+			return !isnull;
+		}
+		@Override
+		public double nextDouble() {
+			lookAhead();
+			isnull = true;
+			return next;
+		}
+		private void lookAhead() {
+			if (isnull && it.hasNext()) { 
+				boolean valid = false;
+				isnull = false;
+				for (next = it.nextDouble(); !(valid = predicate.test(next))&&it.hasNext(); next = it.nextDouble());
 				if (!valid) isnull = true;
 			}
 		}

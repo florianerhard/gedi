@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.data.reads;
 
 import gedi.core.data.HasConditions;
@@ -46,6 +45,29 @@ public class OneDistinctSequenceAlignedReadsData implements AlignedReadsData {
 	@Override
 	public boolean hasWeights() {
 		return parent.hasWeights();
+	}
+	
+	@Override
+	public boolean hasGeometry() {
+		return parent.hasGeometry();
+	}
+
+	@Override
+	public int getGeometryBeforeOverlap(int distinct) {
+		if (distinct!=0) throw new IndexOutOfBoundsException();
+		return parent.getGeometryBeforeOverlap(this.distinct);
+	}
+
+	@Override
+	public int getGeometryOverlap(int distinct) {
+		if (distinct!=0) throw new IndexOutOfBoundsException();
+		return parent.getGeometryOverlap(this.distinct);
+	}
+
+	@Override
+	public int getGeometryAfterOverlap(int distinct) {
+		if (distinct!=0) throw new IndexOutOfBoundsException();
+		return parent.getGeometryAfterOverlap(this.distinct);
 	}
 	
 	@Override
@@ -172,9 +194,9 @@ public class OneDistinctSequenceAlignedReadsData implements AlignedReadsData {
 	}
 
 	@Override
-	public int getSoftclipPos(int distinct, int index) {
+	public boolean isSoftclip5p(int distinct, int index) {
 		if (distinct!=0) throw new IndexOutOfBoundsException();
-		return parent.getSoftclipPos(this.distinct, index);
+		return parent.isSoftclip5p(this.distinct, index);
 	}	
 	
 

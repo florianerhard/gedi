@@ -15,7 +15,6 @@
  *   limitations under the License.
  * 
  */
-
 package gedi.core.workspace.file;
 
 import java.io.IOException;
