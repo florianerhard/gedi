@@ -132,16 +132,22 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 		bc = new VariableSizeDiskArray<CountDnaSequence>(bcFile,()->new CountDnaSequence("", 0));
 		
 		this.minLength = minLength;
-		
-		HashMap<String, Integer> index = ArrayUtils.createIndexMap(barcodes);
-		int end = offset+barcodes[0].length();
-		cumNumCond = new int[] {barcodes.length};
-		
-		conditioner = arr->{
-			Integer r = index.get(arr.subSequence(offset, end).toString());
-			if (r==null) return -1;
-			return r;
-		};
+
+		if (offset>=0 && barcodes.length>0) {
+			HashMap<String, Integer> index = ArrayUtils.createIndexMap(barcodes);
+			int end = offset+barcodes[0].length();
+			cumNumCond = new int[] {barcodes.length};
+			
+			conditioner = arr->{
+				Integer r = index.get(arr.subSequence(offset, end).toString());
+				if (r==null) return -1;
+				return r;
+			};
+		} else {
+			cumNumCond = new int[] {1};
+			
+			conditioner = arr->0;
+		}
 	}
 	
 	

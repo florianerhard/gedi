@@ -68,6 +68,7 @@ public class PixelLocationMapping extends ArrayList<PixelLocationMappingBlock> {
 	}
 	
 	public int getBlockForBp(ReferenceSequence reference, int bp) {
+		if (size()==0) return -1;
 		double pix = xmapper.bpToPixel(reference, bp);
 		double rel = pix/xmapper.getWidth();
 		int re = (int) (rel*size());

@@ -43,7 +43,7 @@ var infos = ReadMappingReferenceInfo.writeTable(output.file.getParent()+"/"+name
 processTemplate("merge_priority.oml",output.file.getParent()+"/"+name+".prio.oml");
 
 
-var genomes = EI.wrap(infos).filter(function(i) i.priority>1).map(function(i) i.getGenomic().getId()).reduce(function(a,b) a+" "+b);
+var genomes = EI.wrap(infos).filter(function(i) i.priority>1).map(function(i) i.getGenomic().getId()).reduce(function(a,b) a+" "+b).unique(false);
 
 var test;
 

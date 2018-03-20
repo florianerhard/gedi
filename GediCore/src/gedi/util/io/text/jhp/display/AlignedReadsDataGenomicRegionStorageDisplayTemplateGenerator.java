@@ -65,7 +65,7 @@ public class AlignedReadsDataGenomicRegionStorageDisplayTemplateGenerator implem
 		// write oml
 		t.set("paths", EI.wrap(g).map(te->te.path).toArray(String.class));
 		if (t.get("id")==null)
-			t.set("id", FileUtils.getFullNameWithoutExtension(path).replace("/", "_"));
+			t.set("id", FileUtils.getNameWithoutExtension(path).replace("/", "_"));
 		
 		DoubleArrayList totals = new DoubleArrayList();
 		for (int i=0; i<g.length; i++) {

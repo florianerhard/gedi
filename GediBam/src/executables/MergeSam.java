@@ -224,9 +224,10 @@ public class MergeSam {
 			
 			if (bcJson!=null) {
 				DynamicObject barcodes = DynamicObject.parseJson(FileUtils.readAllText(new File(bcJson)));
-				String[] bcs = EI.wrap(barcodes.getEntry("condition").asArray()).map(d->d.getEntry("barcode").asString()).toArray(String.class);
+				String[] bcs = !barcodes.hasProperty("offset")?new String[0]:EI.wrap(barcodes.getEntry("condition").asArray()).map(d->d.getEntry("barcode").asString()).toArray(String.class);
 				
-				bcOffset = barcodes.getEntry("offset").asInt();
+				if (barcodes.hasProperty("offset"))
+						bcOffset = barcodes.getEntry("offset").asInt();
 				
 				bca = new SamMismatchCorrectionBarcodeAnnotator(bcFile, bcOffset, bcs);
 			}

@@ -733,6 +733,15 @@ public class IndexGenome {
 		}
 		
 		if (kallisto && transcriptome) {
+			try {
+				if (new ProcessBuilder().command("kallisto", "version").start().waitFor()!=0) throw new IOException();
+			} catch (IOException e) {
+				System.err.println("kallisto cannot be invoked! Skipping kallisto index, you will not be able to use kallisto for this genome, but everything else will work!");
+				kallisto = false;
+			}
+		}
+		
+		if (kallisto && transcriptome) {
 			
 			String indout = prefix+".kallisto";
 			if (!new File(indout).exists()) {
@@ -781,6 +790,7 @@ public class IndexGenome {
 		System.err.println(" -f <folder>\t\tOutput folder (Default: next to Fasta and Gtf / genbank)");
 		System.err.println(" -n <name>\t\tName of the genome for later use (Default: file name of gtf/genbank-file)");
 		System.err.println(" -o <file>\t\tSpecify output file (Default: ~/.gedi/genomic/${name}.oml)");
+		System.err.println(" -nokallisto\t\t\tDo not create kallisto indices");
 		System.err.println(" -nobowtie\t\t\tDo not create bowtie indices");
 		System.err.println(" -nostar\t\t\tDo not create STAR indices");
 		System.err.println(" -nbases <nbases>\t\t\tSpecify nbases parameter for STAR (instead of using the formula in the STAR manual)");

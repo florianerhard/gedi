@@ -121,7 +121,8 @@ public class ExtractBarcodes {
 		Gedi.startup(true);
 		
 		Progress progress = new NoProgress();
-		int len = -1;
+		int leading = 0;
+		int trailing = 0;
 		int offset = -1;
 		HashMap<String,String> barcodeMap = new HashMap<>();
 		
@@ -141,7 +142,7 @@ public class ExtractBarcodes {
 				return;
 			}
 			else if (args[i].equals("-l")) {
-				len = checkIntParam(args, ++i);
+				leading = checkIntParam(args, ++i);
 			}
 			else if (args[i].equals("-p")) {
 				progress = new ConsoleProgress(System.err);
@@ -154,11 +155,19 @@ public class ExtractBarcodes {
 					.getUniqueResult("More than one element for the given file in json!", "File not found in json!")
 					.getEntry("barcodes");
 				
-				EI.wrap(barcodes.getEntry("condition").asArray())
-					.toMap(barcodeMap,d->d.getEntry("barcode").asString(),d->d.getEntry("name").asString());
+				if (barcodes.hasProperty("condition"))
+					EI.wrap(barcodes.getEntry("condition").asArray())
+						.toMap(barcodeMap,d->d.getEntry("barcode").asString(),d->d.getEntry("name").asString());
 				
-				len = barcodes.getEntry("length").asInt();
-				offset = barcodes.getEntry("offset").asInt();
+				
+				if (barcodes.hasProperty("leading"))
+					leading = barcodes.getEntry("leading").asInt();
+				if (barcodes.hasProperty("trailing"))
+					trailing = barcodes.getEntry("trailing").asInt();
+				if (barcodes.hasProperty("length"))
+					leading = barcodes.getEntry("length").asInt();
+				if (barcodes.hasProperty("offset"))
+					offset = barcodes.getEntry("offset").asInt();
 			}
 			else if (args[i].equals("-D"))
 			{}
@@ -166,7 +175,7 @@ public class ExtractBarcodes {
 				break;
 		}
 		
-		if (len==-1) throw new UsageException("No length given!");
+		if (leading+trailing<=0) throw new UsageException("No length given!");
 		
 		VariableSizeDiskArrayBuilder<CountDnaSequence> builder = new VariableSizeDiskArrayBuilder<>(prefix+".barcodes");
 		LineWriter out = new LineOrientedFile(prefix+".fastq").write();
@@ -176,11 +185,12 @@ public class ExtractBarcodes {
 		int sub = -1;
 		if (!barcodeMap.isEmpty()) sub = barcodeMap.keySet().iterator().next().length();
 		
-		pos = len;
+		lstart = leading;
+		lend = trailing;
 		int n = 0;
 		for (ArrayList<String> l : new LineOrientedFile(inp).lineIterator()
 				.pattern(false,true,false,false)
-				.filter(s->s.length()>=pos)
+				.filter(s->s.length()>=lstart+lend)
 				.sort(new StringSerializer(),ExtractBarcodes::compareSeq)
 				.progress(progress, -1, s->"Processing read "+s)
 				.fold(ExtractBarcodes::compareSeq, ()->new ArrayList<String>(), (s,l)->{
@@ -190,7 +200,7 @@ public class ExtractBarcodes {
 			.loop()) {
 			
 			for (String s : l) {
-				String bc = s.substring(0,len);
+				String bc = s.substring(0,leading);
 				if (offset!=-1) bc = bc.substring(offset);
 				if (sub!=-1) bc = bc.substring(0,sub);
 				bc = barcodeMap.getOrDefault(bc, bc);
@@ -199,9 +209,9 @@ public class ExtractBarcodes {
 				
 			// replace N by random base
 			for (i=0; i<l.size(); i++) {
-				if (l.get(i).substring(0,len).contains("N")) {
+				if (l.get(i).substring(0,leading).contains("N")) {
 					char[] a = l.get(i).toCharArray();
-					for (int p=0; p<len; p++)
+					for (int p=0; p<leading; p++)
 						if (a[p]=='N')
 							a[p] = SequenceUtils.nucleotides[RandomNumbers.getGlobal().getUnif(0, 4)];
 					l.set(i, String.valueOf(a));
@@ -217,9 +227,9 @@ public class ExtractBarcodes {
 				);
 			
 			out.writeLine("@"+n++);
-			out.writeLine(l.get(0).substring(len));
+			out.writeLine(getRead(l.get(0)));
 			out.writeLine("+");
-			out.writeLine(StringUtils.repeat("I", l.get(0).length()-len));
+			out.writeLine(StringUtils.repeat("I", l.get(0).length()-leading-trailing));
 			
 		}
 		
@@ -228,7 +238,7 @@ public class ExtractBarcodes {
 		
 		
 		counter.sort();
-		FileUtils.writeAllText(counter.toString(),new File(prefix+".tsv"));
+		FileUtils.writeAllText(counter.toString()+"\n",new File(prefix+".tsv"));
 		String png = prefix+".png";
 		String title = FileUtils.getNameWithoutExtension(png);
 		
@@ -255,20 +265,21 @@ public class ExtractBarcodes {
 			return new CountDnaSequence(seq, count);
 		}
 		public SeqCount add(String seq) {
-			this.seq = seq.substring(0,pos);
+			this.seq = getRandom(seq);
 			count++;
 			return this;
 		}
 	}
 	
 
-	private static int pos;
+	private static int lstart = 0;
+	private static int lend = 0;
 	public static int compareSeq(String a, String b) {
 		int len1 = a.length();
         int len2 = b.length();
-        int lim = Math.min(len1, len2);
-
-        int k = pos;
+        int lim = Math.min(len1, len2)-lend;
+        
+        int k = lstart;
         while (k < lim) {
             char c1 = a.charAt(k);
             char c2 = b.charAt(k);
@@ -280,14 +291,38 @@ public class ExtractBarcodes {
         return len1 - len2;
 	}
 	
+	public static String getRandom(String seq) {
+		seq = seq.substring(0,lstart);
+		if (lend>0)
+			seq=seq+seq.substring(seq.length()-lend);
+		return seq;
+	}
+	
+	public static String getRead(String seq) {
+		seq = seq.substring(lstart);
+		if (lend>0)
+			seq=seq.substring(0,seq.length()-lend);
+		return seq;
+	}
+
+
 	public static int compareBc(String a, String b) {
 		int len1 = a.length();
         int len2 = b.length();
-
+        
         int k = 0;
-        while (k < pos) {
+        while (k < lstart) {
             char c1 = a.charAt(k);
             char c2 = b.charAt(k);
+            if (c1 != c2) {
+                return c1 - c2;
+            }
+            k++;
+        }
+        k = 0;
+        while (k < lend) {
+            char c1 = a.charAt(a.length()-lend+k);
+            char c2 = b.charAt(b.length()-lend+k);
             if (c1 != c2) {
                 return c1 - c2;
             }
