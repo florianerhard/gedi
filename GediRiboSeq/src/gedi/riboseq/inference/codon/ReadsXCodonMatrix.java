@@ -171,16 +171,21 @@ public class ReadsXCodonMatrix {
 				int[] pos = probableCodonPositionsPerLength[lm][l];
 				double[] probs = probableCodonPositionProbabilitiesPerLength[lm][l];
 
+				boolean readAllowed = false;
 				for (int i=0; i<pos.length; i++) {
 					ArrayGenomicRegion cp = plusStrand?
 							new ArrayGenomicRegion(pos[i],pos[i]+3)
 							:new ArrayGenomicRegion(r.region.getTotalLength()-pos[i]-3,r.region.getTotalLength()-pos[i]);
 					Codon c = codonProto.computeIfAbsent(new Codon(r.region.map(cp),1), a->a);
 
+					readAllowed = true;
 					double[] s = {probs[i],0,0};
 					M.computeIfAbsent(c, a->new HashMap<Read, double[]>()).put(r,s);
 					I.computeIfAbsent(r, a->new HashMap<Codon, double[]>()).put(c,s);
 				}
+				
+				if (!readAllowed)
+					readProto.remove(r);
 				
 			}
 			
