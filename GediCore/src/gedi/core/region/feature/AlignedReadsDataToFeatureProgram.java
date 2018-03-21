@@ -91,7 +91,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 			f.setId("junction");
 			re.add(f);
 		}
-		re.setThreads(1);
+		re.setThreads(0);
 		return new AlignedReadsDataToFeatureProgram(re);
 	}
 

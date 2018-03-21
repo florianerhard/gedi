@@ -172,7 +172,7 @@ public interface EI {
 	
 	@SafeVarargs
 	public static <T> ExtendedIterator<T> wrap(T... a) {
-		if (a.length==0) return empty();
+		if (a==null || a.length==0) return empty();
 		if (a.length==1) return singleton(a[0]);
 		return FunctorUtils.arrayIterator(a);
 	}

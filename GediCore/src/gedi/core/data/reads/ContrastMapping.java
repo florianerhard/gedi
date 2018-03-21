@@ -57,6 +57,12 @@ public class ContrastMapping {
 			addMapping(i, 0);
 	}
 	
+	public ContrastMapping setUse(int...indices) {
+		for (int i : indices)
+			addMapping(i, i);
+		return this;
+	}
+	
 	public void setMergeAll(int n) {
 		for (int i=0; i<n; i++)
 			addMapping(i, 0);

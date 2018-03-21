@@ -34,13 +34,15 @@ var type = type?type:"lines";
 		<MaxBasePairsPerPixel v="<? mbppp ?>"/>
 	</StackedBoxesTrack>
 <?JS } else { ?>
-	<LinesTrack input="+.<? id ?>.data" id="+.<? id ?>" >
+	<LinesTrack input="+.<? id ?>.data" id="+.<? id ?>" class="<?JS id ?>">
             <FixedMin min="0"/>
             <MaxBasePairsPerPixel v="<? mbppp ?>"/>
+            <Points p="false" />
     </LinesTrack>
-
-	<LinesTrack input="-.<? id ?>.data" id="-.<? id ?>" >
+    
+	<LinesTrack input="-.<? id ?>.data" id="-.<? id ?>" class="<?JS id ?>">
             <FixedMin min="0"/>
             <MaxBasePairsPerPixel v="<? mbppp ?>"/>
+            <Points p="false" />
     </LinesTrack>
 <?JS } ?>	

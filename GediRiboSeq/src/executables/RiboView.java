@@ -420,16 +420,16 @@ public class RiboView {
 		
 		
 		if (loc==null || !loc.contains(":")) {
-//			ReferenceGenomicRegion<?> rgr = g.getNameIndex().get(loc);
-//			if (rgr!=null) {
-//				rgr = rgr.toMutable().transformRegion(r->r.extendFront(1)).toImmutable();// workaround for IndexGenome bug
-//				loc = rgr.toLocationString();
-//			} else {
+			ReferenceGenomicRegion<?> rgr = g.getNameIndex().get(loc);
+			if (rgr!=null) {
+				rgr = rgr.toMutable().transformRegion(r->r.extendFront(1)).toImmutable();// workaround for IndexGenome bug
+				loc = rgr.toLocationString();
+			} else {
 				ReferenceSequence ref = loc==null?g.getTranscripts().getReferenceSequences().iterator().next():Chromosome.obtain(loc);
 				GenomicRegion reg = g.getTranscripts().getTree(ref).getRoot().getKey().removeIntrons();
 				reg = reg.extendAll(reg.getTotalLength()/3, reg.getTotalLength()/3);
 				loc = ref.toPlusMinusString()+":"+reg.toRegionString();
-//			}
+			}
 		}
 		MutableReferenceGenomicRegion<Object> reg = ImmutableReferenceGenomicRegion.parse(g, loc).toMutable().toStrandIndependent();
 		
