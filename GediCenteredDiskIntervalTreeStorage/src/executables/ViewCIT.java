@@ -166,6 +166,7 @@ public class ViewCIT {
 		if (list) {
 			output.startWriting();
 			output.writeLine(args[i]+": "+storage.getType().getName());
+			output.writeLine(storage.getExtendedJson());
 			ReferenceSequence[] refs = (ReferenceSequence[]) storage.getReferenceSequences().toArray(new ReferenceSequence[0]);
 			Arrays.sort(refs);
 			for (ReferenceSequence r : refs) {
@@ -255,7 +256,8 @@ public class ViewCIT {
 						if (unameExpr==null)
 							be.setName(t.getTranscriptId());
 					}
-					wr.writeLine(be.toString());
+					wr.writeLine(be.toString(12));
+					System.out.println(1);
 				} catch (Exception e) {
 					e.printStackTrace();
 					System.exit(1);

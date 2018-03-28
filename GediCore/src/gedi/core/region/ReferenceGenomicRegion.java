@@ -18,6 +18,7 @@
 package gedi.core.region;
 
 import gedi.core.data.annotation.GenomicRegionMappable;
+import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
@@ -122,13 +123,6 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 		return getReference().getStrand()==Strand.Minus?getRegion().induce(region).reverse(getRegion().getTotalLength()):getRegion().induce(region);
 	}
 	
-	default String toLocationString() {
-		return getReference().toPlusMinusString()+":"+getRegion().toRegionString();
-	}
-	
-	default String toLocationStringRemovedIntrons() {
-		return getReference().toPlusMinusString()+":"+getRegion().removeIntrons().toRegionString();
-	}
 	
 	/**
 	 * If the 5' end of region is downstream of the 5' end of this.
@@ -218,7 +212,21 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	}
 
 	default String toString2() {
-		return getData()==null?getReference()+":"+getRegion():getReference()+":"+getRegion()+"\t"+StringUtils.toString(getData());
+		String reg = getRegion().toString();
+		if (getData() instanceof AlignedReadsData) 
+			reg = getRegion().toString((AlignedReadsData)getData());
+		return getData()==null?getReference()+":"+getRegion():getReference()+":"+reg+"\t"+StringUtils.toString(getData());
+	}
+	
+	default String toLocationString() {
+		String reg = getRegion().toRegionString();
+		if (getData() instanceof AlignedReadsData) 
+			reg = getRegion().toString((AlignedReadsData)getData());
+		return getReference().toPlusMinusString()+":"+reg;
+	}
+	
+	default String toLocationStringRemovedIntrons() {
+		return getReference().toPlusMinusString()+":"+getRegion().removeIntrons().toRegionString();
 	}
 	
 	

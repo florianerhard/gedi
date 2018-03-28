@@ -106,7 +106,7 @@ public class TracksDataManager {
 	public synchronized void setLocation(PixelBasepairMapper xmapper, ReferenceSequence[] reference, GenomicRegion[] region, Consumer<ExecutionContext> finishAction, BiConsumer<ExecutionContext, Place> newTokenObserver) {
 		if (!currentSchedulers.isEmpty()) {
 			for (Future<?> f : currentSchedulers) {
-				f.cancel(true);
+				f.cancel(false);
 			}
 			currentSchedulers.clear();
 			log.fine("Cancelling all running threads.");

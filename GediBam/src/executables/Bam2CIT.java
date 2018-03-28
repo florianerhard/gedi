@@ -34,6 +34,7 @@ import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
+import gedi.util.userInteraction.progress.ConsoleProgress;
 
 import java.io.File;
 import java.io.IOException;
@@ -127,14 +128,20 @@ public class Bam2CIT {
 			storage.setJoinMates(true);
 		
 		storage.setKeepReadNames(keepIds);
-		ExtendedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>> it = storage.ei();
-		if (progress) it = it.progress();
-		if (head>0) it = it.head(head);
 		
 		Gedi.startup(false);
 		@SuppressWarnings("rawtypes")
 		GenomicRegionStorage outStorage = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(Boolean.class, compress).add(String.class, out).add(Class.class, DefaultAlignedReadsData.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
-		outStorage.fill(it);
+		
+		if (head>0) {
+			ExtendedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>> it = storage.ei();
+			if (progress) it = it.progress();
+			if (head>0) it = it.head(head);
+			
+			outStorage.fill(it);
+		} else {
+			outStorage.fill(storage,progress?new ConsoleProgress(System.err):null);
+		}
 		
 		if (incons!=null)
 			incons.close();

@@ -17,22 +17,17 @@
  */
 package gedi.core.region;
 
-import gedi.core.data.annotation.Transcript;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import gedi.core.data.reads.AlignedReadsData;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
-import gedi.util.datastructure.graph.SimpleDirectedGraph;
 import gedi.util.datastructure.tree.redblacktree.Interval;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
-
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
 
 public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iterable<GenomicRegionPart> {
 
@@ -244,6 +239,20 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 			sb.append(getStart(i));
 			sb.append('-');
 			sb.append(getEnd(i));
+		}
+		return sb.toString();
+	}
+	
+	default String toString(AlignedReadsData ard) {
+		StringBuilder sb = new StringBuilder();
+		int l=0;
+		for (int i=0; i<getNumParts(); i++) {
+			if (i>0)
+				sb.append(ard.isReadPairGap(l, 0)?"#":"|");
+			sb.append(getStart(i));
+			sb.append('-');
+			sb.append(getEnd(i));
+			l+=getLength(i);
 		}
 		return sb.toString();
 	}

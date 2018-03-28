@@ -390,6 +390,8 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	@Override
 	public int getCount(int distinct, int condition) {
+		if (distinct>=count.length || condition>=count[distinct].length)
+			return 0;
 		return count[distinct][condition];
 	}
 	@Override

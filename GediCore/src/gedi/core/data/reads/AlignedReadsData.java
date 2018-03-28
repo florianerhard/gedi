@@ -196,6 +196,16 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	
 	
 	/**
+	 * l must be in mapped region coordinates
+	 * @param l
+	 * @param d
+	 * @return
+	 */
+	default boolean isReadPairGap(int l, int d) {
+		return hasGeometry() && l==getReadLength1(d);
+	}
+
+	/**
 	 * Gets the end position of the first read in the mapped region
 	 * @param d
 	 * @param pos
@@ -1170,6 +1180,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		return EI.seq(0, getDistinctSequences()).map(d->new OneDistinctSequenceAlignedReadsData(this, d));
 	}
 
+	
 	
 	
 

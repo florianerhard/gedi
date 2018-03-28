@@ -104,6 +104,7 @@ var mbppp = mbppp?mbppp:1000;
 		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		<FixedMin min="0"/>
 		<FixedMax min="0.1"/>
+		<Hidden h="true" />
 	</StackedBoxesTrack>
 		
 
@@ -167,6 +168,7 @@ var mbppp = mbppp?mbppp:1000;
 		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		<FixedMin min="0"/>
 		<FixedMax min="0.1"/>
+		<Hidden h="true" />
 	</StackedBoxesTrack>
 		
 		

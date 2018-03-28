@@ -156,6 +156,11 @@ public class AlignedReadsDataFactory {
 		weights.set(distinct, weight);
 		return this;
 	}
+	public AlignedReadsDataFactory incrementWeight(int distinct,float weight) {
+		checkDistinct(distinct);
+		weights.set(distinct, weights.getDouble(distinct)+weight);
+		return this;
+	}
 	
 	public AlignedReadsDataFactory setGeometry(int distinct,int before, int overlap, int after) {
 		checkDistinct(distinct);

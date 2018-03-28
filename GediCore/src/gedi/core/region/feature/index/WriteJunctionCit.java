@@ -19,6 +19,7 @@ package gedi.core.region.feature.index;
 
 import java.util.Set;
 
+import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
@@ -62,17 +63,22 @@ public class WriteJunctionCit extends AbstractFeature<Void> {
 		GenomicRegion region = referenceRegion.getRegion();
 		if (region.getNumParts()>1) {
 			buffer = program.dataToCounts(referenceRegion.getData(), buffer);
+			int l = 0;
 			for (int i=0; i<region.getNumParts()-1; i++) {
 				if (region instanceof MissingInformationIntronInformation && ((MissingInformationIntronInformation)region).isMissingInformationIntron(i)){}
 				else {
-					ArrayGenomicRegion reg = new ArrayGenomicRegion(region.getEnd(i),region.getStart(i+1));
-					buffer = program.dataToCounts(referenceRegion.getData(), buffer);
-					
-					MemoryDoubleArray in = mem.getData(referenceRegion.getReference(), reg);
-					if (in==null) in = new MemoryDoubleArray(buffer.length());
-					in.add(buffer);
-					mem.add(referenceRegion.getReference(), reg, in);
+					if (!(referenceRegion.getData() instanceof AlignedReadsData) || !((AlignedReadsData) referenceRegion.getData()).isReadPairGap(l,0)) {
+						
+						ArrayGenomicRegion reg = new ArrayGenomicRegion(region.getEnd(i),region.getStart(i+1));
+						buffer = program.dataToCounts(referenceRegion.getData(), buffer);
+						
+						MemoryDoubleArray in = mem.getData(referenceRegion.getReference(), reg);
+						if (in==null) in = new MemoryDoubleArray(buffer.length());
+						in.add(buffer);
+						mem.add(referenceRegion.getReference(), reg, in);
+					}
 				}
+				l+=region.getLength(i);
 			}
 		}
 	}

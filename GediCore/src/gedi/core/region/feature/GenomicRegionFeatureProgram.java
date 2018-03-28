@@ -65,7 +65,7 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 	private int threads = Runtime.getRuntime().availableProcessors();
 	
 	
-	private long intermediateInterval = 5000;
+	private long intermediateInterval = 1000*60*5;
 	
 	private boolean checkSorting = false;
 	

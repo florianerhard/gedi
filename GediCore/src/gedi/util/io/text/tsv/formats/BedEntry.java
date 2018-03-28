@@ -85,13 +85,13 @@ public class BedEntry  {
 		score = (rgr.getData() instanceof ScoreProvider)?""+(int)((ScoreProvider)rgr.getData()).getScore():"0";
 		strand = rgr.getReference().getStrand();
 		cols = 6;
-		if (rgr.getRegion().getNumParts()>1) {
+//		if (rgr.getRegion().getNumParts()>1) {
 			blockCount = rgr.getRegion().getNumParts();
 			blockSizes = rgr.getRegion().getLengths();
 			blockStarts = rgr.getRegion().getStarts();
 			correctBlockStarts();
 			cols = 12;
-		}
+//		}
 	}
 	
 	public BedEntry(Object[] values) {

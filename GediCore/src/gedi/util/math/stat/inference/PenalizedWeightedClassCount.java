@@ -79,8 +79,9 @@ public class PenalizedWeightedClassCount<CNT,CLS> {
 			b.put(cnt, new MutableDouble(0));
 	}
 	
-	public void setRate(CNT countObject, CLS classObject, double a) {
+	public PenalizedWeightedClassCount<CNT, CLS> setRate(CNT countObject, CLS classObject, double a) {
 		A.setWeight(classObject, countObject, a);
+		return this;
 	}
 	
 	

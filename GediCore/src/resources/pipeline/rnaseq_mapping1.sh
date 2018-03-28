@@ -17,6 +17,8 @@ varin("nosoft","No softclipping",false);
 varin("adapter","Only for single end!",false);
 varin("introns","All/Annotated/None",false);
 varin("citparam","e.g. -novar -nosec",false);
+varin("rrna","rrna genomic index",false);
+varin("starindex","folder of a combined STAR index",false);
 
 
 varout("reads","File name containing read mappings");
@@ -42,8 +44,8 @@ var extractparam = extract?"-extract "+extract+" ":"";
 output.executable=true;
 
 var intronparam = "";
-if (introns.toLowerCase().startsWith("no")) intronparam = "--alignSJDBoverhangMin 9999 --alignSJoverhangMin 9999";
-else if (introns.toLowerCase().startsWith("ann")) intronparam = "--alignIntronMax 1";
+if (introns && introns.toLowerCase().startsWith("no")) intronparam = "--alignSJDBoverhangMin 9999 --alignSJoverhangMin 9999";
+else if (introns && introns.toLowerCase().startsWith("ann")) intronparam = "--alignIntronMax 1";
 
 var citparam = citparam?citparam:"";
 
@@ -57,6 +59,7 @@ var getPrio=function(r) ParseUtils.parseEnumNameByPrefix(references[r], true, Re
 var garray = EI.wrap(DynamicObject.from(references).getProperties()).filter(function(i) getPrio(i)>1).toArray();
 var genomes = EI.wrap(garray).concat(" ");
 
+var rrna;
 var starindex;
 if (!starindex && garray.length==1) starindex=ReadMapper.STAR.getIndex(Genomic.get(garray[0]),null);	
 if (!starindex) throw new RuntimeException("Specify a starindex! You can create one by gedi -e GenomicUtils -p -m star -g "+genomes);
@@ -97,7 +100,7 @@ for (var find=0; find<ff.length; find++) {
 	<?JS if (!test && f1.endsWith(".gz")) {  ?>
 	zcat <?JS f1 ?> > <?JS fq1 ?>
 	<?JS } else if (test && f1.endsWith(".gz")) {  ?>
-	zcat <?JS f1 ?> | head -n<?JS fq1 ?> ?>.fastq
+	zcat <?JS f1 ?> | head -n40000 > <? fq1 ?>
 	<?JS } else if (!test && f1.endsWith(".bz2")) {  ?>
 	bzcat <?JS f1 ?> > <?JS fq1 ?>
 	<?JS } else if (test && f1.endsWith(".bz2")) {  ?>
@@ -126,7 +129,30 @@ mv <? name ?>.lane.clean <?JS fastqname ?>
 rm <?JS name ?>.lint
 <? } ?>
 
-gedi -e FastqFilter -D <?extractparam?>-overwrite -ld <?JS name ?>.readlengths.tsv -min <?JS minlength ?> <?JS fastqname ?>
+gedi -t . -e FastqFilter -D <?extractparam?>-overwrite -ld <?JS name ?>.readlengths.tsv -min <?JS minlength ?> <?JS fastqname ?>
+
+
+<?JS if (rrna) { ?>
+# rRNA removal
+STAR --runMode alignReads --runThreadN <? nthreads ?>  --alignSJDBoverhangMin 9999 --alignSJoverhangMin 9999 --genomeDir <? rrna ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --outSAMtype BAM Unsorted --alignEndsType <? alimode ?> --outReadsUnmapped Fastx
+
+echo -ne "rRNA\t" >> <?JS name ?>.reads.tsv
+unimapped=$( grep "Uniquely mapped reads number"  Log.final.out | cut -f2 -d'|' | awk '{ print $1}' )
+multimapped=$( grep "Number of reads mapped to multiple loci"  Log.final.out | cut -f2 -d'|' | awk '{ print $1}' )
+echo $((unimapped+multimapped)) >> <?JS name ?>.reads.tsv
+
+<?JS
+				if (pairedend) {
+?>
+mv Unmapped.out.mate1 <? print(fqs[0]) ?>
+mv Unmapped.out.mate2 <? print(fqs[1]) ?>
+<?JS			} else { ?>
+mv Unmapped.out.mate1 <? print(fqs[0]) ?>
+<?JS			} ?>
+
+<?JS } ?>
+
+
 
 # mapping
 STAR --runMode alignReads --runThreadN <? nthreads ?>  <? intronparam ?> --genomeDir <? starindex ?> <?JS print(sharedMem?"--genomeLoad LoadAndRemove --limitBAMsortRAM 4000000000":""); ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --outSAMtype BAM SortedByCoordinate --alignEndsType <? alimode ?> --outSAMattributes nM MD NH  <?JS print(keepUnmapped?"--outReadsUnmapped Fastx":""); ?>
@@ -151,12 +177,12 @@ grep "Number of reads mapped to multiple loci"  Log.final.out | cut -f2 -d'|' | 
 mkdir -p <?JS wd ?>/report
 
 samtools index <? name ?>.bam
-gedi -e Bam2CIT <? citparam ?> <? name ?>.cit <? name ?>.bam
+gedi -t . -e Bam2CIT <? citparam ?> <? name ?>.cit <? name ?>.bam
 echo -ne "CIT\t" >> <?JS name ?>.reads.tsv
-gedi -e ReadCount <? name ?>.cit | tail -n1 | awk '{ print $2 }'>> <?JS name ?>.reads.tsv
+gedi -t . -e ReadCount <? name ?>.cit | tail -n1 | awk '{ print $2 }'>> <?JS name ?>.reads.tsv
 
 <?JS if (reverse) { ?>
-   gedi -e TransformChromosomesCIT <?JS name ?>.cit -r
+   gedi -t . -e TransformChromosomesCIT <?JS name ?>.cit -r
 <?JS } ?>
 
 mv *.readlengths.* <?JS wd ?>/report

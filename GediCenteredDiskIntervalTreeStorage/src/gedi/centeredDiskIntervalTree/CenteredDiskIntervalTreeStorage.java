@@ -319,10 +319,10 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 				
 				if (rgr.getReference().equals(last)) count++;
 				else if (last!=null) {
-					if (count>1000) {
+//					if (count>1000) {
 //						System.out.println("Writing temp file for "+last);
 						references.get(last).toDisk();
-					}
+//					}
 					count=0;
 				}
 				

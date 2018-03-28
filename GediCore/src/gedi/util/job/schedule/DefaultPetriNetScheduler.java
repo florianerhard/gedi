@@ -155,8 +155,9 @@ public class DefaultPetriNetScheduler implements PetriNetScheduler {
 			while (!runnings.isEmpty() || !ready.isEmpty()) {
 				
 				if (Thread.interrupted() || context.getExecutionId()!=eid) {
-					for (Future<FireTransition> f : futures)
-						f.cancel(true);
+//					for (Future<FireTransition> f : futures)
+//						f.cancel(true);
+					// this led to java.nio.channels.ClosedByInterruptException when ConcurrentPageFile's where canceled at the wrong time!
 					if (logging) log.log(Level.FINE,()->"Canceled execution "+uid);
 					for (PetriNetListener l : listeners)
 						l.petriNetExecutionCancelled(event);
