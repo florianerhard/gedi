@@ -256,8 +256,7 @@ public class ViewCIT {
 						if (unameExpr==null)
 							be.setName(t.getTranscriptId());
 					}
-					wr.writeLine(be.toString(12));
-					System.out.println(1);
+					wr.writeLine(be.toString());
 				} catch (Exception e) {
 					e.printStackTrace();
 					System.exit(1);
