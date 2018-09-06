@@ -93,7 +93,13 @@ public class Chromosome implements ReferenceSequence {
 	}
 	public static Chromosome obtain(String name, Strand strand) {
 		Chromosome re = cache[strand.ordinal()].get(name);
-		if (re==null) cache[strand.ordinal()].put(name, re = new Chromosome(name,strand));
+		if (re==null) {
+			synchronized (cache) {
+				re = cache[strand.ordinal()].get(name);
+				if (re==null)
+					cache[strand.ordinal()].put(name, re = new Chromosome(name,strand));	
+			}
+		}
 		return re;
 	}
 	

@@ -86,7 +86,7 @@ public class AlignedReadsDataMergeMapper implements GenomicRegionDataMapper<Muta
 		}
 		
 		AlignedReadsDataMerger merger = new AlignedReadsDataMerger(numConditions);
-		IntervalTree<GenomicRegion,AlignedReadsData> re = new IntervalTree<>(reference);
+		IntervalTree<GenomicRegion,AlignedReadsData> re = new IntervalTree<>(data.<IntervalTree<GenomicRegion,AlignedReadsData>>get(0).getReference());
 		
 		Comparator<ImmutableReferenceGenomicRegion<AlignedReadsData>> comp = FunctorUtils.<ImmutableReferenceGenomicRegion<AlignedReadsData>>naturalComparator();
 		Class<ImmutableReferenceGenomicRegion<AlignedReadsData>> cls = (Class)ImmutableReferenceGenomicRegion.class;

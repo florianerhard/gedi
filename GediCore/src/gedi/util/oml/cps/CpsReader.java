@@ -170,7 +170,7 @@ public class CpsReader {
 				if (i>start)
 					parts.add(key.substring(start, i));
 				start = i+1;
-			} else if (key.charAt(i)=='#' || key.charAt(i)=='.') {
+			} else if ((key.charAt(i)=='#' || key.charAt(i)=='.') && (i==0||key.charAt(i-1)==' '||key.charAt(i-1)=='\n'||key.charAt(i-1)=='\t')) {
 				if (i>start)
 					parts.add(key.substring(start, i));
 				start = i;

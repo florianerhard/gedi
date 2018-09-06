@@ -119,6 +119,7 @@ public class NumericSource implements GenomicRegionDataSource<PixelBlockToValues
 
 		for (int b=0; b<pixelMapping.size(); b++) {
 			PixelLocationMappingBlock block = pixelMapping.get(b);
+			
 			NumericArray vals = re.getValues(b);
 
 			ArrayGenomicRegion reg = new ArrayGenomicRegion(block.getStartBp(),block.getStopBp()+1);

@@ -18,6 +18,8 @@
 package executables;
 
 import java.awt.BorderLayout;
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -46,6 +48,7 @@ import gedi.gui.genovis.SwingGenoVisViewer;
 import gedi.gui.genovis.TrackSelectionTreeButton;
 import gedi.gui.genovis.VisualizationTrack;
 import gedi.util.ArrayUtils;
+import gedi.util.FileUtils;
 import gedi.util.StringUtils;
 import gedi.util.functions.EI;
 import gedi.util.io.text.LineIterator;
@@ -163,6 +166,7 @@ public class Display {
 		String loc = null;
 		Genomic g = null;
 		boolean show = true;
+		boolean sort=true;
 		String omlFile = null;
 		
 		int i;
@@ -186,20 +190,7 @@ public class Display {
 				i = checkMultiParam(args, ++i, l);
 				String[] files = l.toArray(new String[0]);
 
-				TemplateGenerator[] dpl = null;
-				
-				for (int j=0; j<files.length; j++){
-					WorkspaceItemLoader loader = WorkspaceItemLoaderExtensionPoint.getInstance().get(Paths.get(files[j]));
-					if (loader==null) 
-						throw new UsageException("No loader for "+files[j]);
-					PreloadInfo pre = loader.getPreloadInfo(Paths.get(files[j]));
-					AutoTemplateGenerator<PreloadInfo<?, ?>, ?> one = DisplayTemplateGeneratorExtensionPoint.getInstance().get(new ExtensionContext().add(files[j]).add(pre),pre);
-					if (one==null) throw new UsageException("No template for "+pre);
-					if (dpl==null) dpl = (TemplateGenerator[]) Array.newInstance(one.getClass(), files.length);
-					dpl[j] = one;
-				}
-				
-				te.accept(dpl);
+				files(te,files);
 			}
 			else if (args[i].equals("-oml")) {
 				omlFile = checkParam(args,++i);
@@ -219,6 +210,9 @@ public class Display {
 			}
 			else if (args[i].equals("-dontshow")) {
 				show = false;
+			}
+			else if (args[i].equals("-dontsort")) {
+				sort = false;
 			}
 			else if (args[i].equals("-g")) {
 				ArrayList<String> gnames = new ArrayList<>();
@@ -250,16 +244,22 @@ public class Display {
 		log.info("Loading pipeline");
 		
 		String src = te.toString()+suffix;
-		if (omlFile!=null)
-			src = new LineOrientedFile(omlFile).readAllText();
+		String cps = te.getBuffer(CPS_ID);
 		
-		String cps = new LineIterator(Template.class.getResourceAsStream("/resources/colors.cps")).concat("\n");
+		if (omlFile!=null) {
+			src = new LineOrientedFile(omlFile).readAllText();
+			if (new File(omlFile+".cps").exists())
+				cps = new LineOrientedFile(omlFile+".cps").readAllText();
+		}
+		
+		String cpsc = new LineIterator(Template.class.getResourceAsStream("/resources/colors.cps")).concat("\n");
 		OmlNodeExecutor oml = new OmlNodeExecutor()
-				.addInterceptor(new CpsReader().parse(cps));
-		oml.addInterceptor(new CpsReader().parse(te.getBuffer(CPS_ID)));
+				.addInterceptor(new CpsReader().parse(cpsc));
+		oml.addInterceptor(new CpsReader().parse(cps));
 		
 		Pipeline pipeline = (Pipeline)oml.execute(new OmlReader().parse(src));
-		pipeline.sortPlusMinusTracks();
+		if (sort)
+			pipeline.sortPlusMinusTracks();
 		
 		if (loc==null) {
 			ReferenceSequence ref = loc==null?EI.wrap(g.getSequenceNames()).map(s->Chromosome.obtain(s,true)).filter(r->r.isStandard()).first():Chromosome.obtain(loc);
@@ -299,6 +299,41 @@ public class Display {
 		viewer.setLocation(reg.getReference(),reg.getRegion());
 
 		
+	}
+
+	public static String eachFile(String prefix) throws IOException {
+		if (prefix.endsWith("/"))
+			return EI.fileNames(prefix).map(f->{ try{return files(f); } catch (Exception e) {throw new RuntimeException(e);}}).concat("\n");
+		
+		String dir = new File(prefix).getParent();
+		String pp = new File(prefix).getName();
+		return EI.fileNames(dir)
+				.filter(s->s.startsWith(pp))
+				.map(f->{ try{return files(dir+"/"+f); } catch (Exception e) {throw new RuntimeException(e);}}).concat("\n");
+		
+	}
+	
+	public static String files(String... files) throws UsageException, IOException {
+		return files(new TemplateEngine().addTemplateSearchURL("classpath://Gedi/resources/templates/gediview/${name}"),files).toString();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static TemplateEngine files(TemplateEngine te, String... files) throws UsageException, IOException {
+		TemplateGenerator[] dpl = null;
+		
+		for (int j=0; j<files.length; j++){
+			WorkspaceItemLoader loader = WorkspaceItemLoaderExtensionPoint.getInstance().get(Paths.get(files[j]));
+			if (loader==null) 
+				throw new UsageException("No loader for "+files[j]);
+			PreloadInfo pre = loader.getPreloadInfo(Paths.get(files[j]));
+			AutoTemplateGenerator<PreloadInfo<?, ?>, ?> one = DisplayTemplateGeneratorExtensionPoint.getInstance().get(new ExtensionContext().add(files[j]).add(pre),pre);
+			if (one==null) throw new UsageException("No template for "+pre);
+			if (dpl==null) dpl = (TemplateGenerator[]) Array.newInstance(one.getClass(), files.length);
+			dpl[j] = one;
+		}
+		
+		te.accept(dpl);
+		return te;
 	}
 	
 }

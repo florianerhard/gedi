@@ -20,7 +20,9 @@ package gedi.core.region.feature;
 import gedi.core.data.annotation.Transcript;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.AlignedReadsDataFactory;
-import gedi.core.data.reads.OneDistinctSequenceAlignedReadsData;
+import gedi.core.data.reads.ConditionMappedAlignedReadsData;
+import gedi.core.data.reads.ContrastMapping;
+import gedi.core.data.reads.SelectDistinctSequenceAlignedReadsData;
 import gedi.core.data.reads.ReadCountMode;
 import gedi.core.reference.Chromosome;
 import gedi.core.region.ArrayGenomicRegion;
@@ -33,11 +35,16 @@ import gedi.core.region.feature.index.WriteCoverageRmq;
 import gedi.core.region.feature.index.WriteJunctionCit;
 import gedi.core.region.feature.output.FeatureListOutput;
 import gedi.core.region.feature.output.FeatureStatisticOutput;
+import gedi.util.ArrayUtils;
+import gedi.util.datastructure.array.NumericArray;
+import gedi.util.datastructure.array.NumericArray.NumericArrayType;
+import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.functions.EI;
 import gedi.util.userInteraction.progress.ConsoleProgress;
 import gedi.util.userInteraction.progress.NoProgress;
 import gedi.util.userInteraction.progress.Progress;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -51,6 +58,11 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 
 	private ReadCountMode readCountMode = ReadCountMode.Weight;
 	private Supplier<CharSequence> descr;
+	
+	private boolean normalize = false;
+	private ContrastMapping contrasts;
+	private NumericArray rezSizeFactors; // must be for the contrast mapped conditions!
+	private String[] conditions;
 	
 	public AlignedReadsDataToFeatureProgram(
 			GenomicRegionFeatureProgram<AlignedReadsData> program) {
@@ -79,7 +91,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	}
 
 
-	public static AlignedReadsDataToFeatureProgram getCoverageProgram(String coverageRmq, String junctionCoverage) {
+	public static AlignedReadsDataToFeatureProgram getCoverageProgram(String coverageRmq, String junctionCoverage, boolean normalize, String...conditions) {
 		GenomicRegionFeatureProgram<AlignedReadsData> re = new GenomicRegionFeatureProgram<>();
 		if (coverageRmq!=null) {
 			WriteCoverageRmq f = new WriteCoverageRmq(coverageRmq);
@@ -92,7 +104,12 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 			re.add(f);
 		}
 		re.setThreads(0);
-		return new AlignedReadsDataToFeatureProgram(re);
+		AlignedReadsDataToFeatureProgram re2 = new AlignedReadsDataToFeatureProgram(re);
+		re2.normalize = normalize;
+		if (conditions.length>0) 
+			re2.conditions = conditions;
+		
+		return re2;
 	}
 
 
@@ -151,7 +168,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	public void accept(ReferenceGenomicRegion<AlignedReadsData> r) {
 		
 		for (int d=0; d<r.getData().getDistinctSequences(); d++) {
-			program.accept(mut.set(r.getReference(),r.getRegion(),new OneDistinctSequenceAlignedReadsData(r.getData(),d)));
+			program.accept(mut.set(r.getReference(),r.getRegion(),new SelectDistinctSequenceAlignedReadsData(r.getData(),d)));
 		}
 		if (descr!=null)
 			progress.setDescription(descr);
@@ -159,12 +176,38 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	}
 	
 	public void processStorage(GenomicRegionStorage<AlignedReadsData> storage) {
-		program.setDataToCounts((ard,b)->ard.getCountsForDistinct(b, 0, readCountMode));//ard.addCount(0, b, true));
+		program.setDataToCounts((ard,b)->{
+			if (contrasts!=null) ard = new ConditionMappedAlignedReadsData(ard, contrasts);
+			NumericArray re = ard.getCountsForDistinct(b, 0, readCountMode);
+			if (rezSizeFactors!=null) re.mult(rezSizeFactors);
+			return re;
+		});//ard.addCount(0, b, true));
+		
+		if (normalize) {
+			rezSizeFactors = NumericArray.wrap(storage.getMetaDataTotals());
+			double med = rezSizeFactors.evaluate(NumericArrayFunction.Median);
+			for (int i=0; i<rezSizeFactors.length(); i++)
+				rezSizeFactors.setDouble(i, med/rezSizeFactors.getDouble(i));
+		}
+		
+		if (conditions!=null && contrasts==null) {
+			HashMap<String, Integer> index = ArrayUtils.createIndexMap(storage.getMetaDataConditions());
+			
+			NumericArray mappedRezSizeFactors = NumericArray.createMemory(conditions.length, NumericArrayType.Double);
+			contrasts = new ContrastMapping();
+			for (int i=0; i<conditions.length; i++) {
+				contrasts.addMapping(index.get(conditions[i]), i, conditions[i]);
+				if (rezSizeFactors!=null)
+					mappedRezSizeFactors.setDouble(i, rezSizeFactors.getDouble(index.get(conditions[i])));
+			}
+			if (rezSizeFactors!=null)
+				rezSizeFactors = mappedRezSizeFactors;
+		}
 		
 		program.begin();
 		progress.init();
 		progress.setCount((int) storage.size());
-		storage.iterateReferenceGenomicRegions().forEachRemaining(this);
+		storage.ei().forEachRemaining(this);
 		progress.finish();
 		program.end();
 

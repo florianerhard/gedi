@@ -20,6 +20,8 @@ package gedi.util.program;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.genomic.Genomic;
@@ -31,6 +33,8 @@ import gedi.util.userInteraction.progress.ConsoleProgress;
 
 public class CommandLineHandler {
 
+	private static final Logger log = Logger.getLogger( CommandLineHandler.class.getName() );
+	
 	private String[] args;
 	private String title;
 	private String description;
@@ -39,6 +43,7 @@ public class CommandLineHandler {
 		this.title  = title;
 		this.args = args;
 		this.description = description;
+		log.fine("Received command line parameters: #"+StringUtils.concat("#,#", args)+"#");
 	}
 	
 
@@ -56,6 +61,8 @@ public class CommandLineHandler {
 			for (i=0; i<args.length; i++) {
 				
 				if (args[i].startsWith("-")) {
+					
+					log.fine("Parsing parameter "+args[i]);
 					
 					String name = args[i].substring(1);
 					if (name.startsWith("-")) name = name.substring(1);
@@ -82,12 +89,15 @@ public class CommandLineHandler {
 							while (i+1<args.length && !args[i+1].startsWith("-")) 
 								sb.append(" ").append(args[++i]);
 							param.set(param.getType().parse(sb.toString()));
+							log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+sb.toString()+")");
 						} else {
 						
 							param.set(param.getType().parse(value));
+							log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+value+")");
 							if (param.isMulti()) {
 								while (i+1<args.length && !args[i+1].startsWith("-")) {
 									param.set(param.getType().parse(args[++i]));
+									log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+args[i-1]+")");
 								}
 							}
 						}

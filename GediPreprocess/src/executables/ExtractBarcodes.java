@@ -253,7 +253,7 @@ public class ExtractBarcodes {
 		RRunner r = new RRunner(prefix+".R");
 		r.run(false);
 		
-		PlotReport pr = new PlotReport("Barcodes", StringUtils.toJavaIdentifier(inp+"_barcodes"), title, "Distribution of barcodes to reads.", png, prefix+".R", prefix+".tsv");
+		PlotReport pr = new PlotReport("Barcodes", StringUtils.toJavaIdentifier(inp+"_barcodes"), title, "Distribution of barcodes to reads.", png, null,prefix+".R", prefix+".tsv");
 		FileUtils.writeAllText(DynamicObject.from("plots",new Object[] {pr}).toJson(), new File(prefix+".report.json"));
 	}
 	

@@ -20,14 +20,19 @@ package gedi.util.io.text;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 
 public class StreamLineWriter implements LineWriter {
 
 	
-	private OutputStreamWriter writer;
+	private Writer writer;
 
 	public StreamLineWriter(OutputStream stream) {
 		writer = new OutputStreamWriter(stream);
+	}
+	
+	public StreamLineWriter(Writer writer) {
+		this.writer = writer;
 	}
 	
 	

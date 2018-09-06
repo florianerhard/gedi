@@ -109,7 +109,7 @@ public class EquivalenceClassMinimizeFactors<O> {
 		}
 		else {
 			for (int i=0; i<c.length; i++)
-				c[i] = rnd.getUnif();
+				c[i] = 1;
 			
 			Result res = LBFGS.lbfgs(c, this::lbfgsfun);
 			success = !res.status.isError();

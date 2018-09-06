@@ -5,13 +5,17 @@ varin("totals","Array of total counts",true);
 varin("background","Background color of track",false);
 varin("readmode","How to count multimappers (default: weight",false);
 varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
+varin("nolog","Use logscale",false);
+varin("nonorm","Use logscale",false);
 ?>
 <?JS
 var background = background?background:"#ffffff";
 var readmode = readmode?readmode:ReadCountMode.Weight;
 var mbppp = mbppp?mbppp:1000;
+var nonorm;
+var nolog;
 ?>
-
+	
 	<StorageSource id="+.<?JS id ?>.data" filter="+">
 		<?JS for each (var path in paths) { ?>
 		<File path="<?JS path ?>" />
@@ -22,10 +26,6 @@ var mbppp = mbppp?mbppp:1000;
 		<File path="<?JS path ?>" />
 		<?JS } ?>
 	</StorageSource>
-	
-
-	
-	
 		
 	<AlignedReadsDataToCoverageMapper id="+.<?JS id ?>.coveragenn" input="+.<?JS id ?>.data">
 		<ReadCountMode m="<?JS readmode ?>" />
@@ -33,6 +33,7 @@ var mbppp = mbppp?mbppp:1000;
 	<NumericNormalize id="+.<?JS id ?>.coverage" input="+.<?JS id ?>.coveragenn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToJunctionCountMapper id="+.<?JS id ?>.junctionsnn" input="+.<?JS id ?>.data">
 		<ReadCountMode m="<?JS readmode ?>" />
+		<Strand strand="+"/>
 	</AlignedReadsDataToJunctionCountMapper>
 	<StorageNumericNormalize id="+.<?JS id ?>.junctions" input="+.<?JS id ?>.junctionsnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToMismatchesMapper id="+.<?JS id ?>.mismatches" input="+.<?JS id ?>.data">	
@@ -45,6 +46,7 @@ var mbppp = mbppp?mbppp:1000;
 	<NumericNormalize id="-.<?JS id ?>.coverage" input="-.<?JS id ?>.coveragenn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToJunctionCountMapper id="-.<?JS id ?>.junctionsnn" input="-.<?JS id ?>.data">
 		<ReadCountMode m="<?JS readmode ?>" />
+		<Strand strand="-"/>
 	</AlignedReadsDataToJunctionCountMapper>
 	<StorageNumericNormalize id="-.<?JS id ?>.junctions" input="-.<?JS id ?>.junctionsnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToMismatchesMapper id="-.<?JS id ?>.mismatches" input="-.<?JS id ?>.data" >	
@@ -52,40 +54,41 @@ var mbppp = mbppp?mbppp:1000;
 	</AlignedReadsDataToMismatchesMapper>
 	
 	<NumericMerge input="+.<?JS id ?>.coveragenn,+.<?JS id ?>.mismatches" id="+.<?JS id ?>.mismatchfrac">
-		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
+		<Compute js="data.slice(data.length()-5,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-5).sum())" />
 	</NumericMerge>
 	<NumericMerge input="-.<?JS id ?>.coveragenn,-.<?JS id ?>.mismatches" id="-.<?JS id ?>.mismatchfrac">
-		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
+		<Compute js="data.slice(data.length()-5,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-5).sum())" />
 	</NumericMerge>
 	
 	
 	<NumericTrackGroup id="+.<?JS id ?>.Normalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="+.<?JS id ?>.junctions" id="+.<?JS id ?>.Normalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="+.<?JS id ?>.coverage" id="+.<?JS id ?>.Normalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
+		<? if (nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 	
 	<NumericTrackGroup id="+.<?JS id ?>.Unnormalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="+.<?JS id ?>.junctionsnn" id="+.<?JS id ?>.Unnormalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="+.<?JS id ?>.coveragenn" id="+.<?JS id ?>.Unnormalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
-		<Hidden h="true" />
+		<? if (!nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 
 	<NumericTrackGroup id="+.<?JS id ?>.Mismatches.Group" class="<?JS id ?>">
@@ -124,32 +127,33 @@ var mbppp = mbppp?mbppp:1000;
 	
 	
 	<NumericTrackGroup id="-.<?JS id ?>.Normalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="-.<?JS id ?>.junctions" id="-.<?JS id ?>.Normalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="-.<?JS id ?>.coverage" id="-.<?JS id ?>.Normalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
+		<? if (nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 	
 	<NumericTrackGroup id="-.<?JS id ?>.Unnormalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="-.<?JS id ?>.junctionsnn" id="-.<?JS id ?>.Unnormalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="-.<?JS id ?>.coveragenn" id="-.<?JS id ?>.Unnormalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
-		<Hidden h="true" />
+		<? if (!nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 
 	<NumericTrackGroup id="-.<?JS id ?>.Mismatches.Group" class="<?JS id ?>">

@@ -9,6 +9,7 @@ varin("name","Name for output files",true);
 varin("datasets","Dataset definitions",true);
 varin("references","Definitions of reference sequences",true);
 varin("test","Test with the first 10k sequences",false);
+varin("maxpar","Maximum number of parallel threads",false);
 
 varout("reads","File name containing read mappings");
 
@@ -17,6 +18,11 @@ varout("reads","File name containing read mappings");
 <?JS
 
 var resolve = function(f)  new File(f).getAbsolutePath();
+var maxpar;
+if (!maxpar) {
+	if (runner=="parallel") maxpar=6;
+	else maxpar=1000000;
+}
 
 output.setExecutable(true);
 
@@ -62,7 +68,13 @@ for (var name in nameToModeAndFiles) {
 	trimmed = nameToModeAndFiles[name][3];
 	barcodes = nameToModeAndFiles[name][4];
 	processTemplate("rnaseq_mapping1.sh",output.file.getParent()+"/"+name+".bash");
-	prerunner(name); print(output.file.getParent()+"/"+name+".bash"); tokens.push(postrunner(name)); println(""); 
+	if (tokens.length>=maxpar) {
+		prerunner(name,tokens);
+		tokens=[];
+	} else {
+		prerunner(name); 
+	}
+	print(output.file.getParent()+"/"+name+".bash"); tokens.push(postrunner(name)); println(""); 
 	
 }
 ?>

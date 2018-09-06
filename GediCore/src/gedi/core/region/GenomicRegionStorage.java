@@ -199,7 +199,7 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 	}
 
 	default void fill(GenomicRegionStorage<D> storage, Progress p) {
-		fill(storage,t->t,null);
+		fill(storage,t->t,p);
 	}
 	
 	default <O> void fill(GenomicRegionStorage<O> storage, Function<MutableReferenceGenomicRegion<O>,MutableReferenceGenomicRegion<D>> mapper, Progress p) {
@@ -410,6 +410,28 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 			return conditions;
 		}
 		return new String[0];
+	}
+	
+	default double[] getMetaDataTotals() {
+		if (getMetaData().hasProperty("conditions")) {
+			int numCond = getMetaData().getEntry("conditions").asArray().length;
+			double[] totals = new double[numCond];
+			for (int c=0; c<totals.length; c++) 
+				totals[c] = getMetaData().getEntry("conditions").getEntry(c).getEntry("total").asDouble();
+			return totals;
+		}
+		return null;
+	}
+	
+	default double[] getMetaDataTotals(String genome) {
+		if (getMetaData().hasProperty("conditions")) {
+			int numCond = getMetaData().getEntry("conditions").asArray().length;
+			double[] totals = new double[numCond];
+			for (int c=0; c<totals.length; c++) 
+				totals[c] = getMetaData().getEntry("conditions").getEntry(c).getEntry("total_"+genome).asDouble();
+			return totals;
+		}
+		return null;
 	}
 	
 }

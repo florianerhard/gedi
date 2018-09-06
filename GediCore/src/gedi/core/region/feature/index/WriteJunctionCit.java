@@ -63,23 +63,29 @@ public class WriteJunctionCit extends AbstractFeature<Void> {
 		GenomicRegion region = referenceRegion.getRegion();
 		if (region.getNumParts()>1) {
 			buffer = program.dataToCounts(referenceRegion.getData(), buffer);
-			int l = 0;
+			int l=!referenceRegion.getReference().isMinus()?0:referenceRegion.getRegion().getTotalLength();
 			for (int i=0; i<region.getNumParts()-1; i++) {
+				if (!referenceRegion.getReference().isMinus())
+					l+=region.getLength(i);
+				else
+					l-=region.getLength(i);
+				
 				if (region instanceof MissingInformationIntronInformation && ((MissingInformationIntronInformation)region).isMissingInformationIntron(i)){}
 				else {
 					if (!(referenceRegion.getData() instanceof AlignedReadsData) || !((AlignedReadsData) referenceRegion.getData()).isReadPairGap(l,0)) {
 						
 						ArrayGenomicRegion reg = new ArrayGenomicRegion(region.getEnd(i),region.getStart(i+1));
 						buffer = program.dataToCounts(referenceRegion.getData(), buffer);
-						
-						MemoryDoubleArray in = mem.getData(referenceRegion.getReference(), reg);
-						if (in==null) in = new MemoryDoubleArray(buffer.length());
-						in.add(buffer);
-						mem.add(referenceRegion.getReference(), reg, in);
+						if (buffer.sum()>0) {
+							MemoryDoubleArray in = mem.getData(referenceRegion.getReference(), reg);
+							if (in==null) in = new MemoryDoubleArray(buffer.length());
+							in.add(buffer);
+							mem.add(referenceRegion.getReference(), reg, in);
+						}
 					}
 				}
-				l+=region.getLength(i);
 			}
+			
 		}
 	}
 	

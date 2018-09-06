@@ -18,6 +18,7 @@
 package gedi.core.data.reads;
 
 import gedi.util.datastructure.array.NumericArray;
+import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 
 public enum ReadCountMode {
 
@@ -93,5 +94,18 @@ public enum ReadCountMode {
 		default: return null;
 		}
 	}
+	
+	public NumericArrayType getNumericArrayType() {
+		switch (this) {
+		case All: return NumericArrayType.Integer;
+		case Weight: return NumericArrayType.Double;
+		case Divide: return NumericArrayType.Double;
+		case Unique: return NumericArrayType.Integer;
+		case CollapseAll: return NumericArrayType.Integer;
+		case CollapseUnique: return NumericArrayType.Integer;
+		default: return null;
+		}
+	}
+	
 	
 }

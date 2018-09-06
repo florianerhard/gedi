@@ -26,6 +26,7 @@ import java.io.IOException;
 
 public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializable {
 
+	int[][] nonzeros;
 	int[][] count;
 	short[][] var;
 	CharSequence[][] indels;
@@ -45,6 +46,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 		if (data instanceof DefaultAlignedReadsData) {
 			DefaultAlignedReadsData d = (DefaultAlignedReadsData)data;
 			count = d.count;
+			nonzeros = d.nonzeros;
 			var = d.var;
 			indels = d.indels;
 			multiplicity = d.multiplicity;
@@ -61,9 +63,17 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 			
 			for (int i=0; i<count.length; i++) {
 				count[i] = new int[condition];
-				for (int j=0; j<condition; j++)
+				for (int j=0; j<condition; j++) {
 					count[i][j] = data.getCount(i, j);
+				}
 			}
+			
+			if (data.hasNonzeroInformation()) {
+				nonzeros = new int[distinct][];
+				for (int i=0; i<nonzeros.length; i++)
+					nonzeros[i]=data.getNonzeroCountsForDistinct(i);
+			}
+			
 			for (int i=0; i<count.length; i++) {
 				var[i] = new short[data.getVariationCount(i)];
 				indels[i] = new CharSequence[var[i].length];
@@ -106,7 +116,18 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 				for (int i=0; i<geometry.length; i++)
 					geometry[i] = encodeGeometry(data.getGeometryBeforeOverlap(i), data.getGeometryOverlap(i), data.getGeometryAfterOverlap(i));
 			}
+			
 		}
+	}
+
+	@Override
+	public boolean hasNonzeroInformation() {
+		return nonzeros!=null;
+	}
+	
+	@Override
+	public int[] getNonzeroCountsForDistinct(int distinct) {
+		return nonzeros[distinct];
 	}
 
 	@Override
@@ -251,13 +272,30 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 		}
 		else {
 			int co = in.getCInt();
+			
 			for (int i=0; i<co; i++) {
 				int pos = in.getCInt();
 				int count = in.getCInt();
 				this.count[pos/c][pos%c] = count;
 			}
 			
+			nonzeros = new int[d][];
+			for (int i=0; i<count.length; i++) {
+				int nc = 0;
+				for (int j=0; j<c; j++) {
+					if (count[i][j]>0) nc++;
+				}
+				nonzeros[i] = new int[nc];
+				nc=0;
+				for (int j=0; j<c; j++) {
+					if (count[i][j]>0) 
+						nonzeros[i][nc++]=j;
+				}
+			}
 		}
+		
+		
+		
 		for (int i=0; i<d; i++) {
 			int v = in.getCInt();
 			var[i] = new short[v];

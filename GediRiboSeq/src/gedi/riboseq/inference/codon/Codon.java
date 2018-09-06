@@ -44,11 +44,15 @@ public class Codon extends ArrayGenomicRegion {
 		super(region);
 		this.activity = activities;
 		totalActivity = ArrayUtils.sum(activities);
+		if (Double.isNaN(totalActivity))
+			throw new RuntimeException("Critical error, NaN codon activity!");
 	}
 	
 	public Codon(GenomicRegion region, double total) {
 		super(region);
 		totalActivity = total;
+		if (Double.isNaN(totalActivity))
+			throw new RuntimeException("Critical error, NaN codon activity!");
 	}
 	
 	
@@ -64,6 +68,8 @@ public class Codon extends ArrayGenomicRegion {
 		this.activity = activity;
 		this.goodness = goodness;
 		this.seq = seq!=null?seq.toString():null;
+		if (Double.isNaN(totalActivity))
+			throw new RuntimeException("Critical error, NaN codon activity!");
 	}
 	
 	public Codon(GenomicRegion region, Codon data) {
@@ -72,6 +78,8 @@ public class Codon extends ArrayGenomicRegion {
 		this.activity = data.activity;
 		this.goodness = data.goodness;
 		this.seq = data.seq;
+		if (Double.isNaN(totalActivity))
+			throw new RuntimeException("Critical error, NaN codon activity!");
 	}
 	
 	public double getTotalActivity() {
@@ -135,6 +143,12 @@ public class Codon extends ArrayGenomicRegion {
 			a[i.N] *= ref.getEstimatedActivityFraction(i.N)/EI.wrap(orfs).mapToDouble(o->o.getEstimatedActivityFraction(i.N)).sum();
 		double tot = ArrayUtils.sum(a);
 		return new Codon(this,a,tot,goodness,seq);
+	}
+
+	public void checkNaN() {
+		for (int i=0; i<activity.length; i++)
+			if (Double.isNaN(activity[i]))
+				throw new RuntimeException("Critical error, NaN codon activity!");
 	}
 	
 }

@@ -142,6 +142,10 @@ public class GediParameter<T> {
 		return value;
 	}
 	
+	public T getValue() {
+		return value;
+	}
+	
 	public ArrayList<T> getList() {
 		return values;
 	}

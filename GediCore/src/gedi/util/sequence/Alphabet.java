@@ -54,7 +54,7 @@ public class Alphabet {
 	}
 	
 	public boolean isValid(CharSequence s) {
-		for (int i=0; i<s.length(); i++)
+		for (int i=0; i<Math.min(1_000_000, s.length()); i++)
 			if (!isValid(s.charAt(i)))
 				return false;
 		return true;

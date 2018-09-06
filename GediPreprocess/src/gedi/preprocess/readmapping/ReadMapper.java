@@ -34,9 +34,9 @@ public enum ReadMapper {
 		}
 		
 		@Override
-		public String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
-			return String.format("bowtie -p %d -a -m 100 -v 3 --best --strata %s %s --sam %s %s %s",
-				nthreads,info.norc?"--norc":"",unmapped!=null?"--un "+unmapped:"",info.index,input,output);
+		public String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, int maxMismatch) {
+			return String.format("bowtie -p %d -a -m 100 -v %d --best --strata %s %s --sam %s %s %s",
+				nthreads,maxMismatch,info.norc?"--norc":"",unmapped!=null?"--un "+unmapped:"",info.index,input,output);
 		}
 		
 		@Override
@@ -65,10 +65,10 @@ public enum ReadMapper {
 		}
 		
 		@Override
-		public String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
-			return String.format("STAR --runMode alignReads --runThreadN %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType EndToEnd  --outSAMattributes nM MD  %s\n"
+		public String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, int maxMismatch) {
+			return String.format("STAR --runMode alignReads --runThreadN %d --outFilterMismatchNmax %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType EndToEnd  --outSAMattributes nM MD  %s\n"
 					+ "mv Aligned.out.sam %s %s",
-				nthreads,info.index,input,unmapped!=null?"--outReadsUnmapped Fastx":"",output,unmapped!=null?"\nmv Unmapped.out.mate1 "+unmapped:"");
+				nthreads,maxMismatch, info.index,input,unmapped!=null?"--outReadsUnmapped Fastx":"",output,unmapped!=null?"\nmv Unmapped.out.mate1 "+unmapped:"");
 		}
 		
 		public String getRnaSeqCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, boolean shared) {
@@ -105,7 +105,7 @@ public enum ReadMapper {
 
 	public abstract String getIndex(Genomic genomic, ReferenceType t);
 	public abstract boolean isInherentGenomicTranscriptomicMapper();
-	public abstract String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads);
+	public abstract String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, int maxMismatch);
 	public abstract String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads);
 	public abstract String getRnaSeqCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, boolean shared);
 }

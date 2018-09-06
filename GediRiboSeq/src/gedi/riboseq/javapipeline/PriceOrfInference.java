@@ -116,7 +116,9 @@ public class PriceOrfInference extends GediProgram {
 		PageFileWriter tmp = new PageFileWriter(prefix+".orfs.bin");
 		DoubleArrayList pvals = new DoubleArrayList();
 		RiboUtils.processCodonsSink(prefix+".codons.bin", "ORF inference", context.getProgress(), ()->"Cache: "+StringUtils.toString(v.getNoiseModel().getCacheSize()),nthreads, chunk, PriceOrf.class, 
-				ei->ei.demultiplex(o->v.inferOrfs(o).ei()),
+				ei->ei
+//					.filter(r->r.intersects(ImmutableReferenceGenomicRegion.parse("14+:105474562-105474905|105478265-105478366")))
+					.demultiplex(o->v.inferOrfs(o).ei()),
 				n->{
 					try {
 //							if (n.getData().getExpP()>v.getTestThreshold() && n.getData().getAbortiveP()>v.getTestThreshold()) {

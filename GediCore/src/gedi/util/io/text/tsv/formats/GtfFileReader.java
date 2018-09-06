@@ -91,10 +91,14 @@ public class GtfFileReader extends GenomicExonsTsvFileReader<Transcript> {
 				if (processedGenes.add(getGtfField("gene_id",a[0]))) 
 					genes.writef("%s\t%s\t%s\t%s\n",getGtfField("gene_id",a[0]),getGtfField("gene_name",a[0],""),getGtfField("gene_biotype",a[0],""),getGtfField("gene_source",a[0],""));
 				String prot = "";
-				for (int i=0; i<a.length; i++)
+				String src = getGtfField("transcript_source",a[0],"");
+				for (int i=0; i<a.length; i++) {
 					if (getGtfField("protein_id",a[i])!=null)
 						prot = getGtfField("protein_id",a[i]);
-				trans.writef("%s\t%s\t%s\t%s\n",getGtfField("transcript_id",a[0]),prot,getGtfField("transcript_biotype",a[0],""),getGtfField("transcript_source",a[0],""));
+					if (getGtfField("ccds_id",a[i])!=null)
+						src = "CCDS"; // technically speaking, this is wrong
+				}
+				trans.writef("%s\t%s\t%s\t%s\n",getGtfField("transcript_id",a[0]),prot,getGtfField("transcript_biotype",a[0],""),src);
 				
 			} catch (IOException e) {
 				throw new RuntimeException(e);
@@ -197,7 +201,7 @@ public class GtfFileReader extends GenomicExonsTsvFileReader<Transcript> {
 	}
 
 	public static void main(String[] args) throws IOException {
-		for (ImmutableReferenceGenomicRegion<Transcript> r :new GtfFileReader("/home/users/erhard/test.gtf").readIntoMemoryThrowOnNonUnique().getReferenceGenomicRegions() )
+		for (ImmutableReferenceGenomicRegion<Transcript> r :new GtfFileReader(args[0]).readIntoMemoryThrowOnNonUnique().getReferenceGenomicRegions() )
 			System.out.println(r);
 		
 		

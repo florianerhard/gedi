@@ -84,6 +84,7 @@ public class DefaultFastaHeaderParser extends AbstractFastaHeaderParser{
 	public String getId(String header) {
 		if (splitChar!=null) {
 			String[] splitted = StringUtils.split(header.substring(1), splitChar);
+			if (splitted.length==0) return "";
 			return splitted[0];
 		}
 		else if (segments!=null) {

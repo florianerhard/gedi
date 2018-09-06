@@ -497,6 +497,8 @@ public class CodonInference {
 			m.copySlots(2, 1); // restore the prior read probabilities
 		}
 	
+		for (Codon c : m.getCodons())
+			c.checkNaN();
 		
 		return m.getCodons();
 	}

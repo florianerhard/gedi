@@ -96,7 +96,6 @@ public class PenalizedWeightedClassCount<CNT,CLS> {
 			N+=n.applyAsDouble(countObject);
 		
 		for (int it=0; it<maxiter; it++) {
-			
 			emStep();
 			if (lambda>0) {
 				penalizeStep();
@@ -125,9 +124,11 @@ public class PenalizedWeightedClassCount<CNT,CLS> {
 		for (CLS cls : theta.keySet()) 
 			thetaSetter.accept(cls, theta.get(cls).N);
 		
-		
 		return computeLogLikelihood();
-		
+	}
+	
+	public double getB(CNT countObject) {
+		return b.get(countObject).N;
 	}
 	
 	public double computeLogLikelihood() {

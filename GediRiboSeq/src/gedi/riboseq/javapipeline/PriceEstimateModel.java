@@ -77,10 +77,10 @@ public class PriceEstimateModel extends GediProgram {
 		double[] sum = null;
 		double[][] mat = new double[df.columns()-1][];
 		for (int c=1; c<df.columns(); c++) {
-			mat[c-1] = ArrayUtils.restrict(df.getDoubleColumn(c).getRaw().toDoubleArray(),ind->pos[ind]<=-10);
+			mat[c-1] = ArrayUtils.restrict(df.getDoubleColumn(c).getRaw().toDoubleArray(),ind->pos[ind]<=-10 && pos[ind]>=-17);
 			sum = ArrayUtils.add(sum, mat[c-1]);
 		}
-		int[] posr = ArrayUtils.restrict(pos,ind->pos[ind]<=-10);
+		int[] posr = ArrayUtils.restrict(pos,ind->pos[ind]<=-10 && pos[ind]>=-17);
 
 		int[] maxpos = new int[mat.length+1];
 		for (int c=0; c<mat.length; c++) {

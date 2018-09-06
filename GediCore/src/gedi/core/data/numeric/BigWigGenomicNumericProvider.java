@@ -62,7 +62,7 @@ public class BigWigGenomicNumericProvider implements GenomicNumericProvider {
 		return new PositionNumericIterator() {
 			private float val;
 			int p = 0;
-			BigWigIterator eit = wig.getBigWigIterator(reference.getName(),region.getStart(p), reference.getName(),region.getEnd(p),true);
+			BigWigIterator eit = region.getNumParts()==0?null:wig.getBigWigIterator(reference.getName(),region.getStart(p), reference.getName(),region.getEnd(p),true);
 			
 			private void checkNextPart() {
 				while (!eit.hasNext() && ++p<region.getNumParts()) {
@@ -72,6 +72,7 @@ public class BigWigGenomicNumericProvider implements GenomicNumericProvider {
 			
 			@Override
 			public boolean hasNext() {
+				if (eit==null) return false;
 				checkNextPart();
 				return eit.hasNext();
 			}

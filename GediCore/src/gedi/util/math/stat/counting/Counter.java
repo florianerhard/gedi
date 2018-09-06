@@ -95,7 +95,7 @@ public class Counter<T>  {
 	
 	public Counter<T> sortByCount() {
 		Comparator<int[]> ac = FunctorUtils.intArrayComparator();
-		return sort((a,b)->ac.compare(get(a), get(b)));
+		return sort((a,b)->ac.compare(get(b), get(a)));
 	}
 	public Counter<T> sort() {
 		return sort((Comparator<T>)FunctorUtils.naturalComparator());
@@ -208,6 +208,10 @@ public class Counter<T>  {
 		int[] re = map.get(o);
 		if (re==null) return new int[dim];
 		return re;
+	}
+	
+	public int[] total(T o) {
+		return total;
 	}
 	
 	public int get(T o, int d) {

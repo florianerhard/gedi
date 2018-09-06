@@ -99,6 +99,24 @@ public interface ExtendedIterator<T> extends Iterator<T> {
     	return FunctorUtils.mappedIterator(this, mapper);
     }
 	
+	default ExtendedIterator<T> checkOrder(Comparator<T> order) {
+		return new ExtendedIterator<T>() {
+			T last = null;
+			@Override
+			public T next() {
+				T re = ExtendedIterator.this.next();
+				if (last!=null && order.compare(last, re)>0) throw new RuntimeException("Not ordered: "+last+" > "+re);
+				last = re;
+				return re;
+			}
+			
+			@Override
+			public boolean hasNext() {
+				return ExtendedIterator.this.hasNext();
+			}
+		};
+    }
+	
 	default ToIntMappedIterator<T> mapToInt(ToIntFunction<T> mapper) {
     	return FunctorUtils.mappedIntIterator(this, mapper);
     }
@@ -218,7 +236,7 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	}
 
 	default <O> ExtendedIterator<O> checkParallelized(int threads, int blocksize, BiFunction<O,O,String> checker, Function<ExtendedIterator<T>,ExtendedIterator<O>> sub) {
-		if (threads==0) return sub.apply(this);
+		if (threads<=0) return sub.apply(this);
 		return new ParallelizedIterator<T, O,Void>(this, threads, blocksize, checker, sub);
 	}
 	
@@ -284,13 +302,20 @@ public interface ExtendedIterator<T> extends Iterator<T> {
     	return FunctorUtils.mergeIterator(it,comp);
     }
 	
-	default FuseIterator<T> fuse(Class<T> cls, Iterator<T>...iterators) {
+	default FuseIterator<T,T[]> fuse(Class<T> cls, Iterator<T>...iterators) {
 		Iterator<T>[] it = new Iterator[iterators.length+1];
 		it[0] = this;
 		System.arraycopy(iterators, 0, it, 1, iterators.length);
     	return FunctorUtils.fuseIterator(cls,it);
     }
 	
+	default <R> FuseIterator<T,R> fuse(Function<List<T>,R> map, Iterator<T>...iterators) {
+		Iterator<T>[] it = new Iterator[iterators.length+1];
+		it[0] = this;
+		System.arraycopy(iterators, 0, it, 1, iterators.length);
+    	return FunctorUtils.fuseIterator(map,it);
+    }
+
 	
 	default ExtendedIterator<T[]> parallel(Comparator<T> comp, Class<T> cls, Iterator<T>...iterators) {
 		Iterator<T>[] it = new Iterator[iterators.length+1];
@@ -825,9 +850,10 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 
 	default <K> HashMap<K,Integer> indexPosition(Function<? super T,? extends K> key) {
 		HashMap<K,Integer> re = new HashMap<K, Integer>();
-		int p = 0;
 		while (hasNext()) {
-			re.put(key.apply(next()), p++);
+			K k = key.apply(next());
+			if (!re.containsKey(k))
+				re.put(k,re.size());
 		}
 		return re;
 	}

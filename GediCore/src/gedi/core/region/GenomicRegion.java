@@ -136,6 +136,7 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 	}
 	
 	default boolean contains(int pos) {
+		if (getNumParts()==0) return false;
 		if (getNumParts()==1) return pos>=getStart() && pos<getEnd();
 		int i = binarySearch(pos);
 		if (i>=0) return (i%2)==0; // hit start position
@@ -243,16 +244,19 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 		return sb.toString();
 	}
 	
-	default String toString(AlignedReadsData ard) {
+	default String toString(ReferenceGenomicRegion<? extends AlignedReadsData> rgr) {
 		StringBuilder sb = new StringBuilder();
-		int l=0;
+		int l=!rgr.getReference().isMinus()?0:rgr.getRegion().getTotalLength();
 		for (int i=0; i<getNumParts(); i++) {
 			if (i>0)
-				sb.append(ard.isReadPairGap(l, 0)?"#":"|");
+				sb.append(rgr.getData().isReadPairGap(l, 0)?"#":"|");
 			sb.append(getStart(i));
 			sb.append('-');
 			sb.append(getEnd(i));
-			l+=getLength(i);
+			if (!rgr.getReference().isMinus())
+				l+=getLength(i);
+			else
+				l-=getLength(i);
 		}
 		return sb.toString();
 	}

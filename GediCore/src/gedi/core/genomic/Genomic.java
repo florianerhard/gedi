@@ -73,7 +73,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	private HashMap<String,GenomicMappingTable> mapTabs = new HashMap<String, GenomicMappingTable>();
 	
 	private LinkedHashMap<String,String> infos = new LinkedHashMap<>();
-	private HashMap<ReferenceSequence,Genomic> referenceToOrigin;
+	private HashMap<String,Genomic> referenceToOrigin;
 	
 	private NameIndex nameIndex;
 	
@@ -85,45 +85,69 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 				.map(f->f.getFastaFile().getPath());
 	}
 	
-	public void merge(Genomic other) {
-		HashSet<ReferenceSequence> or = other.iterateReferenceSequences().set();
-		HashSet<ReferenceSequence> tr = iterateReferenceSequences().set();
-		if (!Collections.disjoint(or, tr))
+	public static Genomic merge(Genomic a, Genomic b) {
+		HashSet<ReferenceSequence> ar = a.iterateReferenceSequences().set();
+		HashSet<ReferenceSequence> br = b.iterateReferenceSequences().set();
+		if (!Collections.disjoint(ar, br))
 			throw new RuntimeException("Genomes are not disjoint!");
 
-		if (referenceToOrigin==null)
-			referenceToOrigin = new HashMap<>();
-		for (ReferenceSequence r : or)
-			referenceToOrigin.put(r, other.getOrigin(r));
+		Genomic re = new Genomic();
+		re.referenceToOrigin = new HashMap<>();
+		for (ReferenceSequence r : ar)
+			re.referenceToOrigin.put(r.getName(), a.getOrigin(r));
+		for (ReferenceSequence r : br)
+			re.referenceToOrigin.put(r.getName(), b.getOrigin(r));
 		
-		for (SequenceProvider p : other.sequence.getProviders())
-			this.sequence.add(p);
+		for (SequenceProvider p : a.sequence.getProviders())
+			re.sequence.add(p);
+		for (SequenceProvider p : b.sequence.getProviders())
+			re.sequence.add(p);
 	
-		for (String k : other.annotations.keySet()) {
-			Annotation pres = annotations.get(k);
-			if (pres==null) annotations.put(k, other.annotations.get(k));
-			else pres.merge(other.annotations.get(k));
+		for (String k : a.annotations.keySet()) {
+			Annotation pres = re.annotations.get(k);
+			if (pres==null) re.annotations.put(k, a.annotations.get(k));
+			else pres.merge(a.annotations.get(k));
+		}
+		for (String k : b.annotations.keySet()) {
+			Annotation pres = re.annotations.get(k);
+			if (pres==null) re.annotations.put(k, b.annotations.get(k));
+			else pres.merge(b.annotations.get(k));
 		}
 		
-		for (String k : other.mappings.keySet()) {
-			Mapping pres = mappings.get(k);
-			if (pres==null) mappings.put(k, other.mappings.get(k));
-			else pres.merge(other.mappings.get(k));
+		for (String k : a.mappings.keySet()) {
+			Mapping pres = re.mappings.get(k);
+			if (pres==null) re.mappings.put(k, a.mappings.get(k));
+			else pres.merge(a.mappings.get(k));
+		}
+		for (String k : b.mappings.keySet()) {
+			Mapping pres = re.mappings.get(k);
+			if (pres==null) re.mappings.put(k, b.mappings.get(k));
+			else pres.merge(b.mappings.get(k));
 		}
 		
-		for (String k : other.mapTabs.keySet()) {
-			GenomicMappingTable pres = mapTabs.get(k);
-			if (pres==null) mapTabs.put(k, other.mapTabs.get(k));
-			else pres.merge(other.mapTabs.get(k));
+		for (String k : a.mapTabs.keySet()) {
+			GenomicMappingTable pres = re.mapTabs.get(k);
+			if (pres==null) re.mapTabs.put(k, a.mapTabs.get(k));
+			else pres.merge(a.mapTabs.get(k));
+		}
+		for (String k : b.mapTabs.keySet()) {
+			GenomicMappingTable pres = re.mapTabs.get(k);
+			if (pres==null) re.mapTabs.put(k, b.mapTabs.get(k));
+			else pres.merge(b.mapTabs.get(k));
 		}
 		
-		if (nameIndex==null) nameIndex = other.nameIndex;
-		else if (other.nameIndex!=null) nameIndex.merge(other.nameIndex);
+		if (a.nameIndex!=null) re.add(a.nameIndex);
+		if (b.nameIndex!=null) re.add(b.nameIndex);
+		return re;
 	}
 	
 	public Genomic getOrigin(ReferenceSequence ref) {
+		return getOrigin(ref.getName());
+	}
+	
+	public Genomic getOrigin(String name) {
 		if (referenceToOrigin==null) return this;
-		return referenceToOrigin.get(ref);
+		return referenceToOrigin.get(name);
 	}
 	
 	public Trie<ReferenceGenomicRegion<?>> getNameIndex() {
@@ -146,7 +170,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	
 	public void add(NameIndex ni) {
 		if (nameIndex==null)
-			nameIndex = ni;
+			nameIndex = ni.clone();
 		else
 			nameIndex.merge(ni);
 	}
@@ -407,7 +431,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 		if (!cache.containsKey(name)) {
 			Genomic g = new Genomic();
 			for (int i=0; i<a.length; i++) 
-				g.merge(get(a[i],false));
+				g = Genomic.merge(g,get(a[i],false,true));
 			g.id = name;
 			cache.put(name, g);
 		}
@@ -421,7 +445,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 			Genomic gen = genomic.next();
 			if (sb.length()>0) sb.append(",");
 			sb.append(gen.id);
-			g.merge(gen);
+			g = merge(g,gen);
 		}
 		g.id = sb.toString();
 		cache.put(g.id, g);
@@ -436,9 +460,12 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	}
 
 	public static synchronized Genomic get(String name) {
-		return get(name,true);
+		return get(name,true,true);
 	}
-	private static synchronized Genomic get(String name, boolean caching) {
+	public static synchronized Genomic check(String name) {
+		return get(name,true,true);
+	}
+	private static synchronized Genomic get(String name, boolean caching, boolean throwOnNotExisting) {
 		if (!caching || !cache.containsKey(name)) {
 			Throwable a = null,b = null;
 			Genomic g = null;
@@ -480,9 +507,12 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 					}
 			
 			if (g==null) {
-				if (b!=null) throw new RuntimeException("Could not load genomic "+name+"!",b);
-				if (a!=null) throw new RuntimeException("Could not load genomic "+name+"!",a);
-				throw new RuntimeException("Genomic name "+name+" does not exisit in config/genomic!");
+				if (throwOnNotExisting){
+					if (b!=null) throw new RuntimeException("Could not load genomic "+name+"!",b);
+					if (a!=null) throw new RuntimeException("Could not load genomic "+name+"!",a);
+					throw new RuntimeException("Genomic name "+name+" does not exisit in config/genomic!");
+				}
+				return null;
 			}
 			return g;
 		}

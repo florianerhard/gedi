@@ -84,8 +84,9 @@ public class TemplateEngine {
 	 * ${name} in this url is replaced by the name, ${wd} by the working directory
 	 * @param url
 	 */
-	public void addTemplateSearchURL(String url) {
+	public TemplateEngine addTemplateSearchURL(String url) {
 		additionalTemplateSearchURLs.add(url);
+		return this;
 	}
 
 	

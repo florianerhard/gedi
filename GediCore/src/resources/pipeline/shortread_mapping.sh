@@ -10,6 +10,7 @@ varin("datasets","Dataset definitions",true);
 varin("references","Definitions of reference sequences",true);
 varin("test","Test with the first 10k sequences",false);
 varin("keeptrimmed","Keep the trimmed fastq files",false);
+varin("maxpar","Maximum number of parallel threads",false);
 
 varout("reads","File name containing read mappings");
 
@@ -19,15 +20,28 @@ varout("reads","File name containing read mappings");
 
 var resolve = function(f)  new File(f).getAbsolutePath();
 
+var maxpar;
+if (!maxpar) {
+	if (runner=="parallel") maxpar=6;
+	else maxpar=1000000;
+}
+
 output.setExecutable(true);
 
 var srrPat = Pattern.compile("SRR\\d+");
-var nameToModeAndFiles = {};
-var names = [];
+
+var id = name;
+var tokens = tokens?tokens:[];
+
 
 var adapter;
 var trimmed;
+var mode;
+var files;
+var barcodes;
+var saved = js.saveState();
 for each (var d in datasets) {
+	js.injectObject(d);
 	if (d.hasOwnProperty("gsm")) {
 		var jsson = new LineIterator(new URL("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term="+d.gsm+"&retmode=json").openStream())
 				.concat("");
@@ -38,34 +52,42 @@ for each (var d in datasets) {
 			.concat("");
 		var srrs = EI.wrap(srrPat.matcher(xml)).sort().toArray(String.class);
 		log.info("SRA entry: Name: "+d.name+" gsm: "+d.gsm+" id: "+arr[0].asString()+" SRR: "+Arrays.toString(srrs));
-		nameToModeAndFiles[d.name] = ["SRR",srrs,d.hasOwnProperty("adapter")?d.adapter:adapter,false];
+		mode="SRR";
+		files=srrs.concat(" ");
+		adapter=d.hasOwnProperty("adapter")?d.adapter:adapter;
+		trimmed=false;
+		
 	} else if (d.hasOwnProperty("sra")) {
 		var srrs = d.sra;
 		log.info("SRA entry: Name: "+d.name+" srr: "+srrs);
-		nameToModeAndFiles[d.name] = ["SRR",JS.array(srrs),d.hasOwnProperty("adapter")?d.adapter:adapter,false];
+		mode="SRR";
+		files=srrs.concat(" ");
+		adapter=d.hasOwnProperty("adapter")?d.adapter:adapter;
+		trimmed=false;
 	} else if (d.hasOwnProperty("fastq")) {
 		var fastq = d.fastq;
 		log.info("Fastq entry: Name: "+d.name+" fastq: "+fastq);
-		nameToModeAndFiles[d.name] = ["FASTQ",EI.wrap(JS.array(fastq)).map(resolve).toArray(String.class),d.hasOwnProperty("adapter")?d.adapter:adapter,d.hasOwnProperty("trimmed")?d.trimmed:trimmed];
+		mode="FASTQ";
+		files=EI.wrap(JS.array(fastq)).map(resolve).concat(" ");
+		adapter=d.hasOwnProperty("adapter")?d.adapter:adapter;
+		trimmed=d.hasOwnProperty("trimmed")?d.trimmed:trimmed;
 	}
-	nameToModeAndFiles[d.name].push(d.barcodes);
-	
-	names.push(d.name);
-}
 
-var id = name;
-var tokens = tokens?tokens:[];
-
-for (var name in nameToModeAndFiles) {
-	var mode = nameToModeAndFiles[name][0];
-	var files = EI.wrap(nameToModeAndFiles[name][1]).concat(" ");
-	adapter = nameToModeAndFiles[name][2];
-	trimmed = trimmed||nameToModeAndFiles[name][3];
-	barcodes = nameToModeAndFiles[name][4];
 	processTemplate("shortread_mapping1.sh",output.file.getParent()+"/"+name+".bash");
-	prerunner(name); print(output.file.getParent()+"/"+name+".bash"); tokens.push(postrunner(name)); println(""); 
 	
+	if (tokens.length>=maxpar) {
+		prerunner(name,tokens);
+		tokens=[];
+	} else {
+		prerunner(name); 
+	}
+	print(output.file.getParent()+"/"+name+".bash"); tokens.push(postrunner(name)); println(""); 
+	js.restoreState(saved);
 }
+
+
+var names = [];
+for each (var d in datasets) names.push(d.name);
 ?>
 	
 <?JS prerunner(id+".merge",tokens) ?>gedi -e MergeCIT -c <?JS wd ?>/<?JS id ?>.cit <?JS print(EI.wrap(JS.array(names)).map(function(f) wd+"/"+f+".cit").concat(" ")); ?> <?JS var end=postrunner(id+".merge") ?> 

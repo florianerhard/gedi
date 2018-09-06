@@ -28,6 +28,8 @@ import gedi.core.region.GenomicRegionStorageCapabilities;
 import gedi.core.region.GenomicRegionStorageExtensionPoint;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.region.bam.BamGenomicRegionStorage;
+import gedi.region.bam.BamGenomicRegionStorage.PairedEndHandling;
+import gedi.util.ParseUtils;
 import gedi.util.StringUtils;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
@@ -44,6 +46,7 @@ import java.util.Arrays;
 
 public class Bam2CIT {
 
+	
 	private static int checkMultiParam(String[] args, int index, ArrayList<String> re)  {
 		while (index<args.length && !args[index].startsWith("-")) 
 			re.add(args[index++]);
@@ -70,6 +73,7 @@ public class Bam2CIT {
 		boolean keepIds = false;
 		boolean compress = true;
 		boolean var = true;
+		boolean delM = true;
 		boolean nosec = false;
 		boolean unspec = false;
 		boolean anti = false;
@@ -77,7 +81,8 @@ public class Bam2CIT {
 		int head = -1;
 		Genomic check = null;
 		String out = null;
-		
+		PairedEndHandling peh = null;
+
 		for (int i=0; i<args.length; i++) {
 			if (args[i].equals("-p"))
 				progress = true;
@@ -90,6 +95,8 @@ public class Bam2CIT {
 				keepIds = true;
 			else if (args[i].equals("-head"))
 				head = checkIntParam(args,++i);
+			else if (args[i].equals("-pe"))
+				peh = ParseUtils.parseEnumNameByPrefix(checkParam(args,++i),true,PairedEndHandling.class);
 			else if (args[i].equals("-nocompress"))
 				compress = false;
 			else if (args[i].equals("-novar"))
@@ -100,6 +107,8 @@ public class Bam2CIT {
 				unspec = true;
 			else if (args[i].equals("-anti"))
 				anti = true;
+			else if (args[i].equals("-delM"))
+				delM = true;
 			else if (args[i].equals("-join"))
 				join = true;
 			else {
@@ -118,7 +127,9 @@ public class Bam2CIT {
 		BamGenomicRegionStorage storage = new BamGenomicRegionStorage(!unspec,args);
 		if (anti)
 			storage.setStrandness(Strandness.Antisense);
-		
+		if (peh!=null)
+			storage.setPairedEndHandling(peh);
+			
 		LineWriter incons = null;  
 		if (check!=null)
 			storage.check(check,incons = new LineOrientedFile(out+".inconsistent").write());
@@ -133,10 +144,11 @@ public class Bam2CIT {
 		@SuppressWarnings("rawtypes")
 		GenomicRegionStorage outStorage = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(Boolean.class, compress).add(String.class, out).add(Class.class, DefaultAlignedReadsData.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
 		
-		if (head>0) {
+		if (head>0 || delM) {
 			ExtendedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>> it = storage.ei();
 			if (progress) it = it.progress();
 			if (head>0) it = it.head(head);
+			if (delM) it = it.filter(r->!r.getReference().isMitochondrial());
 			
 			outStorage.fill(it);
 		} else {

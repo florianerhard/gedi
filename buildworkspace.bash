@@ -18,12 +18,17 @@ echo In $root
 workspace=`dirname $0`
 curd=`pwd`
 
+projects=`cd $workspace/; ls -d */`;
+
 libs=`mktemp tmp.XXXXXX`
 javas=`mktemp tmp.XXXXXX`
 
 echo Discovering files
 
-for project in `cd $workspace/; ls -d */`; do
+IFS=' ' read -a proarr <<< $projects
+while [[ "${#proarr[@]}" -gt "0" ]]
+do
+	project=${proarr[0]}
 	cpPath="$workspace/${project}.classpath"
 eworkspace=`echo $workspace | sed -e 's/\//\\\\\//'`
 eproject=`echo $project | sed -e 's/\//\\\\\//'`
@@ -33,6 +38,7 @@ if [[ -e "$cpPath" ]]; then
 	grep 'kind="src"' $cpPath | egrep -o 'path=\"[^/].*?\"' | cut -f2 -d'"' | sed -e "s/^\([^/]\)/$eworkspace\\/${eproject}\1/" | sed -e "s/src\$/src\\/*/" >> $javas
 fi
 
+proarr=("${proarr[@]:1}")
 done
 
 
@@ -50,7 +56,6 @@ mkdir -p $root/src
 cp -r $javaroots $root/src
 
 cp $workspace/build.xml $root
-cp $workspace/gedi $root
 
 cd $root
 ant $target

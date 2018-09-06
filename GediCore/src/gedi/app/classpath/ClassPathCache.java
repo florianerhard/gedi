@@ -187,8 +187,8 @@ public class ClassPathCache {
 							log.log(Level.CONFIG, "Running startup "+c+" in "+cp);
 							su.accept(cp);
 						}
-					} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-						log.log(Level.SEVERE, "Could not load startup "+c+" in "+cp,e);
+					} catch (Throwable e) {
+						log.log(Level.SEVERE, "Could not load startup "+c+" in "+cp);
 					}
 					
 				}

@@ -129,7 +129,8 @@ public class AlignedReadsDataMerger {
 			int v = n[i].d;
 			
 			fac.newDistinctSequence();
-			fac.setId(getId(i,data[i].getId(v), data[i].getMultiplicity(v)>1));
+			if (data[i].hasId())
+				fac.setId(getId(i,data[i].getId(v), data[i].getMultiplicity(v)>1));
 			fac.setMultiplicity(data[i].getMultiplicity(v));
 			if (data[i].hasWeights())
 				fac.setWeight(data[i].getWeight(v));

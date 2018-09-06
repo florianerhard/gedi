@@ -17,6 +17,8 @@
  */
 package gedi.util.datastructure.collections;
 
+import gedi.app.extension.GlobalInfoProvider;
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.io.randomaccess.PageFile;
@@ -123,6 +125,13 @@ public class SerializerSortingCollection<T> implements Collection<T>, Closeable 
 		if (buf==null)
 			try {
 				buf = new PageFileWriter(Files.createTempFile("serializercollection", ".tmp").toString());
+				DynamicObject globalInfo;
+				if (mem.get(0) instanceof GlobalInfoProvider)
+					globalInfo = ((GlobalInfoProvider)mem.get(0)).getGlobalInfo();
+				else 
+					globalInfo = DynamicObject.getEmpty();
+				buf.getContext().setGlobalInfo(globalInfo);
+				
 				new File(buf.getPath()).deleteOnExit();
 				serializer.beginSerialize(buf);
 			} catch (IOException e) {

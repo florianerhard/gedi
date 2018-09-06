@@ -29,7 +29,7 @@ import java.nio.file.Path;
 
 public class BedFileLoader implements WorkspaceItemLoader<MemoryIntervalTreeStorage<ScoreNameAnnotation>,GenomicRegionStoragePreload> {
 
-	public static final String[] extensions = new String[]{"bed"};
+	public static final String[] extensions = new String[]{"bed","bed.gz"};
 	
 	@Override
 	public String[] getExtensions() {

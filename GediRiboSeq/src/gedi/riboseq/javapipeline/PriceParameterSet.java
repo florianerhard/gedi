@@ -65,6 +65,8 @@ public class PriceParameterSet extends GediParameterSet {
 	public GediParameter<String> filter = new GediParameter<String>(this,"filter", "Use only reads matching the filter (e.g. 28:30)", false, new StringParameterType(),"");
 	public GediParameter<File> estimateData = new GediParameter<File>(this,"${prefix}.estimateData", "File containing the sufficient statistics to estimate model", false, new FileParameterType());
 	public GediParameter<Boolean> percond = new GediParameter<Boolean>(this,"percond", "Estimate models per condition", false, new BooleanParameterType());
+	public GediParameter<Boolean> skipmt = new GediParameter<Boolean>(this,"skipmt", "Skip mitochondrial chromosome for estimating the model", false, new BooleanParameterType());
+	
 	
 	public GediParameter<Boolean> plot = new GediParameter<Boolean>(this,"plot", "Use R to produce various plots",false, new BooleanParameterType());
 	public GediParameter<Integer> maxiter = new GediParameter<Integer>(this,"maxiter", "The maximal number of iterations per repeat in the EM for estimating model parameters", false, new IntParameterType(), 1000);

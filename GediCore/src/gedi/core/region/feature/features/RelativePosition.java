@@ -149,8 +149,14 @@ public class RelativePosition extends AbstractFeature<Integer> {
 			if (!rgr.getRegion().contains(r))
 				continue;
 			
+			if (!forceFullRegion && medianSizes==null) {
+				System.err.println("Warning: Input universe could not be iterated! Setting ForceFullRegion!");
+				forceFullRegion = true;
+			}
+
+			
 			if (!forceFullRegion) {
-				if (medianSizes==null) throw new RuntimeException("Input universe could not be iterated! Set ForceFullRegion!");
+				
 				
 				Transcript t = ((Transcript) rgr.getData()); 
 				if (t.isCoding() && t.get5Utr(rgr.getReference(), rgr.getRegion()).getTotalLength()>0 && t.get3Utr(rgr.getReference(), rgr.getRegion()).getTotalLength()>0) {

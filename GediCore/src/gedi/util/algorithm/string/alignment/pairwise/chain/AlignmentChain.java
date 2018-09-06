@@ -104,6 +104,7 @@ public class AlignmentChain {
 		if (!r.getReference().equals(queryRegion.getReference())) 
 			throw new IllegalArgumentException("Invalid reference sequence!");
 		
+		System.err.println("AlignmentChain mapping not tested!");
 		
 		ArrayGenomicRegion rinter = r.getRegion().intersect(queryRegion.getRegion());
 		if (!rinter.equals(r.getRegion())) {

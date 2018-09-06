@@ -524,15 +524,28 @@ public class ArrayUtils {
 	 * @return if the array could be incremented
 	 */
 	public static boolean increment(int[] para, IntUnaryOperator radix) {
-		int i;
-		for (i=0; i<para.length && para[i]>=radix.applyAsInt(i)-1; i++) {
-			para[i]= 0;
-		}
-		if (i<para.length)
-			para[i]++;
-		return i<para.length;
+		return increment(para,para.length,radix);
 	}
 
+	/**
+	 * Increments the array para if possible. Incrementing an array means that the items
+	 * are interpreted as digits of a number with variable radix.
+	 * <p>Example with radix = 3,2: (0,0)->(1,0)->(2,0)->(0,1)->(1,1)->(2,1)->false
+	 * 
+	 * @param para the current number
+	 * @param radix the radix array
+	 * @return if the array could be incremented
+	 */
+	public static boolean increment(int[] para, int len, IntUnaryOperator radix) {
+		int i;
+		for (i=0; i<len && para[i]>=radix.applyAsInt(i)-1; i++) {
+			para[i]= 0;
+		}
+		if (i<len)
+			para[i]++;
+		return i<len;
+	}
+	
 	public static <T> T[] slice(T[] a, int start) {
 		return slice(a,start,a.length);
 	}

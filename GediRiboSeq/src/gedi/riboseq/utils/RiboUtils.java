@@ -86,7 +86,8 @@ public class RiboUtils {
 		ReferenceGenomicRegionParser<Void> p = new ReferenceGenomicRegionParser<Void>();
 		if (p.canParse(spec)) {
 			MutableReferenceGenomicRegion ref = p.apply(spec);
-			return read->ref.intersects(read);
+			if (ref.getRegion().getTotalLength()>1)
+				return read->ref.intersects(read);
 		}
 		BitVector bv = ParseUtils.parseRangeBv(spec, 500);
 		return rgr->bv.getQuick(rgr.getRegion().getTotalLength());

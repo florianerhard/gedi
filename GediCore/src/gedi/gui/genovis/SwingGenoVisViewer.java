@@ -84,7 +84,8 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 	private double leftMarginWidth;
 	private LazyGenome genome;
 	
-	private BufferedImage buffer;
+	private BufferedImage renderBuffer;
+	private boolean renderBufferDirty = true;
 	
 	private ArrayList<Consumer<GenoVisViewer>> prepaintListener = new ArrayList<Consumer<GenoVisViewer>>();
 	private ArrayList<Consumer<GenoVisViewer>> reloadListener = new ArrayList<Consumer<GenoVisViewer>>();
@@ -365,7 +366,7 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 		
 		for (VisualizationTrack<?,?> t : tracks)
 			t.setView(reference, region);
-		buffer=null;
+		renderBufferDirty = true;
 		
 		if (async) 
 			reload();
@@ -482,7 +483,7 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 	@Override
 	public void doLayout() {
 		super.doLayout();
-		buffer = null;
+		renderBufferDirty = true;
 		// determine left region
 		leftMarginWidth = 0;
 		for (VisualizationTrack<?,?> t : tracks) {
@@ -513,21 +514,23 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 	@Override
 	public void repaint(boolean clearBuffer) {
 		if (clearBuffer)
-			buffer = null;
+			renderBufferDirty = true;
 		super.repaint();
 	}
 	
 
 	@Override
 	protected void paintComponent(Graphics g) {
-		if (buffer==null) {
-			buffer = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
-			Graphics2D g2 = buffer.createGraphics();
+		if (renderBufferDirty) {
+			if (renderBuffer==null || getWidth()!=renderBuffer.getWidth() || getHeight()!=renderBuffer.getHeight())
+				renderBuffer = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g2 = renderBuffer.createGraphics();
 			render(g2);
 			g2.dispose();
+			renderBufferDirty = false;
 		}
 		Graphics2D g2 = (Graphics2D) g;
-		g2.drawImage(buffer, 0, 0, null);
+		g2.drawImage(renderBuffer, 0, 0, null);
 		
 //		if (mouseIn!=null) {
 //			g2.setColor(Color.gray);
@@ -711,7 +714,7 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 	@Override
 	public void relayout() {
 		needlayout = true;
-		buffer=null;
+		renderBufferDirty = true;
 		revalidate();
 		repaint();
 	}

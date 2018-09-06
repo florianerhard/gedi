@@ -65,6 +65,7 @@ public class CleavageModelEstimator {
 	private GenomicRegionStorage<Transcript> annotation;
 	private GenomicRegionStorage<AlignedReadsData> reads;
 	private Predicate<ReferenceGenomicRegion<AlignedReadsData>> filter;
+	private boolean skiptMT = false;
 	
 	private int maxMulti = 1;
 	private int maxLength = 50;
@@ -124,6 +125,10 @@ public class CleavageModelEstimator {
 	
 	public void setMaxPos(int maxPos) {
 		this.maxPos = maxPos;
+	}
+	
+	public void setSkiptMT(boolean skiptMT) {
+		this.skiptMT = skiptMT;
 	}
 	
 	public void setMerge(boolean merge){
@@ -282,6 +287,7 @@ public class CleavageModelEstimator {
 				it = it.filter(filter);
 			while (it.hasNext()) {
 				ImmutableReferenceGenomicRegion<AlignedReadsData> rgr = it.next();
+				if (skiptMT && (rgr.getReference().getChrStrippedName().equals("MT") || rgr.getReference().getChrStrippedName().equals("M"))) continue;
 				
 				progress.incrementProgress();
 				progress.setDescription(()->"Collecting statistics "+rgr.toLocationString());
@@ -471,6 +477,7 @@ public class CleavageModelEstimator {
 					data[l][f][lm][c] = Double.parseDouble(fi[index++]);
 			
 		}
+		
 	}
 	
 	
@@ -600,6 +607,25 @@ public class CleavageModelEstimator {
 	}
 	
 	public double estimateBoth(int c, int nthreads) {
+		
+		// check for 0 with no leading mismatches (e.g. due to missing MD tag)
+		double u = 0;
+		double N = 0;
+		for (int l=obsMinLength; l<=obsMaxLength; l++)
+			for (int f=0; f<3; f++) {
+				// lm=1
+				int lm = 1;
+				double n = data[l][f][lm][c];
+				N+=n;
+				
+				u+=n*4.0/3;
+				
+				lm = 0;
+				n = data[l][f][lm][c];
+				N+=n;
+			}
+		if (u/N>=1 || u/N<=0) throw new RuntimeException("Could not estimate model, there is something wrong with mismatch information (did you forget to include the MD attribute?)");
+		
 		CleavageModelEstimatorThread[] threads = new CleavageModelEstimatorThread[Math.max(1, nthreads)];
 		int best;
 		

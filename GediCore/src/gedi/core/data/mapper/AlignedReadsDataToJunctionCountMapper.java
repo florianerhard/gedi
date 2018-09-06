@@ -21,6 +21,7 @@ package gedi.core.data.mapper;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.ReadCountMode;
 import gedi.core.reference.ReferenceSequence;
+import gedi.core.reference.Strand;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.MissingInformationIntronInformation;
@@ -32,11 +33,15 @@ import gedi.util.datastructure.tree.redblacktree.IntervalTree;
 @GenomicRegionDataMapping(fromType=IntervalTree.class,toType=IntervalTree.class)
 public class AlignedReadsDataToJunctionCountMapper implements GenomicRegionDataMapper<IntervalTree<GenomicRegion,AlignedReadsData>, IntervalTree<GenomicRegion,NumericArray>>{
 
-	
+	private Strand strand = Strand.Independent;
 	private ReadCountMode readCountMode = ReadCountMode.Weight;
 	
 	public void setReadCountMode(ReadCountMode readCountMode) {
 		this.readCountMode = readCountMode;
+	}
+	
+	public void setStrand(Strand strand) {
+		this.strand = strand;
 	}
 
 	@Override
@@ -51,8 +56,12 @@ public class AlignedReadsDataToJunctionCountMapper implements GenomicRegionDataM
 
 		data.entrySet().iterator().forEachRemaining(e->{
 			if (e.getKey().getNumParts()>1) {
-				int l = 0;
+				int l=!strand.isMinus()?0:e.getKey().getTotalLength();
 				for (int i=0; i<e.getKey().getNumParts()-1; i++) {
+					if (!strand.isMinus())
+						l+=e.getKey().getLength(i);
+					else
+						l-=e.getKey().getLength(i);
 					if (e.getKey() instanceof MissingInformationIntronInformation && ((MissingInformationIntronInformation)e.getKey()).isMissingInformationIntron(i)){}
 					else {
 						AlignedReadsData val = e.getValue();
@@ -62,11 +71,9 @@ public class AlignedReadsDataToJunctionCountMapper implements GenomicRegionDataM
 							val.addTotalCountsForConditions(a, readCountMode);
 						}
 					}
-					l+=e.getKey().getLength(i);
 				}
 			}
 		});
-		
 		return re;
 	}
 

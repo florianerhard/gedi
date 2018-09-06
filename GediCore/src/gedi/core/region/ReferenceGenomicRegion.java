@@ -214,14 +214,14 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	default String toString2() {
 		String reg = getRegion().toString();
 		if (getData() instanceof AlignedReadsData) 
-			reg = getRegion().toString((AlignedReadsData)getData());
+			reg = getRegion().toString((ReferenceGenomicRegion)this);
 		return getData()==null?getReference()+":"+getRegion():getReference()+":"+reg+"\t"+StringUtils.toString(getData());
 	}
 	
 	default String toLocationString() {
 		String reg = getRegion().toRegionString();
 		if (getData() instanceof AlignedReadsData) 
-			reg = getRegion().toString((AlignedReadsData)getData());
+			reg = getRegion().toString((ReferenceGenomicRegion)this);
 		return getReference().toPlusMinusString()+":"+reg;
 	}
 	

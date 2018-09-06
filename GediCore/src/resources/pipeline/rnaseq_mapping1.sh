@@ -10,7 +10,7 @@ varin("nthreads","Number of threads (Default: 8)",false);
 varin("minlength","Minimal length of reads to keep (default: 18)",false);
 varin("keepUnmapped","Keep the unmapped reads in a fasta file",false);
 varin("keepbams","Keep the bam files",false);
-varin("reverse","Map everything to the opposite strand",false);
+varin("keepfastq","Keep the fastq files",false);
 varin("sharedMem","Use shared memory for STAR",false);
 varin("extract","Extract part of read",false);
 varin("nosoft","No softclipping",false);
@@ -19,6 +19,9 @@ varin("introns","All/Annotated/None",false);
 varin("citparam","e.g. -novar -nosec",false);
 varin("rrna","rrna genomic index",false);
 varin("starindex","folder of a combined STAR index",false);
+varin("starparam","additional parameter for STAR",false);
+varin("adapter1","Forward adapter sequence",false);
+varin("adapter2","Backward adapter sequence",false);
 
 
 varout("reads","File name containing read mappings");
@@ -29,10 +32,10 @@ varout("reads","File name containing read mappings");
 
 <?JS
 var novar;
+var starparam;
 var nosec;
 var introns;
 var keepUnmapped;
-var reverse;
 var minlength=minlength?minlength:18;
 var nthreads = nthreads?nthreads:Math.min(8,Runtime.getRuntime().availableProcessors());
 var sharedMem;
@@ -68,6 +71,7 @@ var fastqname = name+".fastq";
 
 var test;
 var keepbams;
+var keepfastq;
 ?>
 
 
@@ -75,10 +79,9 @@ mkdir -p <?JS tmp ?>/<?JS name ?>
 cd <?JS tmp ?>/<?JS name ?>
 
 <?JS if (mode=="SRR") { ?>
-fastq-dump --split-files <?JS if(test) print("-X 10000"); ?> -Z <?JS files ?> > <?JS name ?>.fastq 
+RETRY=1; until fastq-dump --split-files <?JS if(test) print("-X 10000"); ?> <?JS files ?>; do echo Retry after $RETRY; sleep $RETRY; RETRY=$((RETRY*2)); done
 <?JS 
-// TODO: paired end , split!
-fastqname=name+".fastq";
+fastqname="*.fastq";
 } else if (mode=="FASTQ") {  
 
 var ff = [files];
@@ -86,7 +89,7 @@ var fqs = [fastqname]
 
 if (pairedend) {
 	if (ff.length!=1) throw new RuntimeException("Paired-end reads must be in two files!");
-	var fp = FileUtils.findPartnerFile(ff[0],pairedend).getPath();
+	var fp = FileUtils.findPartnerFile(ff[0],pairedend);
 	log.info("Found partner files: "+ff[0]+" "+fp); 
 	ff=[ff[0],fp];
 	fqs=[name+"_1.fastq",name+"_2.fastq"];
@@ -129,7 +132,32 @@ mv <? name ?>.lane.clean <?JS fastqname ?>
 rm <?JS name ?>.lint
 <? } ?>
 
+
+
+<?JS
+var adapter1;
+var adapter2;
+if (adapter1 && adapter2) { ?>
+TRIMMER=$( ls -1 `echo $PATH | sed -e 's/:/\/trimmomatic*.jar /'g ` 2>/dev/null | head -n1 )
+if [ ! -f $TRIMMER ]; then
+	(>&2 echo "Trimmomatic not found, did not trim reads!")
+else
+	echo -e ">a/1\n<? adapter1 ?>\n>a/2\n<? adapter2 ?>" > adapter.fasta
+	java -jar $TRIMMER PE -threads <? nthreads ?> <?JS fastqname ?> -baseout trimmed ILLUMINACLIP:adapter.fasta:2:30:10:1:true
+	mv trimmed_1P <? name ?>_1.fastq <? //print(fqs[0]) ?>
+	mv trimmed_2P <? name ?>_2.fastq <? //print(fqs[1]) ?>
+	<? fastqname=name+"_1.fastq "+name+"_2.fastq"; ?>
+fi
+<? } ?>
+
+
 gedi -t . -e FastqFilter -D <?extractparam?>-overwrite -ld <?JS name ?>.readlengths.tsv -min <?JS minlength ?> <?JS fastqname ?>
+
+
+	echo -ne "Trimmed\t" >> <?JS name ?>.reads.tsv
+	L=`wc -l <?JS fastqname ?> | head -n1 | awk '{print $1}'`
+	leftreads=$((L / 4))
+	echo $leftreads >> <?JS name ?>.reads.tsv
 
 
 <?JS if (rrna) { ?>
@@ -155,7 +183,7 @@ mv Unmapped.out.mate1 <? print(fqs[0]) ?>
 
 
 # mapping
-STAR --runMode alignReads --runThreadN <? nthreads ?>  <? intronparam ?> --genomeDir <? starindex ?> <?JS print(sharedMem?"--genomeLoad LoadAndRemove --limitBAMsortRAM 4000000000":""); ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --outSAMtype BAM SortedByCoordinate --alignEndsType <? alimode ?> --outSAMattributes nM MD NH  <?JS print(keepUnmapped?"--outReadsUnmapped Fastx":""); ?>
+STAR --runMode alignReads --runThreadN <? nthreads ?>  <? intronparam ?> --genomeDir <? starindex ?> <?JS print(sharedMem?"--genomeLoad LoadAndRemove":""); ?> --limitBAMsortRAM 4000000000 <? starparam ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --outSAMtype BAM SortedByCoordinate --alignEndsType <? alimode ?> --outSAMattributes nM MD NH  <?JS print(keepUnmapped?"--outReadsUnmapped Fastx":""); ?>
 mv Aligned.sortedByCoord.out.bam <? name ?>.bam
 <?JS
 			if (keepUnmapped) {
@@ -178,12 +206,9 @@ mkdir -p <?JS wd ?>/report
 
 samtools index <? name ?>.bam
 gedi -t . -e Bam2CIT <? citparam ?> <? name ?>.cit <? name ?>.bam
+gedi -t . -e CorrectCIT <? name ?>.cit
 echo -ne "CIT\t" >> <?JS name ?>.reads.tsv
-gedi -t . -e ReadCount <? name ?>.cit | tail -n1 | awk '{ print $2 }'>> <?JS name ?>.reads.tsv
-
-<?JS if (reverse) { ?>
-   gedi -t . -e TransformChromosomesCIT <?JS name ?>.cit -r
-<?JS } ?>
+gedi -t . -e ReadCount -g <? genomes ?> -m Weight <? name ?>.cit | tail -n1 | awk '{ print $2 }'>> <?JS name ?>.reads.tsv
 
 mv *.readlengths.* <?JS wd ?>/report
 mv <?JS name ?>.reads.tsv <?JS wd ?>/report
@@ -197,6 +222,10 @@ if [ -f <?JS name ?>.cit ]; then
 <?JS if (keepbams) { ?>
    mkdir -p <?JS wd ?>/bams
    mv <? name ?>.bam* <?JS wd ?>/bams
+<?JS } ?>
+<?JS if (keepfastq) { ?>
+   mkdir -p <?JS wd ?>/fastq
+   mv *.fastq <?JS wd ?>/fastq
 <?JS } ?>
    rm -rf <?JS tmp ?>/<?JS name ?>
 else

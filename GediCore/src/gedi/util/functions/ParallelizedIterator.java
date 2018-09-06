@@ -119,10 +119,18 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 		ExtendedIterator<I> fin = in;
 		controller = new Thread("ControllerThread") {
 			public void run() {
-				while (fin.hasNext()) 
-					if (!consume(fin))
-						return;
-				finish();
+				try {
+					while (fin.hasNext()) 
+						if (!consume(fin))
+							return;
+					finish();
+				} catch (Throwable e) {
+					ex=e;
+					synchronized (drainLock) {
+						if (drainThread!=null)
+							drainThread.interrupt();	
+					}
+				}
 			}	
 		};
 		controller.setDaemon(true);

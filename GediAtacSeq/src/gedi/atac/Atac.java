@@ -37,8 +37,11 @@ import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.util.ArrayUtils;
+import gedi.util.FileUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
+import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.dynamic.DynamicObject;
@@ -213,17 +216,72 @@ public class Atac {
 			out.writef("%s\t%d\t%d\t.\t.\t%s\n", ref.getName(),pos,pos+25,strand);
 	}
 	
-	public static void buildInsertionIndices(String prefix, GenomicRegionStorage<? extends AlignedReadsData> storage) throws IOException {
+	public static void buildInsertionIndices(String prefix, GenomicRegionStorage<? extends AlignedReadsData> storage, boolean shortLong) throws IOException {
 
 		int ncond = storage.getRandomRecord().getNumConditions();
 		for (int i=0; i<ncond; i++) {
 			String name = storage.getMetaData().get("conditions").getEntry(i).getEntry("name").asString();
 			if (name==null || name.length()==0) name = i+"";
 			
+			if (shortLong) {
+				String path = prefix+"."+name+".short.rmq";
+				if (!new File(path).exists()) {
+					System.out.println("Building short fragments "+name+" into: "+path);
+					buildInsertionIndex(path, true,false,storage, i,true,true);
+				} else {
+					System.out.println("Skip "+name+", file already exists: "+path);
+				}
+	
+				path = prefix+"."+name+".long.rmq";
+				if (!new File(path).exists()) {
+					System.out.println("Building long fragments "+name+" into: "+path);
+					buildInsertionIndex(path, false,true,storage, i,true,true);
+				} else {
+					System.out.println("Skip "+name+", file already exists: "+path);
+				}
+			}
+			
 			String path = prefix+"."+name+".rmq";
 			if (!new File(path).exists()) {
-				System.out.println("Building "+name+" into: "+path);
-				buildInsertionIndex(path, storage, i, true, true);
+				System.out.println("Building all fragments "+name+" into: "+path);
+				buildInsertionIndex(path, true,true,storage, i,true,true);
+			} else {
+				System.out.println("Skip "+name+", file already exists: "+path);
+			}
+			
+		}
+	}
+	
+	
+	public static void buildCoverageIndices(String prefix, GenomicRegionStorage<? extends AlignedReadsData> storage, boolean shortLong) throws IOException {
+
+		int ncond = storage.getRandomRecord().getNumConditions();
+		for (int i=0; i<ncond; i++) {
+			String name = storage.getMetaData().get("conditions").getEntry(i).getEntry("name").asString();
+			if (name==null || name.length()==0) name = i+"";
+			
+			if (shortLong) {
+				String path = prefix+"."+name+".short.rmq";
+				if (!new File(path).exists()) {
+					System.out.println("Building short fragments "+name+" into: "+path);
+					buildCoverageIndex(path, true,false,storage, i);
+				} else {
+					System.out.println("Skip "+name+", file already exists: "+path);
+				}
+	
+				path = prefix+"."+name+".long.rmq";
+				if (!new File(path).exists()) {
+					System.out.println("Building long fragments "+name+" into: "+path);
+					buildCoverageIndex(path, false,true,storage, i);
+				} else {
+					System.out.println("Skip "+name+", file already exists: "+path);
+				}
+			}
+			
+			String path = prefix+"."+name+".rmq";
+			if (!new File(path).exists()) {
+				System.out.println("Building all fragments "+name+" into: "+path);
+				buildCoverageIndex(path, true,true,storage, i);
 			} else {
 				System.out.println("Skip "+name+", file already exists: "+path);
 			}
@@ -231,7 +289,7 @@ public class Atac {
 		}
 	}
 
-	public static void buildInsertionIndex(String path, GenomicRegionStorage<? extends AlignedReadsData> storage, int condition, boolean start, boolean stop) throws IOException {
+	public static void buildInsertionIndex(String path, boolean shortFrags, boolean longFrags, GenomicRegionStorage<? extends AlignedReadsData> storage, int condition, boolean start, boolean stop) throws IOException {
 
 		DiskGenomicNumericBuilder build = new DiskGenomicNumericBuilder(path);
 		int offset = 4;
@@ -244,11 +302,14 @@ public class Atac {
 					ImmutableReferenceGenomicRegion<? extends AlignedReadsData> mrgr) {
 				try {
 					int v = mrgr.getData().getTotalCountForConditionInt(condition, ReadCountMode.All);
-					if (v!=0) {
-						if (start) 
-							build.addValue(mrgr.getReference(), GenomicRegionPosition.Start.position(mrgr.getReference(), mrgr.getRegion(), offset), v);
-						if (stop) 
-							build.addValue(mrgr.getReference(), GenomicRegionPosition.Stop.position(mrgr.getReference(), mrgr.getRegion(), -offset), v);
+					int l = mrgr.getRegion().getTotalLength();
+					if ((l>180 && longFrags) || (l<=180 && shortFrags)) {
+						if (v!=0) {
+							if (start) 
+								build.addValue(mrgr.getReference(), GenomicRegionPosition.Start.position(mrgr.getReference(), mrgr.getRegion(), offset), v);
+							if (stop) 
+								build.addValue(mrgr.getReference(), GenomicRegionPosition.Stop.position(mrgr.getReference(), mrgr.getRegion(), -offset), v);
+						}
 					}
 				} catch (Exception e) {
 					throw new RuntimeException(e);
@@ -258,6 +319,47 @@ public class Atac {
 		});
 
 		build.build();
+		
+		FileUtils.writeAllText(
+				DynamicObject.from("conditions", DynamicObject.from(new Object[] {storage.getMetaData().getEntry("conditions").getEntry(condition)})).toJson(),
+				new File(path+".metadata.json")
+				);
+	}
+	
+	public static void buildCoverageIndex(String path, boolean shortFrags, boolean longFrags, GenomicRegionStorage<? extends AlignedReadsData> storage, int condition) throws IOException {
+
+		DiskGenomicNumericBuilder build = new DiskGenomicNumericBuilder(path);
+		int offset = 4;
+		build.setReferenceSorted(true);
+		NumericArray buff = NumericArray.createMemory(1, NumericArrayType.Integer);
+		
+		storage.ei().progress(new ConsoleProgress(),(int)storage.size(),r->r.toLocationStringRemovedIntrons()).forEachRemaining(new Consumer<ImmutableReferenceGenomicRegion<? extends AlignedReadsData>>() {
+
+			@Override
+			public void accept(
+					ImmutableReferenceGenomicRegion<? extends AlignedReadsData> mrgr) {
+				try {
+					int v = mrgr.getData().getTotalCountForConditionInt(condition, ReadCountMode.All);
+					int l = mrgr.getRegion().getTotalLength();
+					if ((l>180 && longFrags) || (l<=180 && shortFrags)) {
+						if (v!=0) {
+							buff.setInt(0, v);
+							build.addCoverageEx(mrgr.getReference(),mrgr.getRegion(), buff);
+						}
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}				
+			}
+			
+		});
+
+		build.build(true);
+		
+		FileUtils.writeAllText(
+				DynamicObject.from("conditions", DynamicObject.from(new Object[] {storage.getMetaData().getEntry("conditions").getEntry(condition)})).toJson(),
+				new File(path+".metadata.json")
+				);
 	}
 	
 	public static void buildInsertionIndex(String path, GenomicRegionStorage<? extends AlignedReadsData> storage) throws IOException {
@@ -278,8 +380,8 @@ public class Atac {
 				try {
 					int v = mrgr.getData().getTotalCountOverallInt(ReadCountMode.All);
 					if (v>0) {
-						build.addValue(mrgr.getReference().toStrandIndependent(), GenomicRegionPosition.Start.position(mrgr.getReference(), mrgr.getRegion(), offset), v);
-						build.addValue(mrgr.getReference().toStrandIndependent(), GenomicRegionPosition.Stop.position(mrgr.getReference(), mrgr.getRegion(), -offset), v);
+						build.addValue(mrgr.getReference().toPlusStrand(), GenomicRegionPosition.Start.position(mrgr.getReference(), mrgr.getRegion(), offset), v);
+						build.addValue(mrgr.getReference().toPlusStrand(), GenomicRegionPosition.Stop.position(mrgr.getReference(), mrgr.getRegion(), -offset), v);
 					}
 					p.incrementProgress();
 				} catch (Exception e) {

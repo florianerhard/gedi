@@ -94,6 +94,7 @@ public class FastqFilter {
 		System.err.println(" -min <length>\t\t\tMinimal length to keep reads (default: 18)");
 		System.err.println(" -extract <from-to>\t\t\tExtract from read (trimming; e.g. 10-60: remove first 10 bases, take only next 50 bases)");
 		System.err.println(" -overwrite\t\t\tInstead of writing to stdout, overwrite the input files!");
+		System.err.println(" -smartseq\t\t\tRemove the first three bases and trim poly-A stretches (>=7) in the end!");
 		System.err.println(" -ld <file>\t\t\tWrite length distribution (and plot it)");
 		System.err.println(" -h\t\t\tShow this message");
 		System.err.println(" -D\t\t\tOutput debugging information");
@@ -124,6 +125,7 @@ public class FastqFilter {
 		Gedi.startup(true);
 		
 		boolean overwrite = false;
+		boolean smartseq = false;
 		int len = 18;
 		String ld = null;
 		ArrayGenomicRegion extract = null;
@@ -140,6 +142,9 @@ public class FastqFilter {
 			}
 			else if (args[i].equals("-overwrite")) {
 				overwrite = true;
+			}
+			else if (args[i].equals("-smartseq")) {
+				smartseq = true;
 			}
 			else if (args[i].equals("-extract")) {
 				extract = GenomicRegion.parse(checkParam(args, ++i));
@@ -190,6 +195,14 @@ public class FastqFilter {
 				if (extract!=null) {
 					q = SequenceUtils.extractSequence(extract, q);
 					seq = SequenceUtils.extractSequence(extract, seq);
+				}
+				if (smartseq) {
+					int trim = Math.min(3, seq.length());
+					int pa = countPolyA(seq);
+					if (pa<7) pa=0;
+					pa = Math.min(pa, seq.length()-trim);
+					seq = seq.substring(trim, seq.length()-pa);
+					q = q.substring(trim, q.length()-pa);
 				}
 				histo.add(seq.length());
 				if (seq.length()>=len) {
@@ -252,8 +265,16 @@ public class FastqFilter {
 				df.ggplot(Aes.x(df.getColumn(0).name())).geom_ecdf().rotateLabelsX().png(png);
 			}
 			df.ggplot(Aes.x(df.getColumn(0).name()),Aes.y(df.getColumn(1).name())).geom_barxy().rotateLabelsX().png(png);
-			PlotReport pr = new PlotReport("Trimmed reads", StringUtils.toJavaIdentifier(inp+"_fastqfilter"), title, "Distribution of read lengths after adapter trimming", png, null, ld);
+			PlotReport pr = new PlotReport("Trimmed reads", StringUtils.toJavaIdentifier(inp+"_fastqfilter"), title, "Distribution of read lengths after adapter trimming", png, null, null, ld);
 			FileUtils.writeAllText(DynamicObject.from("plots",new Object[] {pr}).toJson(), new File(FileUtils.getExtensionSibling(ld,"report.json")));
 		}
+	}
+
+
+	private static int countPolyA(String seq) {
+		int re = 0;
+		for (int i=seq.length()-1; i>=0 && seq.charAt(i)=='A'; i--)
+			re++;
+		return re;
 	}
 }

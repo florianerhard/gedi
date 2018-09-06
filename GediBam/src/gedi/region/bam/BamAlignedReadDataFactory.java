@@ -45,6 +45,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 	
 	private int minIntronLength = -1;
 	private boolean join;
+	private boolean overlapping;
 	
 	public BamAlignedReadDataFactory(GenomicRegion region, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, boolean join) {
 		super(cumNumCond[cumNumCond.length-1]);
@@ -65,6 +66,10 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 		genomicSequence = null;
 		map.clear();
 		return super.start();
+	}
+	
+	public boolean isOverlapping() {
+		return overlapping;
 	}
 	
 	public BamAlignedReadDataFactory setGenomicSequence(CharSequence genomicSequence) {
@@ -212,7 +217,7 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				setGeometry(s, reg1.subtract(reg2).getTotalLength(), reg1.intersect(reg2).getTotalLength(), reg2.subtract(reg1).getTotalLength());
 			
 			if (reg1.intersects(reg2)) {
-				
+				overlapping = true;
 //				GenomicRegion off = region.induce(reg1.subtract(reg2));
 				int off1, off2;
 				if (!record1.getReadNegativeStrandFlag()) {

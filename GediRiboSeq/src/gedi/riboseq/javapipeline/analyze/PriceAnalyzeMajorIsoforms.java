@@ -59,7 +59,8 @@ public class PriceAnalyzeMajorIsoforms extends GediProgram {
 		
 		for (int i=0; i<names.length; i++) {
 			String name = names[i];
-			addOutput(new GediParameter<File>(params,"${prefix}.analyze."+name+".tsv", name+" analysis.", false, new FileParameterType()));
+			GediParameter<File> param = new GediParameter<File>(params,"${prefix}.analyze."+name+".tsv", name+" analysis.", false, new FileParameterType());
+			addOutput(param);
 			Function<GediParameterSet,GediParameter<Boolean>> p = (Function<GediParameterSet, GediParameter<Boolean>>) ReflectionUtils.getStatic2(clss[i], "runflag");
 			if (p!=null)
 				setRunFlag(p.apply(params));

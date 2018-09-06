@@ -15,15 +15,15 @@
 	</AbsolutePosition>
 	
 	<FeatureStatisticOutput file="<?JS prefix ?>5pbiasadd.tsv" input="5p Bias,Untemplated">
-		<Barplot aes="x,facet,fill,y" position="stack">
-			<Section>Bias</Section>
+		<Barplot aes="x,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
 			<Title>5' read bias (untemplated addition aware)</Title>
 			<Description>Shows the number of dinucleotides composed of the nucleotide immediately upstream of the read position and the first read nucleotide.</Description>
 		</Barplot>
 	</FeatureStatisticOutput>
 	<FeatureStatisticOutput file="<?JS prefix ?>5pbiasaddshift.tsv" input="5p Bias shifted,Untemplated">
-		<Barplot aes="x,facet,fill,y" position="stack">
-			<Section>Bias</Section>
+		<Barplot aes="x,facet,,y" position="stack">
+			<Section>Ribo-seq</Section>
 			<Title>5' read bias (shifted, untemplated addition aware)</Title>
 			<Description>Shows the number of dinucleotides composed of the nucleotide immediately upstream of the read position and the first read nucleotide.</Description>
 		</Barplot>

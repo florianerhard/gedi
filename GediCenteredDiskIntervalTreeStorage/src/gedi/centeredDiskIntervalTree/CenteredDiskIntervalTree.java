@@ -105,11 +105,11 @@ public class CenteredDiskIntervalTree<D> {
 	}
 	
 	private void readHeader() {
-		if (nodes==null){
+		if (data==null){
 			
 			synchronized (this) {
 				
-				if (nodes==null) {
+				if (data==null) {
 					try {
 						
 //						System.out.println("@"+all.getStart()+"+"+all.position());

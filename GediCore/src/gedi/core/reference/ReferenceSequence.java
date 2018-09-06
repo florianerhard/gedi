@@ -120,6 +120,7 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 		return null;
 	}
 	default boolean isStandard() {
+		if (getName().startsWith("M")) return true;
 		if (getName().startsWith("NC_")) return true;
 		if (getName().startsWith("JN")) return true;
 		
@@ -133,7 +134,10 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 			max = Math.max(max, digits);
 		}
 		return max<4;
-			
+	}
+	
+	default boolean isMitochondrial() {
+		return getChrStrippedName().equals("M") || getChrStrippedName().equals("MT");
 	}
 	
 }

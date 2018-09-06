@@ -17,8 +17,6 @@
  */
 package executables;
 
-import java.util.logging.Logger;
-
 import gedi.app.Gedi;
 import gedi.riboseq.javapipeline.PriceClusterReads;
 import gedi.riboseq.javapipeline.PriceCodonInference;
@@ -37,7 +35,6 @@ import gedi.riboseq.javapipeline.PriceSetupOrfInference;
 import gedi.riboseq.javapipeline.PriceSignalToNoise;
 import gedi.riboseq.javapipeline.PriceStartPredictionTraining;
 import gedi.riboseq.javapipeline.PriceWriteCodons;
-import gedi.riboseq.javapipeline.analyze.PriceLocalChanges;
 import gedi.util.program.CommandLineHandler;
 import gedi.util.program.GediProgram;
 
@@ -45,6 +42,10 @@ public class Price {
 
 	
 	public static void main(String[] args) {
+		System.setProperty("smile.threads", "1");
+		
+		
+		Gedi.startup(true);
 		
 		PriceParameterSet params = new PriceParameterSet();
 		GediProgram pipeline = GediProgram.create("PRICE",

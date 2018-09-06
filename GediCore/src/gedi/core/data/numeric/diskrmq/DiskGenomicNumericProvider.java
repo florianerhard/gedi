@@ -183,6 +183,37 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		}
 	}
 
+	public PositionNumericIterator oldCoverageIterator(ReferenceSequence reference, GenomicRegion region) {
+		return new PositionNumericIterator() {
+			
+			private int p = 0;
+			
+			@Override
+			public boolean hasNext() {
+				return p<region.getTotalLength();
+			}
+			
+			@Override
+			public int nextInt() {
+				return region.map(p++);
+			}
+			
+			@Override
+			public double getValue(int row) {
+				return DiskGenomicNumericProvider.this.getValue(reference, region.map(p-1), row);
+			}
+			
+			@Override
+			public double[] getValues(double[] re) {
+				if (re==null || re.length!=getNumDataRows()) 
+					re = new double[getNumDataRows()];
+				for (int row=0; row<re.length; row++)
+					re[row] = getValue(row);
+				return re;
+			}
+		};
+	}
+	
 	public PositionNumericIterator iterateValues(ReferenceSequence reference) {
 		IntegerArray a = positions.get(reference);
 		int l = a.getInt(a.length()-1)+1;
@@ -193,9 +224,54 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 			GenomicRegion region) {
 		
 		if (coverageMode) {
-			return new PositionNumericIterator() {
+			IntegerArray ind = positions.get(reference);
+
+			IntArrayList idxs = new IntArrayList();
+			for (int p=0; p<region.getNumParts(); p++) {
+				int idx1 = ind.binarySearch(region.getStart(p));
+				int idx2 = ind.binarySearch(region.getEnd(p));
 				
-				private int p = 0;
+				if (idx1<0) idx1 = -idx1-2;
+				if (idx2<0) idx2 = -idx2-1;
+				
+				idxs.add(idx1);
+				idxs.add(idx2);
+			}
+			
+			ArrayGenomicRegion idxRegion = new ArrayGenomicRegion(idxs);
+			
+			rmqs.get(reference);
+			double[] currValue = new double[getNumDataRows()];
+			for (int i=0; i<currValue.length; i++)
+				currValue[i] = rmqs.get(reference)[i].getValue(idxRegion.getStart());
+			
+			if(idxRegion.isEmpty()) return new PositionNumericIterator() {
+				@Override
+				public int nextInt() {
+					return 0;
+				}
+
+				@Override
+				public boolean hasNext() {
+					return false;
+				}
+
+				@Override
+				public double[] getValues(double[] re) {
+					return null;
+				}
+
+				@Override
+				public double getValue(int row) {
+					return 0;
+				}
+				
+			};
+			
+			return new PositionNumericIterator() {
+				int p = 0;
+				int currIdx = 0;
+				int nextPos = currIdx+1>=idxRegion.getTotalLength()?Integer.MAX_VALUE:ind.getInt(idxRegion.map(currIdx+1));
 				
 				@Override
 				public boolean hasNext() {
@@ -204,23 +280,32 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 				
 				@Override
 				public int nextInt() {
-					return region.map(p++);
+					int re = region.map(p++);
+					if (re==nextPos) {
+						int pp=idxRegion.map(++currIdx);
+						nextPos = currIdx+1>=idxRegion.getTotalLength()?Integer.MAX_VALUE:ind.getInt(idxRegion.map(currIdx+1));
+						for (int i=0; i<currValue.length; i++)
+							currValue[i] = rmqs.get(reference)[i].getValue(pp);
+					}
+					
+					return re;
 				}
 				
 				@Override
 				public double getValue(int row) {
-					return DiskGenomicNumericProvider.this.getValue(reference, region.map(p-1), row);
+					return currValue[row];
 				}
 				
 				@Override
 				public double[] getValues(double[] re) {
 					if (re==null || re.length!=getNumDataRows()) 
 						re = new double[getNumDataRows()];
-					for (int row=0; row<re.length; row++)
-						re[row] = getValue(row);
+					System.arraycopy(currValue, 0, re, 0, re.length);
 					return re;
 				}
+				
 			};
+			
 		}
 		
 		IntegerArray ind = positions.get(reference);
@@ -228,10 +313,7 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		IntArrayList idxs = new IntArrayList();
 		for (int p=0; p<region.getNumParts(); p++) {
 			int idx1 = ind.binarySearch(region.getStart(p));
-			int idx2 = ind.binarySearch(region.getStop(p));
-			
-			idx1=adaptIdx(idx1);
-			idx2=adaptIdx(idx2);
+			int idx2 = ind.binarySearch(region.getEnd(p));
 			
 			if (idx1==idx2 && idx1<0) continue;
 			if (idx1<0) idx1 = -idx1-1;
@@ -297,6 +379,7 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		int idx = ind.binarySearch(pos);
 		idx = adaptIdx(idx);
 		if (idx<0 || idx>=ind.length()) return 0;
+		
 		return rmqs.get(reference)[row].getValue(idx);
 	}
 

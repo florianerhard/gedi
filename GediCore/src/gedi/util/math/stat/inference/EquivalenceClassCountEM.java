@@ -46,6 +46,7 @@ public class EquivalenceClassCountEM<O> {
 	private O[][] E;
 	
 	private HashMap<O,Integer> o2Index;
+	private int[] o2Order;
 	private double N;
 	private double[] alpha;
 	private double[] l;
@@ -54,15 +55,24 @@ public class EquivalenceClassCountEM<O> {
 			double[] alpha, ToDoubleFunction<O> l) {
 		this.E = E;
 		
+		int ll = 0;
 		o2Index = new HashMap<O, Integer>();
 		for (O[] e : E) 
-			for (O o : e)
+			for (O o : e) {
 				o2Index.computeIfAbsent(o, x->o2Index.size());
+				ll++;
+			}
 		this.alpha = alpha;
 		this.l = new double[o2Index.size()];
 		
+		this.o2Order = new int[ll];
+		int ind = 0;
+		for (int ei=0; ei<E.length; ei++) 
+			for (O o : E[ei]) 
+				o2Order[ind++] = o2Index.get(o);
+		
 		for (O o : o2Index.keySet()) {
-			int ind = o2Index.get(o);
+			ind = o2Index.get(o);
 			this.l[ind] = l.applyAsDouble(o);
 		}
 		N = ArrayUtils.sum(alpha);
@@ -82,18 +92,21 @@ public class EquivalenceClassCountEM<O> {
 			
 			// e step
 			Arrays.fill(w, 0);
+			int o2ind = 0;
 			for (int ei=0; ei<E.length; ei++) {
 				double tot = 0;
+				int start = o2ind;
 				for (O o : E[ei]) {
-					int ind = o2Index.get(o);
+					int ind = o2Order[o2ind++];
 					tot+=pi[ind]/l[ind];
 				}
+				o2ind = start;
 				for (O o : E[ei]) {
-					int ind = o2Index.get(o);
+					int ind = o2Order[o2ind++];
 					w[ind]+=tot==0?0:pi[ind]/l[ind]/tot*alpha[ei];
 				}
 			}
-//			System.out.println("Iteration "+it+" w="+StringUtils.toString(w));
+//			System.out.println("Iteration "+it);//+" w="+StringUtils.toString(w));
 				
 			// m step
 			double[] tmp = oldPi;
@@ -118,7 +131,7 @@ public class EquivalenceClassCountEM<O> {
 //			}
 //			System.out.println(it+": "+ll);
 			
-			if (it>miniter) {
+			if (it>miniter || true) {
 				
 				
 //				double ll = 0;
@@ -140,6 +153,7 @@ public class EquivalenceClassCountEM<O> {
 				for(int i=0; i<pi.length; i++) {
 					if (pi[i]*N>0.01) {
 						if (Math.abs(pi[i]*N-oldPi[i]*N)>0.01) {
+//							System.out.println(i+"/"+pi.length+" "+Math.abs(pi[i]*N-oldPi[i]*N));
 							finished = false;
 							break;
 						}

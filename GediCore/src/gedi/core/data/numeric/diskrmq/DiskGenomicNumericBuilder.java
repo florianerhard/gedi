@@ -230,28 +230,28 @@ public class DiskGenomicNumericBuilder {
 		}
 	}
 	
-	public void addCoverageEx(ReferenceGenomicRegion<? extends AlignedReadsData> rgr) {
-		addCoverageEx(rgr.getReference(),rgr.getRegion(),rgr.getData());
-	}
-	
-	public void addCoverageEx(ReferenceSequence reference, GenomicRegion region, AlignedReadsData read) {
-		try {
-			check(read.getNumConditions(),Integer.TYPE);
-			WriterInfo inf = getInfo(reference);
-			int[] count = read.getTotalCountsForConditionsInt(ReadCountMode.All);
-			int[] negCount = count.clone();
-			for (int i=0; i<negCount.length; i++)
-				negCount[i]*=-1;
-			
-			for (int p=0; p<region.getNumParts(); p++) {
-				inf.addValue(region.getStart(p), count);
-				inf.addValue(region.getEnd(p), negCount);
-			}
-		} catch (IOException e) {
-			throw new RuntimeException("Could not add value!",e);
-		}
-	}
-	
+//	public void addCoverageEx(ReferenceGenomicRegion<? extends AlignedReadsData> rgr) {
+//		addCoverageEx(rgr.getReference(),rgr.getRegion(),rgr.getData());
+//	}
+//	
+//	public void addCoverageEx(ReferenceSequence reference, GenomicRegion region, AlignedReadsData read) {
+//		try {
+//			check(read.getNumConditions(),Integer.TYPE);
+//			WriterInfo inf = getInfo(reference);
+//			int[] count = read.getTotalCountsForConditionsInt(ReadCountMode.All);
+//			int[] negCount = count.clone();
+//			for (int i=0; i<negCount.length; i++)
+//				negCount[i]*=-1;
+//			
+//			for (int p=0; p<region.getNumParts(); p++) {
+//				inf.addValue(region.getStart(p), count);
+//				inf.addValue(region.getEnd(p), negCount);
+//			}
+//		} catch (IOException e) {
+//			throw new RuntimeException("Could not add value!",e);
+//		}
+//	}
+//	
 	
 	
 	public void addCoverageEx(ReferenceGenomicRegion<? extends AlignedReadsData> rgr, ReadCountMode mode) {
@@ -259,17 +259,19 @@ public class DiskGenomicNumericBuilder {
 	}
 	
 	public void addCoverageEx(ReferenceSequence reference, GenomicRegion region, AlignedReadsData read, ReadCountMode mode) {
+		addCoverageEx(reference, region, read.getTotalCountsForConditions(null,mode));
+	}
+	
+	public void addCoverageEx(ReferenceSequence reference, GenomicRegion region, NumericArray counts) {
 		try {
-			check(read.getNumConditions(),mode.getType());
+			check(counts.length(),counts.getType().getType());
 			WriterInfo inf = getInfo(reference);
 			
-			NumericArray count = read.getTotalCountsForConditions(null,mode);
-			NumericArray negCount = count.copy();
-			for (int i=0; i<negCount.length(); i++)
-				negCount.applyInPlace(d->-d);
+			NumericArray negCount = counts.copy();
+			negCount.applyInPlace(d->-d);
 			
 			for (int p=0; p<region.getNumParts(); p++) {
-				inf.addValue(region.getStart(p), count);
+				inf.addValue(region.getStart(p), counts);
 				inf.addValue(region.getEnd(p), negCount);
 			}
 		} catch (IOException e) {

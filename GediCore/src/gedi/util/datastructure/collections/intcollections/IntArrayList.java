@@ -398,6 +398,8 @@ public class IntArrayList extends AbstractIntCollection {
 		return true;
 	}
 
-
+	public int[] getRaw() {
+		return intArray;
+	}
 	
 }

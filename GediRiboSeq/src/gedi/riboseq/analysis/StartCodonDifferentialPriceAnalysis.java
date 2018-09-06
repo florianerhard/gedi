@@ -95,7 +95,7 @@ public class StartCodonDifferentialPriceAnalysis implements PriceAnalysis<Void> 
 
 	@Override
 	public void process(MajorIsoform data, LineWriter out, Void ctx) {
-		
+		//data.getTranscript().getData().getGeneId()
 		if (contrasts!=null) {
 			NumericArray sum = data.getSum(0);
 			
@@ -119,7 +119,7 @@ public class StartCodonDifferentialPriceAnalysis implements PriceAnalysis<Void> 
 						mean = LfcDistribution.mean(ctr.Item1.applyAsDouble(a)+1,ctr.Item2.applyAsDouble(a)+1);
 						var = LfcDistribution.var(ctr.Item1.applyAsDouble(a)+1,ctr.Item2.applyAsDouble(a)+1);
 					}
-					out.writef2("%s\t%d\t%.3f\t%.3f\n", co,p,mean-shift,var);
+					out.writef2("%s\t%s\t%d\t%.3f\t%.3f\n", data.getTranscript().getData().getGeneId(), co,p,mean-shift,var);
 				}
 			}
 		}
@@ -128,7 +128,7 @@ public class StartCodonDifferentialPriceAnalysis implements PriceAnalysis<Void> 
 	@Override
 	public void header(LineWriter out) throws IOException {
 		if (contrasts!=null)
-			out.writeLine("Contrast\tPosition\tMean\tVariance");
+			out.writeLine("Gene\tContrast\tPosition\tMean\tVariance");
 	}
 
 	@Override

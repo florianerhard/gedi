@@ -83,6 +83,10 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 		return this;
 	}
 	
+	public AnnotationFeature<T> addGenes(Genomic genomic) {
+		return addGenes(genomic, 0);
+	}
+	
 	public AnnotationFeature<T> addTranscripts(Genomic genomic) {
 		return addTranscripts(genomic, 0);
 	}
@@ -102,6 +106,11 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 		this.storages.add(storage);
 		this.flank.add(flank);
 		return this;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public AnnotationFeature<T> addGenes(Genomic genomic, int flank) {
+		return add((GenomicRegionStorage<T>) genomic.getGenes(),flank);
 	}
 	
 	@SuppressWarnings("unchecked")

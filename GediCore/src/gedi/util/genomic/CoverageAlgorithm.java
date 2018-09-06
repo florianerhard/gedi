@@ -17,6 +17,8 @@
  */
 package gedi.util.genomic;
 
+import gedi.core.data.reads.AlignedReadsData;
+import gedi.core.data.reads.ReadCountMode;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
@@ -59,6 +61,16 @@ public class CoverageAlgorithm {
 	public CoverageAlgorithm setExample(NumericArray ex) {
 		empty = NumericArray.createMemory(ex.length(), ex.getType());
 		return this;
+	}
+	
+	public CoverageAlgorithm addReads(ReferenceGenomicRegion<AlignedReadsData> rgr, ReadCountMode mode) {
+		return add(new ImmutableReferenceGenomicRegion<>(
+							rgr.getReference(), 
+							rgr.getRegion(),
+							rgr.getData().getTotalCountsForConditions(
+								NumericArray.createMemory(rgr.getData().getNumConditions(), mode.getNumericArrayType()),
+								mode)
+							));
 	}
 	
 	public CoverageAlgorithm add(ReferenceGenomicRegion<NumericArray> rgr) {

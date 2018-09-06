@@ -57,7 +57,10 @@ public interface Interval {
 			public int getEnd(int part) {
 				return Interval.this.getEnd();
 			}
-			
+			@Override
+			public String toString() {
+				return toRegionString();
+			}
 		};
 	}
 }

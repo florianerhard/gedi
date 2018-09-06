@@ -18,6 +18,7 @@
 package executables;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,7 +28,7 @@ import java.util.logging.Logger;
 import gedi.app.Gedi;
 import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.IgnoreVariationsAlignedReadsData;
-import gedi.core.data.reads.OneDistinctSequenceAlignedReadsData;
+import gedi.core.data.reads.SelectDistinctSequenceAlignedReadsData;
 import gedi.core.data.reads.ReadCountMode;
 import gedi.core.genomic.Genomic;
 import gedi.core.region.GenomicRegionStorage;
@@ -36,6 +37,7 @@ import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeatureProgram;
 import gedi.core.region.feature.output.FeatureStatisticOutput;
 import gedi.core.region.feature.output.PlotReport;
+import gedi.core.region.feature.output.SecondaryPlot;
 import gedi.core.region.feature.special.Downsampling;
 import gedi.core.workspace.Workspace;
 import gedi.util.ArrayUtils;
@@ -276,7 +278,7 @@ public class Stats {
 		
 		if (oml!=null) {
 			log.info("Loading pipeline from file");
-			te.setBuffer(new LineOrientedFile(oml).readAllText());
+			te.direct(new LineOrientedFile(oml).readAllText());
 		} else if (template!=null) {
 			log.info("Loading pipeline from given template: "+template);
 			te.template(template);
@@ -349,7 +351,7 @@ public class Stats {
 			else
 				for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).loop()) {
 					for (int d=0; d<r.getData().getDistinctSequences(); d++) {
-						program.accept(mut.set(r.getReference(),r.getRegion(),new OneDistinctSequenceAlignedReadsData(r.getData(),d)));
+						program.accept(mut.set(r.getReference(),r.getRegion(),new SelectDistinctSequenceAlignedReadsData(r.getData(),d)));
 					}
 					progress.incrementProgress();
 				}
@@ -387,20 +389,25 @@ public class Stats {
 		log.info("Finished producing statistics");
 		
 		if (!count) {
+			File json = new File(te.<String>get("prefix")+"report.json");
+			
+			
 			ArrayList<PlotReport> plots = EI.seq(0, program.getNumFeatures())
 				.map(ind->program.getFeature(ind))
 				.castFiltered(FeatureStatisticOutput.class)
 				.unfold(f->EI.wrap(f.getPlots()))
 				.filter(f->f.getImageFile()!=null)
-				.map(f->new PlotReport(
-						f.getSection(),
-						StringUtils.toJavaIdentifier(f.getName()), 
-						StringUtils.removeHeader(f.getTitle(),storage.getName()+"."), 
-						f.getDescription(),
-						new File(f.getImageFile()).getName(),
-						new File(f.getScriptFile()).getName(),
-						new File(f.getCsvFile()).getName()
-						))
+				.map(f->new PlotReport(f.getSection(),
+							StringUtils.toJavaIdentifier(f.getName()), 
+							StringUtils.removeHeader(f.getTitle(),storage.getName()+"."), 
+							f.getDescription(),
+							new File(f.getImageFile()).getName(),
+							findSecondaryPlots(new File(f.getImageFile())),
+							new File(f.getScriptFile()).getName(),
+							new File(f.getCsvFile()).getName()
+							)
+				)
+					
 				.list();
 			
 			LinkedHashMap<String, String> map = new LinkedHashMap<>();
@@ -410,7 +417,6 @@ public class Stats {
 			DynamicObject dprops = DynamicObject.from(map);
 			DynamicObject dplots = DynamicObject.from("plots", DynamicObject.from(plots));
 			
-			File json = new File(te.<String>get("prefix")+"report.json");
 			FileUtils.writeAllText(dprops.merge(dplots).toJson(),json);
 			
 			String[] jsons = EI.wrap(json.getAbsoluteFile().getParentFile().list())
@@ -421,6 +427,22 @@ public class Stats {
 			
 			if (jsons.length>0)
 				new Report(jsons).write(new LineOrientedFile(json.getParentFile(),"index.html").write());
+		}
+	}
+	
+	private static SecondaryPlot[] findSecondaryPlots(File main) {
+		String pref = FileUtils.getNameWithoutExtension(main)+".";
+		String ext = "."+FileUtils.getExtension(main);
+		try {
+			SecondaryPlot[] re = EI.fileNames(main.getParent())
+					.filter(f->f.startsWith(pref) && f.endsWith(ext) && !f.equals(main.getName()))
+					.map(f->new SecondaryPlot(f.substring(pref.length(),f.length()-ext.length()), f))
+					.toArray(SecondaryPlot.class);
+			if (re.length==0) return null;
+			re = ArrayUtils.concat(new SecondaryPlot[] {new SecondaryPlot("Combined", main.getName())},re);
+			return re;
+		} catch (IOException e) {
+			throw new RuntimeException("Could not identify secondary images!",e);
 		}
 	}
 	

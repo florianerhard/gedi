@@ -19,6 +19,7 @@ package gedi.core.data.mapper;
 
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
@@ -33,14 +34,22 @@ import gedi.util.datastructure.tree.redblacktree.IntervalTree;
 public class StorageFilter<D> implements GenomicRegionDataMapper<IntervalTree<GenomicRegion,D>,IntervalTree<GenomicRegion,D>>{
 
 	private Predicate<ReferenceGenomicRegion<D>> filter = d->true;
-	private UnaryOperator<ReferenceGenomicRegion<D>> operator = d->d;
+	private Function<ReferenceGenomicRegion<D>,ReferenceGenomicRegion<D>> operator = d->d;
 	
-	public void setFilter(Predicate<ReferenceGenomicRegion<D>> filter) {
-		this.filter = filter;
+//	public void setFilter(Predicate<ReferenceGenomicRegion<D>> filter) {
+//		this.filter = filter;
+//	}
+//	
+//	public void setOperator(UnaryOperator<ReferenceGenomicRegion<D>> operator) {
+//		this.operator = operator;
+//	}
+	
+	public void addFilter(Predicate<ReferenceGenomicRegion<D>> filter) {
+		this.filter = this.filter==null?filter:this.filter.and(filter);
 	}
 	
-	public void setOperator(UnaryOperator<ReferenceGenomicRegion<D>> operator) {
-		this.operator = operator;
+	public void addOperator(UnaryOperator<ReferenceGenomicRegion<D>> operator) {
+		this.operator = this.operator==null?operator:this.operator.andThen(operator);
 	}
 	
 	@Override

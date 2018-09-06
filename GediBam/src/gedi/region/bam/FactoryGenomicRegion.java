@@ -61,6 +61,10 @@ public class FactoryGenomicRegion extends ArrayGenomicRegion implements MissingI
 		factory.start();
 	}
 	
+	public boolean isOverlapping() {
+		return factory.isOverlapping();
+	}
+	
 	public void setUseBlocks(int minIntronLength) {
 		factory.setUseBlocks(minIntronLength);
 	}

@@ -18,6 +18,7 @@
 package gedi.core.data.mapper;
 
 import java.util.Collection;
+import java.util.function.BiFunction;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -30,21 +31,23 @@ import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.gui.genovis.pixelMapping.PixelBlockToValuesMap;
 import gedi.gui.genovis.pixelMapping.PixelLocationMapping;
+import gedi.gui.genovis.pixelMapping.PixelLocationMappingBlock;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.mutable.MutablePair;
 import gedi.util.mutable.MutableTuple;
+import gedi.util.nashorn.JSBiFunction;
 import gedi.util.nashorn.JSFunction;
 
 @GenomicRegionDataMapping(fromType=MutableTuple.class,toType=PixelBlockToValuesMap.class)
 public class NumericMerge implements GenomicRegionDataMapper<MutableTuple, PixelBlockToValuesMap>{
 
 	
-	private Function<NumericArray,NumericArray> computer = null;
+	private BiFunction<NumericArray,PixelLocationMappingBlock,NumericArray> computer = null;
 	
 	
 	public void setCompute(String js) throws ScriptException {
-		this.computer = new JSFunction(false, "function(data) "+js);
+		this.computer = new JSBiFunction<>(false, "function(data,block) "+js);
 	}
 	
 
@@ -58,7 +61,7 @@ public class NumericMerge implements GenomicRegionDataMapper<MutableTuple, Pixel
 		
 		NumericArray[] values = new NumericArray[data.size()];
 		for (int i=0; i<values.length; i++)
-			values[i] = computer.apply(data.getValues(i));
+			values[i] = computer.apply(data.getValues(i),data.getBlock(i));
 		
 		
 		return new PixelBlockToValuesMap(data, values);

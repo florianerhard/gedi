@@ -321,7 +321,7 @@ public class FunctorUtils {
 			Entry<T> f = heap.pollFirst();
 			itIndex = f.iteratorIndex;
 			Entry<T> n = insert(f.iteratorIndex);
-			if (n!=null && f.item==n.item) throw new RuntimeException("Do not reuse objects for merging!");
+			if (n!=null && f.item==n.item && !f.item.getClass().isEnum()) throw new RuntimeException("Do not reuse objects for merging!");
 			if (n!=null && order.compare(f.item, n.item)>0) throw new RuntimeException("Iterator not ordered: (Iterator: "+itIndex+") "+f.item+" > "+n.item);
 			return f.item;
 		}
@@ -389,17 +389,19 @@ public class FunctorUtils {
 		}
 
 	}
-	
-	
-	
-	public static class FuseIterator<T> implements ExtendedIterator<T[]> {
+
+	public static class FuseIterator<T,R> implements ExtendedIterator<R> {
 
 		private Iterator<T>[] iterators;
-		private Class<T> cls;
+		private Function<List<T>,R> map;
+		private ArrayList<T> collector;
 
-		public FuseIterator(Iterator<T>[] iterators, Class<T> cls) {
+		public FuseIterator(Iterator<T>[] iterators, Function<List<T>,R> map) {
 			this.iterators = iterators;
-			this.cls = cls;
+			this.map = map;
+			collector = new ArrayList<>(iterators.length);
+			for (int i=0; i<iterators.length; i++)
+				collector.add(null);
 		}
 
 		@Override
@@ -413,14 +415,14 @@ public class FunctorUtils {
 		}
 
 		@Override
-		public T[] next() {
-			T[] re = (T[]) Array.newInstance(cls, iterators.length);
-			for (int i=0; i<re.length; i++)
-				re[i] = iterators[i].next();
-			return re;
+		public R next() {
+			for (int i=0; i<iterators.length; i++)
+				collector.set(i, iterators[i].next());
+			return map.apply(collector);
 		}
 		
 	}
+	
 	
 	private static class PatternIterator<T> implements ExtendedIterator<T> {
 
@@ -989,7 +991,7 @@ public class FunctorUtils {
 					int cmp = -1;
 					while (iterator.hasNext() && (cmp=comp.compare(aggregator.get(0), iterator.peek()))==0)
 						aggregator.add(iterator.next());
-					if (cmp>0) throw new RuntimeException("Iterator must be sorted for multiplexing: "+aggregator.get(0) + " > " + iterator.peek()+" Comparator: "+comp);
+					if (cmp>0) throw new RuntimeException("Iterator must be sorted for multiplexing: "+StringUtils.toString(aggregator.get(0)) + " > " + StringUtils.toString(iterator.peek())+" Comparator: "+comp);
 				}
 				else {
 					while (iterator.hasNext() && (looseComp.test(aggregator.get(0), iterator.peek())))
@@ -1875,8 +1877,17 @@ public class FunctorUtils {
 		return new MergeIterator<T>(iterators,comp);
 	}
 	
-	public static <T> FuseIterator<T> fuseIterator(Class<T> cls, Iterator<T>... iterators) {
-		return new FuseIterator<T>(iterators,cls);
+	public static <T> FuseIterator<T,T[]> fuseIterator(Class<T> cls, Iterator<T>... iterators) {
+		return new FuseIterator<>(iterators,l->{
+			T[] re = (T[]) Array.newInstance(cls, iterators.length);
+			for (int i=0; i<re.length; i++)
+				re[i] = iterators[i].next();
+			return re;
+		});
+	}
+	
+	public static <T,R> FuseIterator<T,R> fuseIterator(Function<List<T>,R> map, Iterator<T>... iterators) {
+		return new FuseIterator<T,R>(iterators,map);
 	}
 
 	public static <T>  Iterator<MutablePair<T, T>> unorderedPairIterator(T[] a, long from, long to, boolean includeId) {

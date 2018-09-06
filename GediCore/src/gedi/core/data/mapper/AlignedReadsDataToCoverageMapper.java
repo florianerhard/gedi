@@ -77,7 +77,7 @@ public class AlignedReadsDataToCoverageMapper implements GenomicRegionDataMapper
 				for (int p=0; p<reg.getNumParts(); p++) {
 					
 					int block = pixelMapping.getBlockForBp(reference, reg.getStart(p));
-					if (block==-1) block = 0;
+					if (block<0) block = 0;
 					if (block<re.size()) {
 						NumericArray vals = re.getValues(block);
 						for (int c=0; c<numCond; c++)
@@ -85,7 +85,7 @@ public class AlignedReadsDataToCoverageMapper implements GenomicRegionDataMapper
 					}
 					
 					block = pixelMapping.getBlockForBp(reference, reg.getEnd(p));
-					if (block==-1) block = 0;
+					if (block<0) block = 0;
 					if (block<re.size()) {
 						NumericArray vals = re.getValues(block);
 						for (int c=0; c<numCond; c++)

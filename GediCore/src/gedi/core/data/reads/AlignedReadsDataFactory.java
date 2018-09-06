@@ -393,7 +393,8 @@ public class AlignedReadsDataFactory {
 			if (idx==null) h.put(var.get(i), i);
 			else {
 				ArrayUtils.add(count.get(idx), count.get(i));
-				ids.set(idx, Math.min(ids.getInt(idx),ids.getInt(i)));
+				if (ids.size()>0)
+					ids.set(idx, Math.min(ids.getInt(idx),ids.getInt(i)));
 			}
 		}
 		
@@ -530,6 +531,8 @@ public class AlignedReadsDataFactory {
 			setId(ard.getId(distinct));
 		if (ard.hasWeights())
 			setWeight(ard.getWeight(distinct));
+		if (ard.hasGeometry())
+			setGeometry(ard.getGeometryBeforeOverlap(distinct), ard.getGeometryOverlap(distinct), ard.getGeometryAfterOverlap(distinct));
 		return this;
 	}
 	
@@ -553,6 +556,8 @@ public class AlignedReadsDataFactory {
 			setId(ard.getId(distinct));
 		if (ard.hasWeights())
 			setWeight(ard.getWeight(distinct));
+		if (ard.hasGeometry())
+			setGeometry(ard.getGeometryBeforeOverlap(distinct), ard.getGeometryOverlap(distinct), ard.getGeometryAfterOverlap(distinct));
 		return this;
 	}
 

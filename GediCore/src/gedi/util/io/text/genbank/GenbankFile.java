@@ -237,7 +237,7 @@ public class GenbankFile extends LineOrientedFile {
 		while (it.hasNext()) {
 			String line = it.next();
 			if (line.startsWith("ACCESSION"))
-				return line.substring("ACCESSION".length()).trim();
+				return StringUtils.splitField(line.substring("ACCESSION".length()).trim(),' ',0);
 		}
 		return "";
 	}

@@ -42,7 +42,7 @@ public class GenomicStorageFilter<D> extends StorageFilter<D >{
 	
 	public void addFunction(Function<String, String> map) {
 		if (map!=null)
-		setOperator(rgr->rgr.toMutable().transformData(d->{
+		addOperator(rgr->rgr.toMutable().transformData(d->{
 			if (d==null) return (D)map.apply("");
 			if (d instanceof Transcript) return (D)map.apply(((Transcript)d).getTranscriptId());
 			return (D)map.apply(d.toString());

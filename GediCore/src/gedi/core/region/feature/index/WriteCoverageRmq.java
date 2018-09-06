@@ -17,6 +17,7 @@
  */
 package gedi.core.region.feature.index;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 
@@ -26,10 +27,14 @@ import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.features.AbstractFeature;
+import gedi.util.FileUtils;
+import gedi.util.datastructure.array.NumericArray;
+import gedi.util.dynamic.DynamicObject;
 
 public class WriteCoverageRmq extends AbstractFeature<Void> {
 
 	private String file;
+	private NumericArray buffer;
 	
 	public WriteCoverageRmq(String file) {
 		this.file = file;
@@ -53,10 +58,12 @@ public class WriteCoverageRmq extends AbstractFeature<Void> {
 			throw new RuntimeException("Cannot write file!",e);
 		}
 	}
-	
+	@SuppressWarnings({ "unchecked" })
 	@Override
 	protected void accept_internal(Set<Void> t) {
-		bui.addCoverageEx((MutableReferenceGenomicRegion) referenceRegion);
+		buffer = program.dataToCounts(referenceRegion.getData(), buffer);
+		if (buffer.sum()>0)
+			bui.addCoverageEx(referenceRegion.getReference(),referenceRegion.getRegion(),buffer);
 	}
 	
 	@Override

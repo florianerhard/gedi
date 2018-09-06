@@ -94,6 +94,13 @@ public class FastaFile extends LineOrientedFile {
 		writeLine(fe.toString());
 	}
 	
+	public ExtendedIterator<FastaEntry> entryIterator2() {
+		try {
+			return entryIterator(false);
+		} catch (IOException e) {
+			throw new RuntimeException("Coult not open fasta file!",e);
+		}
+	}
 	
 	public ExtendedIterator<FastaEntry> entryIterator() throws IOException {
 		return entryIterator(false);

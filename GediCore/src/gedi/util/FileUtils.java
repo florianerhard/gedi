@@ -207,7 +207,16 @@ public class FileUtils {
 	}
 
 
-	public static File findPartnerFile(String path, String regex) throws IOException {
+	public static String findPartnerFile(String path, String regex) throws IOException {
+		if (path.contains(" ")) 
+			return EI.split(path, ' ').map(f->{
+				try {
+					return findPartnerFile(f, regex);
+				} catch (IOException e) {
+					throw new RuntimeException("Could not find partner file",e);
+				}
+				}).concat(" ");
+
 		Pattern p = Pattern.compile(regex);
 		String name = new File(path).getName();
 		Matcher pm = p.matcher(name);
@@ -227,7 +236,7 @@ public class FileUtils {
 				})
 				.getUniqueResult("More than one matching file found ("+path+")!", "No matching file found ("+path+")!");
 		
-		return new File(new File(path).getParent(),rename);
+		return new File(new File(path).getParent(),rename).getPath();
 	}
 	
 	public static void writeStringArray(BinaryWriter f, String[] a) throws IOException {

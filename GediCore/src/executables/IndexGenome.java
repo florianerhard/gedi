@@ -258,6 +258,7 @@ public class IndexGenome {
 				
 				for (GenbankFeature f : file.featureIterator(features).loop()) {
 					String key = f.getStringValue(elabel);
+					if (key==null) throw new RuntimeException("Feature "+f.getGenbankEntry()+" does not contain "+elabel);
 					key = key.replaceAll(" ", "_");
 					if (key!=null) {
 						ImmutableReferenceGenomicRegion<String[]> r = new ImmutableReferenceGenomicRegion<>(
@@ -404,10 +405,9 @@ public class IndexGenome {
 				progress.incrementProgress();
 //				ImmutableReferenceGenomicRegion<String> mrna = mrnas.get(gene);
 //				ImmutableReferenceGenomicRegion<String> cds = cdss.get(gene);
-				
 				HashMap<String, ImmutableReferenceGenomicRegion<String[]>> map = featureMap.get(gene);
 				ImmutableReferenceGenomicRegion<String[]> mrna = map.get("mRNA");
-				if (mrna==null) mrna = map.get("gene");
+				if (mrna==null) mrna = map.get("CDS");
 				if (mrna==null && map.size()==1) mrna = map.values().iterator().next();
 				ImmutableReferenceGenomicRegion<String[]> cds = map.get("CDS");
 				
@@ -552,6 +552,8 @@ public class IndexGenome {
 				progress.init().setDescription("Indexing fasta file in "+seqpath);
 				new FastaIndexFile(seqpath).create(seq);
 				progress.finish();
+				System.err.println("Indexed fasta file in "+seqpath);
+				
 			}
 
 			annopath = prefix+".index";
@@ -578,6 +580,9 @@ public class IndexGenome {
 					MemoryIntervalTreeStorage<Transcript> mem = ignoreMulti?gtf.readIntoMemoryTakeFirst(new StreamLineWriter(System.err)):gtf.readIntoMemoryThrowOnNonUnique();
 					cl.fill(mem.ei().filter(rgr->sss.getSequenceNames().contains(rgr.getReference().getName())));
 					progress.finish();
+					
+					System.err.println("Indexed annotation file in "+annopath);
+					
 					annoStorageClass = cl.getClass().getSimpleName();
 				} else {
 					annoStorageClass = aaano.getClass().getSimpleName();
@@ -595,9 +600,12 @@ public class IndexGenome {
 							if (id!=null) trie.put(id, rgr);
 							if (n!=null) trie.put(n, rgr);
 						}
+						progress.incrementProgress();
 					}
 					Orm.serialize(triepath, trie);
 					progress.finish();
+					System.err.println("Indexed names file in "+annopath);
+					
 				}
 			}
 		}
@@ -639,7 +647,9 @@ public class IndexGenome {
 			}
 			progress.init().setDescription("Indexing fasta file in "+tr.getName());
 			tr.obtainAndOpenDefaultIndex().close();
+			progress.incrementProgress();
 			progress.finish();
+			System.err.println("Indexed fasta file in "+tr.getName());
 			
 		}
 

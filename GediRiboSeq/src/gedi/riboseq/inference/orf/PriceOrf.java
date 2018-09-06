@@ -52,6 +52,8 @@ public class PriceOrf implements BinarySerializable {
 	String startCodon;
 	PriceOrfType type;
 	
+	transient double[] geommeanbuffer;
+	transient int[] geommeanbuffernonzero;
 	
 	public ImmutableReferenceGenomicRegion<PriceOrf> restrictToLongestStart(
 			ImmutableReferenceGenomicRegion<PriceOrf> orf) {
@@ -370,13 +372,36 @@ public class PriceOrf implements BinarySerializable {
 //	}
 	
 	public double getGeomMean(int startAminoAcid) {
-		double[] act = getTotalActivities(startAminoAcid);
-		return NumericArray.wrap(act).evaluate(NumericArrayFunction.GeometricMeanRemoveNonPositive);
+		return getGeomMean(startAminoAcid,codonProfiles[0].length);
+//		double[] act = getTotalActivities(startAminoAcid);
+//		return NumericArray.wrap(act).evaluate(NumericArrayFunction.GeometricMeanRemoveNonPositive);
 	}
 	
 	public double getGeomMean(int startAminoAcid, int endAminoAcid) {
-		double[] act = getTotalActivities(startAminoAcid, endAminoAcid);
-		return NumericArray.wrap(act).evaluate(NumericArrayFunction.GeometricMeanRemoveNonPositive);
+		if (geommeanbuffer==null) {
+			geommeanbuffer = getTotalActivities(0, codonProfiles[0].length);
+			geommeanbuffernonzero = new int[geommeanbuffer.length];
+			double last = 0;
+			for (int i=0; i<geommeanbuffer.length; i++) {
+				double a = 0;
+				int b = 0;
+				if (geommeanbuffer[i]>0) {
+					a = Math.log(geommeanbuffer[i]);
+					b = 1;
+				}
+				last = geommeanbuffer[i]=a+last;
+				geommeanbuffernonzero[i]=b+(i>0?geommeanbuffernonzero[i-1]:0);
+			}
+		}
+//		double[] act = getTotalActivities(startAminoAcid, endAminoAcid);
+//		double old =  NumericArray.wrap(act).evaluate(NumericArrayFunction.GeometricMeanRemoveNonPositive);
+		double buffered;
+		if (startAminoAcid==0) 
+			buffered = Math.exp((geommeanbuffer[endAminoAcid-1]) / (geommeanbuffernonzero[endAminoAcid-1]));
+		else
+			buffered = Math.exp((geommeanbuffer[endAminoAcid-1]-geommeanbuffer[startAminoAcid-1]) / (geommeanbuffernonzero[endAminoAcid-1]-geommeanbuffernonzero[startAminoAcid-1]));
+//		System.out.println(Math.abs(old-buffered));
+		return buffered;
 	}
 	
 

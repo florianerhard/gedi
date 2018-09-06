@@ -56,4 +56,8 @@ public class NameIndex {
 		paths.addAll(other.paths);
 	}
 	
+	public NameIndex clone() {
+		return new NameIndex(paths.toArray(new String[0]));
+	}
+	
 }

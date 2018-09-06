@@ -34,7 +34,9 @@ import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import executables.Template;
 import javafx.scene.image.Image;
 
 /**
@@ -44,6 +46,9 @@ import javafx.scene.image.Image;
  *
  */
 public class Barplot implements ResultProducer {
+	private static final Logger log = Logger.getLogger( Template.class.getName() );
+	
+	
 	private String name;
 	private String title;
 	private String description;
@@ -116,8 +121,7 @@ public class Barplot implements ResultProducer {
 	}
 	
 	public void plot(LineOrientedFile file,boolean isFinal, String[] inputs, boolean needsMelt) throws IOException {
-		
-		
+		log.info("Plotting "+name);
 		String[] aes = this.aes;
 		int cols = needsMelt?inputs.length+2:inputs.length+1;
 		if (!needsMelt && aes.length==cols+1) {
@@ -153,14 +157,24 @@ public class Barplot implements ResultProducer {
 				list.append("`").append(inputs[i]).append("`=t$`").append(inputs[i]).append("`");
 			}
 		}
+		boolean usedlabel= false;
+		boolean iterateover = false;
 		if (needsMelt && isAes(aes,inputs.length)) {
 			if (list.length()>0) list.append(",");
 			list.append("`").append(label).append("`=t$`").append(label).append("`");
+			usedlabel = true;
 		}
 		
 		if (list.length()>0) {
-			script.writef("t<-aggregate(t$Count,list(%s),sum)\n",list);
-			script.writef("names(t)[dim(t)[2]]<-'Count'\n");
+			if(!usedlabel) {
+				script.writef("ot=t;\nfor (lab in c('',levels(t$`%s`))) {\n",label);
+				script.writef("if (lab=='') {\n\tt<-aggregate(t$Count,list(%s),sum)\n\tnames(t)[dim(t)[2]]<-'Count'\n} ",list);
+				script.writef("else t=t[t$`%s`==lab,]\n",label);
+				iterateover = true;
+			} else {
+				script.writef("t<-aggregate(t$Count,list(%s),sum)\n",list);
+				script.writef("names(t)[dim(t)[2]]<-'Count'\n");
+			}
 		}
 		
 		String x = null;
@@ -223,8 +237,14 @@ public class Barplot implements ResultProducer {
 		
 		this.csvFile = file;
 		pfile = this.file!=null?this.file:file.getExtensionSibling("png").getPath();
-		script.writef("ggsave('%s',width=7,height=7)\n\n",pfile);
 		
+		
+		if (iterateover){
+			script.writef("if (lab!='') lab=paste0('.',lab);\n");
+			script.writef("ggsave(sprintf('%s%%s.%s',lab),width=7,height=7)\n\n",FileUtils.getFullNameWithoutExtension(pfile),FileUtils.getExtension(pfile));
+			script.writef("t=ot;\n}\n");
+		} else
+			script.writef("ggsave('%s',width=7,height=7)\n\n",pfile);
 		script.finishWriting();
 		
 		try {

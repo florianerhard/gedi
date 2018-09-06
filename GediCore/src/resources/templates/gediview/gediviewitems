@@ -6,14 +6,17 @@ varin("totals","Array of total counts for merged conditions",true);
 varin("background","Background color of track",false);
 varin("readmode","How to count multimappers (default: weight",false);
 varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
+varin("nolog","Use logscale",false);
+varin("nonorm","Use logscale",false);
 ?>
 <?JS
 var background = background?background:"#ffffff";
 var readmode = readmode?readmode:ReadCountMode.Weight;
 var mbppp = mbppp?mbppp:1000;
+var nonorm;
+var nolog;
 ?>
-	
-	
+		
 	<AlignedReadsDataMergeMapper id="+.<?JS id ?>.data" input="<?JS print(EI.wrap(input).map(function(inp) "+."+inp+".data").concat(",")) ?>" numConditions="<?JS print(EI.wrap(numConditions).concat(",")) ?>" >
 <?JS for each (var m in mapping) { ?>
 		<Map file="<?m[0]?>" condition="<?m[1]?>" label="<?m[2]?>" />
@@ -26,7 +29,6 @@ var mbppp = mbppp?mbppp:1000;
 	</AlignedReadsDataMergeMapper>
 	
 	
-	
 		
 	<AlignedReadsDataToCoverageMapper id="+.<?JS id ?>.coveragenn" input="+.<?JS id ?>.data">
 		<ReadCountMode m="<?JS readmode ?>" />
@@ -34,6 +36,7 @@ var mbppp = mbppp?mbppp:1000;
 	<NumericNormalize id="+.<?JS id ?>.coverage" input="+.<?JS id ?>.coveragenn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToJunctionCountMapper id="+.<?JS id ?>.junctionsnn" input="+.<?JS id ?>.data">
 		<ReadCountMode m="<?JS readmode ?>" />
+		<Strand strand="+"/>
 	</AlignedReadsDataToJunctionCountMapper>
 	<StorageNumericNormalize id="+.<?JS id ?>.junctions" input="+.<?JS id ?>.junctionsnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToMismatchesMapper id="+.<?JS id ?>.mismatches" input="+.<?JS id ?>.data">	
@@ -46,40 +49,49 @@ var mbppp = mbppp?mbppp:1000;
 	<NumericNormalize id="-.<?JS id ?>.coverage" input="-.<?JS id ?>.coveragenn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToJunctionCountMapper id="-.<?JS id ?>.junctionsnn" input="-.<?JS id ?>.data">
 		<ReadCountMode m="<?JS readmode ?>" />
+		<Strand strand="-"/>
 	</AlignedReadsDataToJunctionCountMapper>
 	<StorageNumericNormalize id="-.<?JS id ?>.junctions" input="-.<?JS id ?>.junctionsnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
 	<AlignedReadsDataToMismatchesMapper id="-.<?JS id ?>.mismatches" input="-.<?JS id ?>.data" >	
 			<ReadCountMode m="<?JS readmode ?>" />
 	</AlignedReadsDataToMismatchesMapper>
 	
+	<NumericMerge input="+.<?JS id ?>.coveragenn,+.<?JS id ?>.mismatches" id="+.<?JS id ?>.mismatchfrac">
+		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
+	</NumericMerge>
+	<NumericMerge input="-.<?JS id ?>.coveragenn,-.<?JS id ?>.mismatches" id="-.<?JS id ?>.mismatchfrac">
+		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
+	</NumericMerge>
+	
 	
 	<NumericTrackGroup id="+.<?JS id ?>.Normalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="+.<?JS id ?>.junctions" id="+.<?JS id ?>.Normalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="+.<?JS id ?>.coverage" id="+.<?JS id ?>.Normalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
+		<? if (nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 	
 	<NumericTrackGroup id="+.<?JS id ?>.Unnormalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="+.<?JS id ?>.junctionsnn" id="+.<?JS id ?>.Unnormalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="+.<?JS id ?>.coveragenn" id="+.<?JS id ?>.Unnormalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
-		<Hidden h="true" />
+		<? if (!nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 
 	<NumericTrackGroup id="+.<?JS id ?>.Mismatches.Group" class="<?JS id ?>">
@@ -93,6 +105,14 @@ var mbppp = mbppp?mbppp:1000;
 		</StackedBoxesTrack>
 		<Hidden h="true" />
 	</NumericTrackGroup>
+	
+	<StackedBoxesTrack input="+.<?JS id ?>.mismatchfrac" id="+.<?JS id ?>.Mismatches.Fraction" class="basecolors">
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<FixedMin min="0"/>
+		<FixedMax min="0.1"/>
+		<Hidden h="true" />
+	</StackedBoxesTrack>
+		
 
 	<PackRegionTrack input="+.<?JS id ?>.data" id="+.<?JS id ?>.Reads"  >
 		<Hspace space="0" />
@@ -110,32 +130,33 @@ var mbppp = mbppp?mbppp:1000;
 	
 	
 	<NumericTrackGroup id="-.<?JS id ?>.Normalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="-.<?JS id ?>.junctions" id="-.<?JS id ?>.Normalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="-.<?JS id ?>.coverage" id="-.<?JS id ?>.Normalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
+		<? if (nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 	
 	<NumericTrackGroup id="-.<?JS id ?>.Unnormalized.Data" class="<?JS id ?>">
-		<LogScale base="10" />
+		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="-.<?JS id ?>.junctionsnn" id="-.<?JS id ?>.Unnormalized.Junctions" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</RegionLinesTrack>
 		<LinesTrack input="-.<?JS id ?>.coveragenn" id="-.<?JS id ?>.Unnormalized.Coverage" class="<?JS id ?>" >
-			<LogScale base="10" />
+			<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 			<FixedMin min="0"/>
 			<Points p="false" />
 			<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 		</LinesTrack>
-		<Hidden h="true" />
+		<? if (!nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 
 	<NumericTrackGroup id="-.<?JS id ?>.Mismatches.Group" class="<?JS id ?>">
@@ -150,6 +171,14 @@ var mbppp = mbppp?mbppp:1000;
 		<Hidden h="true" />
 	</NumericTrackGroup>
 
+	<StackedBoxesTrack input="-.<?JS id ?>.mismatchfrac" id="-.<?JS id ?>.Mismatches.Fraction" class="basecolors">
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<FixedMin min="0"/>
+		<FixedMax min="0.1"/>
+		<Hidden h="true" />
+	</StackedBoxesTrack>
+		
+		
 	<PackRegionTrack input="-.<?JS id ?>.data" id="-.<?JS id ?>.Reads"  >
 		<Hspace space="0" />
 		<Vspace space="0" />

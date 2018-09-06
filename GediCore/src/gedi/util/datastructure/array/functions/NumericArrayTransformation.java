@@ -147,6 +147,10 @@ public interface NumericArrayTransformation extends UnaryOperator<NumericArray> 
 		};
 	}
 	
+	public static NumericArrayTransformation reciprocal() { 
+		return function(n->1/n);
+	}
+	
 	public static NumericArrayTransformation function(DoubleUnaryOperator op) { 
 		return (t)-> {
 			for (int i=0; i<t.length(); i++) {

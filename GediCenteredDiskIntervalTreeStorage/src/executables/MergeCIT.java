@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 
@@ -100,7 +101,9 @@ public class MergeCIT {
 		
 		ExtendedIterator<ImmutableReferenceGenomicRegion<? extends AlignedReadsData>>[] iterators= (ExtendedIterator[]) 
 				EI.wrap(storages)
-					.map(s->s.ei().iff(skip.size()>0, ei->ei.filter(rgr->!skip.contains(rgr.getReference().getName()))))
+					.map(s->s.ei()
+							.iff(skip.size()>0, ei->ei.filter(rgr->!skip.contains(rgr.getReference().getName())))
+							.checkOrder((Comparator)FunctorUtils.naturalComparator()))
 					.toArray(new ExtendedIterator[0]);
 		
 		int[] conditions = EI.wrap(storages).mapToInt(s->s.getRandomRecord().getNumConditions()).toIntArray();

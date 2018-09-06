@@ -40,6 +40,7 @@ import gedi.util.FunctorUtils.MergeIterator;
 import gedi.util.FunctorUtils.PeekIterator;
 import gedi.util.StringUtils;
 import gedi.util.dynamic.DynamicObject;
+import gedi.util.functions.EI;
 import gedi.util.functions.FilteredSpliterator;
 import gedi.util.functions.MappedSpliterator;
 import gedi.util.io.text.LineWriter;
@@ -76,6 +77,17 @@ import java.util.function.Supplier;
 
 
 
+/**
+ * Due to softclipping in paired end mode with overlaps, the following may happen:
+ * first read A and first read B come, then (maybe at a later pos) second read A
+ * second read B may come with a greater pos (therefore A would be emitted here)
+ * but if both A and B are overlappers (first and second read), they may still cover the same region!
+ * 
+ * Thus, the iterators may produce the same reference+genomicregion more than once!
+ * If this is feed into a CIT, they will all be stored, so use CorrectCIT for that !
+ * @author erhard
+ *
+ */
 public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedReadsData> {
 	
 	
@@ -184,6 +196,13 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 				} catch (IOException e) {
 					throw new RuntimeException("Could not read metadata file "+m,e);
 				}
+			else {
+				StringBuilder json = new StringBuilder().append("{\"conditions\" : [ ")
+							.append("\t{ \"name\" : \"")
+							.append(FileUtils.getNameWithoutExtension(f))
+							.append("\"}\n");
+				mc.add(DynamicObject.parseJson(json.append("]}").toString()));
+			}
 		}
 		meta = DynamicObject.merge(mc);
 		
@@ -400,7 +419,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 					else
 						unspec = true;
 				
-				refs = new HashMap<>();
+				HashMap<ReferenceSequence,Integer> refs = new HashMap<>();
 				for (SamReader s : files)
 					for (SAMSequenceRecord seq : s.getFileHeader().getSequenceDictionary().getSequences()) {
 						if (spec) {
@@ -409,7 +428,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 						} 
 						if (unspec)
 							refs.put(Chromosome.obtain(seq.getSequenceName(),Strand.Independent),seq.getSequenceLength());
-					}		
+					}
+				this.refs = refs;
 			}
 			refLock.unlock();
 		}
@@ -988,27 +1008,38 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 						name = StringUtils.removeHeader(name,"chr");
 					if (files[i].getFileHeader().getSequenceIndex(name)==-1 && files[i].getFileHeader().getSequenceIndex("chr"+name)!=-1)
 						name = "chr"+name;
-					
-					raw[i] = files[i].query(name, start, end, false);
-					
-					
-					Iterator<SAMRecord> filtered = raw[i];
-//							strandSpecific?FunctorUtils.filteredIterator(raw[i],
-//							a -> BamUtils.isValidStrand(ref.getStrand(),a)):raw[i];
-					// for pairedEnd: handle that differently!
-					
-					if (minaqual>0)
-						filtered = FunctorUtils.filteredIterator(filtered,
-							a -> a.getMappingQuality()>=minaqual);
-					if (removeMultiMapping)
-						filtered = FunctorUtils.filteredIterator(filtered,
-								a -> a.getIntegerAttribute("NH")==null || a.getIntegerAttribute("NH")==1);
 
-					filtered = FunctorUtils.filteredIterator(filtered,
-							a -> !a.getReadUnmappedFlag());
-
-				
-					its[i] = filtered;
+					if (files[i].getFileHeader().getSequenceIndex(name)==-1 && name.equals("MT") && files[i].getFileHeader().getSequenceIndex("M")!=-1)
+						name = "M";
+					if (files[i].getFileHeader().getSequenceIndex(name)==-1 && name.equals("MT") && files[i].getFileHeader().getSequenceIndex("chrM")!=-1)
+						name = "chrM";
+					
+					if (files[i].getFileHeader().getSequenceIndex(name)==-1) {
+						raw[i] = null;
+						its[i] = EI.empty();
+					}
+					else {
+						raw[i] = files[i].query(name, start, end, false);
+					
+					
+						Iterator<SAMRecord> filtered = raw[i];
+	//							strandSpecific?FunctorUtils.filteredIterator(raw[i],
+	//							a -> BamUtils.isValidStrand(ref.getStrand(),a)):raw[i];
+						// for pairedEnd: handle that differently!
+						
+						if (minaqual>0)
+							filtered = FunctorUtils.filteredIterator(filtered,
+								a -> a.getMappingQuality()>=minaqual);
+						if (removeMultiMapping)
+							filtered = FunctorUtils.filteredIterator(filtered,
+									a -> a.getIntegerAttribute("NH")==null || a.getIntegerAttribute("NH")==1);
+	
+						filtered = FunctorUtils.filteredIterator(filtered,
+								a -> !a.getReadUnmappedFlag());
+	
+					
+						its[i] = filtered;
+					}
 				}
 				defIterator = FunctorUtils.peekIterator( 
 						FunctorUtils.mergeIterator(its, (a,b)->{
@@ -1065,7 +1096,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 				}
 				for (int i=0; i<files.length; i++) {
 					returnReader(i,files[i]);
-					raw[i].close();
+					if (raw[i]!=null)
+						raw[i].close();
 	//				files[i].close();
 				}
 			} catch (htsjdk.samtools.util.RuntimeIOException e) {
@@ -1119,7 +1151,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 				}
 				for (int i=0; i<files.length; i++) {
 					returnReader(i,files[i]);
-					raw[i].close();
+					if (raw[i]!=null)
+						raw[i].close();
 //					files[i].close();
 				}
 
@@ -1226,7 +1259,6 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 //				System.out.println("to Matebuffer");
 				return;
 			}
-			
 //			if (ll==null) mateBuffer.remove(BamUtils.getPairId(rec));
 			
 			if (isAnyStrandSpecific()){

@@ -18,6 +18,7 @@
 package gedi.util.datastructure.tree;
 
 
+import gedi.util.datastructure.tree.BinaryTrie.Node;
 import gedi.util.datastructure.tree.redblacktree.Interval;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -120,6 +121,18 @@ public class Trie<T> implements Map<String,T> {
 		return value;
 	}
 	
+	public int getNodeCount() {
+		Stack<Node> dfs = new Stack<>();
+		dfs.push(root);
+		int re = 0;
+		while (!dfs.isEmpty()) {
+			Node n = dfs.pop();
+			re++;
+			for (Node ch=n.child; ch!=null; ch=ch.sibling)
+				dfs.push(ch);
+		}
+		return re;
+	}
 	
 	@Override
 	public int size() {
@@ -704,7 +717,7 @@ public class Trie<T> implements Map<String,T> {
 	private transient HashMap<Node,Node> suffixLinks;
 	private transient HashMap<Node,Integer> nodeLevel;
 	private transient HashMap<Node,LinkedList<Node>> additionalResults;
-	private synchronized void prepareAhoCorasick() {
+	public synchronized void prepareAhoCorasick() {
 		if (suffixLinks!=null) return;
 		suffixLinks = new HashMap<Node, Node>();
 		nodeLevel = new HashMap<Trie.Node, Integer>();

@@ -28,6 +28,10 @@ $(document).ready(function(){
     });
     $("#navclose").click(function() {$("#navbar").hide();});
     $("#navopen").click(function() {$("#navbar").show();});
+    $(".secondaryplot").click(function() {
+	    $("#dropdown"+$(this).data("id")).text($(this).text());
+	    $("#img"+$(this).data("id")).attr('src', $(this).data("img"));
+    });
     $( window ).resize(plotsize);
     plotsize();
 });
@@ -92,8 +96,17 @@ n=new Integer(n+1);
 
 <div id="tab<? plot.id ?>"  style="display:none" class="w3-padding-16 plot w3-third">
 <div class="w3-card-4 w3-display-container">
-<span class="w3-display-topright"><a href="<? plot.script ?>" download class="w3-button" style="padding: 8px 6px;"><i class="fa fa-file-code-o"></i></a><a href="<? plot.csv ?>" download class="w3-button"  style="padding: 8px 6px;"><i class="fa fa-file-excel-o"></i></a><div data-id="<? plot.id ?>" class="close w3-button"  style="padding: 8px 10px;"><i class="fa fa-remove"></i></div></span>
-  <a href="<? plot.img ?>" target="_blank"><img src="<? plot.img ?>" style="width:100%"></a>
+<span class="w3-display-topright"><?JS if (plot.imgs) { ?>
+<div class="w3-dropdown-hover" style="background-color: transparent">
+  <button id="dropdown<? plot.id ?>"  class="w3-button" style="padding: 8px 6px"><? print(plot.imgs[0].name); ?></button>
+  <div class="w3-dropdown-content w3-bar-block w3-border">
+ <? for (var i=0; i<plot.imgs.length; i++) { ?><a href="#" data-id="<? plot.id ?>" data-img="<? print(plot.imgs[i].img); ?>" class="w3-bar-item w3-button secondaryplot"><? print(plot.imgs[i].name); ?></a>
+ <? } ?>
+  </div>
+</div>   
+
+<? } ?><a href="<? plot.script ?>" download class="w3-button" style="padding: 8px 6px;"><i class="fa fa-file-code-o"></i></a><a href="<? plot.csv ?>" download class="w3-button"  style="padding: 8px 6px;"><i class="fa fa-file-excel-o"></i></a><div data-id="<? plot.id ?>" class="close w3-button"  style="padding: 8px 10px;"><i class="fa fa-remove"></i></div></span>
+  <a href="<? plot.img ?>" target="_blank"><img id="img<? plot.id ?>" src="<? plot.img ?>" style="width:100%"></a>
   <div class="w3-container">
   <h4><? plot.title ?></h4>
   <?JS if (plot.description) { ?>

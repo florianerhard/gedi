@@ -527,6 +527,7 @@ public class StringUtils {
 		
 	}
 
+	
 	public static String createRandomIdentifier(int length) {
 		return createRandomIdentifier(length, new RandomNumbers());
 	}
@@ -1181,6 +1182,16 @@ public class StringUtils {
 		
 		StringBuilder sb = new StringBuilder(chars.length());
 		for (int i=0; i<chars.length(); i++)
+			sb.append(chars.charAt(i));
+		return sb.toString();
+	}
+	
+	public static String toString(CharSequence chars, int start, int end) {
+		if (chars instanceof String)
+			return ((String)chars).substring(start, end);
+		
+		StringBuilder sb = new StringBuilder(end-start);
+		for (int i=start; i<end; i++)
 			sb.append(chars.charAt(i));
 		return sb.toString();
 	}

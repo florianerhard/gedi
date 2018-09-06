@@ -190,7 +190,7 @@ public class ResolveAmbiguities {
 			else if (args[i].equals("-g")) {
 				while (i+1<args.length && !args[i+1].startsWith("-")) {
 					Genomic g = Genomic.get(checkParam(args,++i));
-					genomic.merge(g);
+					genomic=Genomic.merge(genomic,g);
 				}
 			}
 			else if (args[i].equals("-D")) {
@@ -230,6 +230,8 @@ public class ResolveAmbiguities {
 		MemoryIntervalTreeStorage<ClusterInfo> clusters = new ReadClusterBuilder(reads,genomic.getTranscripts(),minRegionCount,minReadCount,context,false,progress).build(reads.getPath()+".clusters");
 		new File(reads.getPath()+".clusters").delete();
 		
+		Genomic ugenomic = genomic;
+		
 		MutableInteger counter = new MutableInteger();
 		reads.ei()
 			.progress(progress, (int)reads.size(), r->r.toLocationString())
@@ -245,7 +247,7 @@ public class ResolveAmbiguities {
 			.sort(new AmbiSerializer(),(a,b)->Integer.compare(getId(a),getId(b)))
 			.progress(progress, counter, r->getId(r)+" Mapsize="+weights.size()+" Mem="+StringUtils.getHumanReadableMemory(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()))
 			.multiplex((a,b)->Integer.compare(getId(a),getId(b)), ImmutableReferenceGenomicRegion.class)
-			.forEachRemaining(r->rescue(cmd,uOut,updf!=null?a->RandomNumbers.getGlobal().getBool(0.001):a->false,genomic,
+			.forEachRemaining(r->rescue(cmd,uOut,updf!=null?a->RandomNumbers.getGlobal().getBool(0.001):a->false,ugenomic,
 					uuniques,ufactor,weights::put,discard,
 					clusters,ucontext,r));
 					

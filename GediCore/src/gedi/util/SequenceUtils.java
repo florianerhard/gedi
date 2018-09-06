@@ -24,6 +24,7 @@ import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
+import gedi.util.StringUtils.ReversedCharSequence;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
 import gedi.util.datastructure.tree.Trie;
 import gedi.util.io.text.fasta.index.FastaIndexFile.FastaIndexEntry;
@@ -207,6 +208,53 @@ public class SequenceUtils {
 		for (int i=dnaSequence.length()-1; i>=0; i--)
 			sb.append(getDnaComplement(dnaSequence.charAt(i)));
 		return sb.toString();
+	}
+	
+	public static class SixFrameTranslatedSequence implements CharSequence {
+		
+		private CharSequence dna;
+		private int l;
+		private int offset;
+		private boolean reverse;
+		public SixFrameTranslatedSequence(CharSequence dna, int offset, boolean reverse) {
+			this.dna = dna;
+			this.l = dna.length();
+			this.offset = offset;
+			this.reverse = reverse;
+		}
+
+		@Override
+		public char charAt(int index) {
+			index = index*3;
+			if (reverse) {
+				index = l-index-3;
+				index = index-offset;
+			}
+			else
+				index = index+offset;
+				
+			CharSequence codon = dna.subSequence(index, index+3);
+			if (reverse)
+				codon = getDnaReverseComplement(codon);
+			return translate(codon).charAt(0);
+		}
+
+		@Override
+		public int length() {
+			return (l-offset)/3;
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			return StringUtils.toString(this,start,end);
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder(this);
+			return new String(sb);
+		}
+		
 	}
 
 	public static String getRnaReverseComplement(CharSequence dnaSequence) {

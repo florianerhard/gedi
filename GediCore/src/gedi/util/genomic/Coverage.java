@@ -24,6 +24,11 @@ import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.longcollections.LongArrayList;
 
 
+/**
+ * Use {@link CoverageAlgorithm} instead!
+ * @author erhard
+ *
+ */
 @Deprecated
 public class Coverage {
 

@@ -21,15 +21,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
-import gedi.util.functions.EI;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
-import gedi.util.program.parametertypes.FileParameterType;
 
 public class GediParameterSpec {
 

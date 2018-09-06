@@ -643,9 +643,12 @@ public class BamUtils {
 
 
 	public static boolean checkMatesIdIsEqual(SAMRecord a, SAMRecord b) {
-		return 
+		if(!( 
 				a.getAlignmentStart()==b.getMateAlignmentStart()
-				&& b.getAlignmentStart()==a.getMateAlignmentStart();
+				&& b.getAlignmentStart()==a.getMateAlignmentStart()
+				)) return false;
+		
+		return a.getFirstOfPairFlag() ^ b.getFirstOfPairFlag();
 	}
 	
 }

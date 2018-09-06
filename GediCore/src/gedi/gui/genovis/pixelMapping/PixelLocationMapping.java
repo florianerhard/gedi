@@ -72,8 +72,8 @@ public class PixelLocationMapping extends ArrayList<PixelLocationMappingBlock> {
 		double pix = xmapper.bpToPixel(reference, bp);
 		double rel = pix/xmapper.getWidth();
 		int re = (int) (rel*size());
-		if (re==0 && !get(re).containsBp(bp))
-			return -1;
+//		if (re==0 && !get(re).containsBp(bp))
+//			return -1;
 		if (re<size() && re>=0 && !get(re).containsBp(bp)) {
 			if (re>0 && get(re-1).containsBp(bp)) return re-1;
 			if (re+1<size() && get(re+1).containsBp(bp)) return re+1;
@@ -99,7 +99,9 @@ public class PixelLocationMapping extends ArrayList<PixelLocationMappingBlock> {
             else
                 return mid; // key found
         }
-        return -1;  // key not found.
+        if (high==-1) return -1;
+        if (low==size()) return size();
+        throw new RuntimeException("nononono");
 	}
 
 	public PixelBasepairMapper getXmapper() {

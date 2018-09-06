@@ -20,8 +20,10 @@ package gedi.util.io.text.tsv.formats;
 import java.awt.Color;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import gedi.core.workspace.loader.WorkspaceItemLoader;
@@ -45,12 +47,23 @@ public class GediViewFileLoader implements WorkspaceItemLoader<GediViewItem[],Vo
 	public GediViewItem[] load(Path path)
 			throws IOException {
 		Comparator<PreGediViewItem> trackcomp = (a,b)->a.track.compareTo(b.track);
-		return new CsvReaderFactory().createReader(path)
+		PreGediViewItem[] a = new CsvReaderFactory().createReader(path)
 			.iterateObjects(PreGediViewItem.class)
-			.sort(trackcomp)
-			.multiplex(trackcomp,PreGediViewItem.class)
-			.demultiplex(this::convert)
-			.toArray(GediViewItem.class);
+			.toArray(PreGediViewItem.class);
+		
+		LinkedHashMap<String, ArrayList<PreGediViewItem>> map = new LinkedHashMap<>();
+		for (PreGediViewItem i : a) 
+			map.computeIfAbsent(i.track, x->new ArrayList<>()).add(i);
+		
+		ArrayList<GediViewItem> re = new ArrayList<>();
+		for (String track : map.keySet()) 
+			EI.wrap(convert(map.get(track).toArray(new PreGediViewItem[0]))).toCollection(re);
+		
+		return re.toArray(new GediViewItem[0]);
+		
+//			.multiplex(trackcomp,PreGediViewItem.class)
+//			.demultiplex(this::convert)
+//			.toArray(GediViewItem.class);
 	}
 	
 	private Iterator<GediViewItem> convert(PreGediViewItem[] pres) {

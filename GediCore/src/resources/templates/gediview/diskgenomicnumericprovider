@@ -4,15 +4,19 @@ varin("paths","File paths",true);
 varin("background","Background color of track",false);
 varin("agg","Aggregation",false);
 varin("type","boxes/lines",false);
+varin("strandness","specific/unspecific",false);
 varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
 ?>
 <?JS
 var background = background?background:"#ffffff";
 var mbppp = mbppp?mbppp:1000;
 var agg = agg?agg:"Mean";
+var strandness = strandness?strandness:"specific";
 var type = type?type:"lines";
 ?>
 	
+
+<?JS if (strandness.equals("specific")) { ?>	
 	<NumericSource id="+.<?JS id ?>.data" strand="+">
         <?JS for each (var path in paths) { ?>
 		<Rmq file="<? path ?>" agg="<?JS agg ?>"/>
@@ -23,17 +27,30 @@ var type = type?type:"lines";
 		<Rmq file="<? path ?>" agg="<?JS agg ?>"/>
 		<?JS } ?>
     </NumericSource>
-
+<?JS } else { ?>
+	<NumericSource id="<?JS id ?>.data">
+        <?JS for each (var path in paths) { ?>
+		<Rmq file="<? path ?>" agg="<?JS agg ?>"/>
+		<?JS } ?>
+    </NumericSource>
+<?JS } ?>
 
 
 <?JS if (type.equals("boxes")) { ?>	
-	<StackedBoxesTrack input="+.<? id ?>.data" id="+.<? id ?>">
+	<?JS if (strandness.equals("specific")) { ?>	
+	<StackedBoxesTrack input="+.<? id ?>.data" id="+.<? id ?>" class="<?JS id ?>">
 		<MaxBasePairsPerPixel v="<? mbppp ?>"/>
 	</StackedBoxesTrack>
-	<StackedBoxesTrack input="-.<? id ?>.data" id="-.<? id ?>">
+	<StackedBoxesTrack input="-.<? id ?>.data" id="-.<? id ?>" class="<?JS id ?>">
 		<MaxBasePairsPerPixel v="<? mbppp ?>"/>
 	</StackedBoxesTrack>
+	<?JS } else { ?>
+	<StackedBoxesTrack input="<? id ?>.data" id="<? id ?>" class="<?JS id ?>">
+		<MaxBasePairsPerPixel v="<? mbppp ?>"/>
+	</StackedBoxesTrack>
+	<?JS } ?>
 <?JS } else { ?>
+	<?JS if (strandness.equals("specific")) { ?>	
 	<LinesTrack input="+.<? id ?>.data" id="+.<? id ?>" class="<?JS id ?>">
             <FixedMin min="0"/>
             <MaxBasePairsPerPixel v="<? mbppp ?>"/>
@@ -45,4 +62,11 @@ var type = type?type:"lines";
             <MaxBasePairsPerPixel v="<? mbppp ?>"/>
             <Points p="false" />
     </LinesTrack>
+    <?JS } else { ?>
+	<LinesTrack input="<? id ?>.data" id="<? id ?>" class="<?JS id ?>">
+            <FixedMin min="0"/>
+            <MaxBasePairsPerPixel v="<? mbppp ?>"/>
+            <Points p="false" />
+    </LinesTrack>
+	<?JS } ?>
 <?JS } ?>	

@@ -23,6 +23,7 @@ import gedi.core.data.mapper.MutableDemultiplexMapper;
 import gedi.gui.genovis.VisualizationTrack;
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
+import gedi.util.functions.EI;
 import gedi.util.io.text.LineIterator;
 import gedi.util.job.PetriNet;
 import gedi.util.job.Place;
@@ -80,6 +81,10 @@ public class Pipeline implements OmlInterceptor {
 	
 	private static String pmPref(VisualizationTrack t) {
 		String p = t.getId();
+//		if (p.contains("4sU.Mock") || p.contains("4sU.8hpi")) {
+//			if (p.startsWith("+")) return "-";
+//			if (p.startsWith("-")) return "+";
+//		}
 		if (p.startsWith("+")) return "+";
 		if (p.startsWith("-")) return "-";
 		return "";

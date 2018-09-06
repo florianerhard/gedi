@@ -112,7 +112,7 @@ public class MultiConditionReadsXCodonMatrix {
 					probableCodonPositionProbabilitiesPerLength[cond][lm][l] = new double[pos.size()];
 					for (int i=0; i<probableCodonPositionsPerLength[cond][lm][l].length; i++)   
 						probableCodonPositionProbabilitiesPerLength[cond][lm][l][i] = model[cond].getPosterior(lm==1, l, probableCodonPositionsPerLength[cond][lm][l][i]);
-					ArrayUtils.mult(probableCodonPositionProbabilitiesPerLength[cond][lm][l], 1/ArrayUtils.sum(probableCodonPositionProbabilitiesPerLength[cond][lm][l]));
+					ArrayUtils.mult(probableCodonPositionProbabilitiesPerLength[cond][lm][l], 1/Math.max(1E-8, ArrayUtils.sum(probableCodonPositionProbabilitiesPerLength[cond][lm][l])));
 
 				}
 			}

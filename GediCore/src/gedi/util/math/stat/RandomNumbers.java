@@ -604,6 +604,19 @@ public class RandomNumbers {
         return c;
 	}
 	
+	public String shuffle(String a) {
+		return new String(shuffle(a.toCharArray()));
+	}
+	
+	public char[] shuffle(char[] a) {
+		for (int k=0; k<a.length-1; k++) {
+			int m =getUnif(k, a.length);
+			char tmp = a[k];
+			a[k] = a[m];
+			a[m] = tmp;
+		}
+		return a;
+	}
 	public int[] shuffle(int[] a) {
 		for (int k=0; k<a.length-1; k++) {
 			int m =getUnif(k, a.length);

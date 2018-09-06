@@ -172,6 +172,8 @@ public class Pipeline {
 			}
 			else if (args[i].equals("-r")) {
 				runner = checkParam(args, ++i);
+				DynamicObject param1=DynamicObject.parseExpression("runner", DynamicObject.parseJsonOrString(runner));
+				param = DynamicObject.merge(param,param1);
 			}
 			else if (args[i].equals("-j")) {
 				String jsonfile  = checkParam(args, ++i);
@@ -232,6 +234,7 @@ public class Pipeline {
 		json = DynamicObject.cascade(json,DynamicObject.from(over));
 		Jhp jhp = new Jhp();
 		jhp.getJs().putVariable("log", log);
+		jhp.getJs().putVariable("js", jhp.getJs());
 		jhp.getJs().setInterpolateStrings(false);
 		jhp.getJs().setSelf(json);
 		

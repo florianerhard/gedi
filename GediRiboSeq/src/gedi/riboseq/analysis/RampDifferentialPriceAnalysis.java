@@ -53,7 +53,7 @@ public class RampDifferentialPriceAnalysis implements PriceAnalysis<Void> {
 	public static final String name = "ramp";
 	public static final Function<GediParameterSet,GediParameter[]> params = set->new GediParameter[] {
 			new GediParameter<Integer>(set, name+"-offset", "Skip the first codons", false, new IntParameterType(),3),
-			new GediParameter<Integer>(set, name+"-len", "Number of codons to consider", false, new IntParameterType(),15),
+			new GediParameter<Integer>(set, name+"-len", "Number of codons to consider", false, new IntParameterType(),9),
 			new GediParameter<String>(set,name+"-contrasts", "Contrasts to compute changes around start codon", false, new StringParameterType(),"")
 		
 	};
@@ -66,7 +66,7 @@ public class RampDifferentialPriceAnalysis implements PriceAnalysis<Void> {
 	
 	public RampDifferentialPriceAnalysis(String[] conditions, PriceParameterSet param) throws IOException {
 		this.start = (Integer)param.get(name+"-offset").get();
-		this.end = (Integer)param.get(name+"-len").get()-this.start;
+		this.end = (Integer)param.get(name+"-len").get()+this.start;
 		this.cond = conditions.length;
 		
 		String contr = (String) param.get(name+"-contrasts").get();

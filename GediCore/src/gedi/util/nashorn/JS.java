@@ -45,6 +45,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.script.Bindings;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
 import javax.script.ScriptContext;
@@ -119,11 +120,25 @@ public class JS {
 		return re;
 	}
 	
+	public HashMap<String,Object> saveState() {
+		HashMap<String,Object> re = new HashMap<>();
+		Bindings b = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+		for (String r : b.keySet())
+			if (r!=null && b.get(r)!=null)
+				re.put(r, b.get(r));
+		return re;
+	}
+	
+	public void restoreState(HashMap<String,Object> saved) {
+		engine.getBindings(ScriptContext.ENGINE_SCOPE).clear();
+		engine.getBindings(ScriptContext.ENGINE_SCOPE).putAll(saved);
+	}
+	
 	public <T> T getVariable(String name) {
 		return (T) engine.getBindings(ScriptContext.ENGINE_SCOPE).get(name);
 	}
 	
-	public JS addParam(HashMap<String,Object> parsed) {
+	public JS addParam(HashMap<String,Object> parsed) {	
 		putVariable("argsMap",parsed);
 		putVariables(parsed);
 		return this;
@@ -236,51 +251,57 @@ public class JS {
 	 * @throws ScriptException 
 	 */
 	public void injectObject(Object o) throws ScriptException {
-		HashMap<String,Method> methods = new HashMap<>();
-		for (Method m : o.getClass().getMethods()) {
-			int mod = m.getModifiers();
-			if (Modifier.isPublic(mod) && !Modifier.isStatic(mod) && m.getDeclaringClass()!=Object.class) {
-				if (methods.containsKey(m.getName()))
-					methods.put(m.getName(), null);
-				else
-					methods.put(m.getName(), m);
-			}
-		}
+		if (o instanceof ScriptObjectMirror) {
+			ScriptObjectMirror m = (ScriptObjectMirror) o;
+			engine.getBindings(ScriptContext.ENGINE_SCOPE).putAll(m);
+		} else {
 		
-		String oname = "I"+StringUtils.sha1(""+Objects.hashCode(o));
-		try {
-			engine.getBindings(ScriptContext.ENGINE_SCOPE).put(oname,o);
-		} catch (IllegalArgumentException e) {
-			throw new RuntimeException("This should never happen!");
-		}
-		
-		for (Method m : methods.values()) {
-			if (m!=null) {
-				String name = m.getName();
-				StringBuilder sb = new StringBuilder();
-				sb.append("var ").append(name).append(" = function(");
-				for (int i=0; i<m.getParameterCount(); i++) {
-					if (i>0) sb.append(",");
-					sb.append("V").append(i);
+			HashMap<String,Method> methods = new HashMap<>();
+			for (Method m : o.getClass().getMethods()) {
+				int mod = m.getModifiers();
+				if (Modifier.isPublic(mod) && !Modifier.isStatic(mod) && m.getDeclaringClass()!=Object.class) {
+					if (methods.containsKey(m.getName()))
+						methods.put(m.getName(), null);
+					else
+						methods.put(m.getName(), m);
 				}
-				sb.append(") ").append(oname).append(".").append(name).append("(");
-				for (int i=0; i<m.getParameterCount(); i++) {
-					if (i>0) sb.append(",");
-					sb.append("V").append(i);
-				}
-				sb.append(")");
-				eval(sb.toString());
 			}
-		}
-		
-		for (Field f : o.getClass().getFields()) {
-			int mod = f.getModifiers();
-			if (Modifier.isPublic(mod) && !Modifier.isStatic(mod)) {
-				String name = f.getName();
-				try {
-					engine.getBindings(ScriptContext.ENGINE_SCOPE).put(name, f.get(o));
-				} catch (IllegalArgumentException | IllegalAccessException e) {
-					throw new RuntimeException("This should never happen!");
+			
+			String oname = "I"+StringUtils.sha1(""+Objects.hashCode(o));
+			try {
+				engine.getBindings(ScriptContext.ENGINE_SCOPE).put(oname,o);
+			} catch (IllegalArgumentException e) {
+				throw new RuntimeException("This should never happen!");
+			}
+			
+			for (Method m : methods.values()) {
+				if (m!=null) {
+					String name = m.getName();
+					StringBuilder sb = new StringBuilder();
+					sb.append("var ").append(name).append(" = function(");
+					for (int i=0; i<m.getParameterCount(); i++) {
+						if (i>0) sb.append(",");
+						sb.append("V").append(i);
+					}
+					sb.append(") ").append(oname).append(".").append(name).append("(");
+					for (int i=0; i<m.getParameterCount(); i++) {
+						if (i>0) sb.append(",");
+						sb.append("V").append(i);
+					}
+					sb.append(")");
+					eval(sb.toString());
+				}
+			}
+			
+			for (Field f : o.getClass().getFields()) {
+				int mod = f.getModifiers();
+				if (Modifier.isPublic(mod) && !Modifier.isStatic(mod)) {
+					String name = f.getName();
+					try {
+						engine.getBindings(ScriptContext.ENGINE_SCOPE).put(name, f.get(o));
+					} catch (IllegalArgumentException | IllegalAccessException e) {
+						throw new RuntimeException("This should never happen!");
+					}
 				}
 			}
 		}
@@ -354,8 +375,6 @@ public class JS {
 		src = src.replace("_\n", "\n");
 		try {
 			return (T) engine.eval(src);
-		} catch (ScriptException e) {
-			throw e;
 		} catch (Throwable e) {
 			try {
 				Map<String, Object> vars = getVariables(true);

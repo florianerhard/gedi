@@ -122,8 +122,6 @@ public class PageFileWriter implements AutoCloseable, BinaryWriter {
 	}
 	
 	public void truncate() throws IOException {
-		file.setLength(maxLength);
-		
 		for (int i=0; i<buffers.length; i++) {
 			if (buffers[i]!=null) {
 				WeakReference<MappedByteBuffer> r = new WeakReference<MappedByteBuffer>((MappedByteBuffer) buffers[i]);
@@ -131,6 +129,7 @@ public class PageFileWriter implements AutoCloseable, BinaryWriter {
 				FileUtils.unmapSynchronous(r);
 			}
 		}
+		file.setLength(maxLength);
 	}
 	
 	public void close() throws IOException {
@@ -470,7 +469,9 @@ public class PageFileWriter implements AutoCloseable, BinaryWriter {
 
 	public PageFile read(boolean close) throws IOException {
 		if (close) close();
-		return new PageFile(this);
+		PageFile re = new PageFile(this);
+		re.getContext().setGlobalInfo(getContext().getGlobalInfo());
+		return re;
 	}
 	
 	public ConcurrentPageFile readConcurrently(boolean close) throws IOException {

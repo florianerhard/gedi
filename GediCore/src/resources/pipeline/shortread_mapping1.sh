@@ -11,7 +11,9 @@ varin("keeptrimmed","Keep the trimmed fastq files",false);
 varin("keepbams","Keep the bam files",false);
 varin("nthreads","Number of threads (Default: 8)",false);
 varin("minlength","Minimal length of reads to keep (default: 18)",false);
+varin("maxMismatch","Maximal number of mismatches (default: 3)",false);
 varin("adapter","Adapter sequence (default: infer with minion)",false);
+varin("smartseq","Full length smart seq library, i.e. trim first 3bp",false);
 varin("trimmed","Whether data is already adapter trimmed",false);
 varin("barcodes","Json describing barcodes (Default: undef)",false);
 varin("keepUnmapped","Keep the unmapped reads in a fasta file",false);
@@ -30,6 +32,8 @@ var minlength=minlength?minlength:18;
 var nthreads = nthreads?nthreads:Math.min(8,Runtime.getRuntime().availableProcessors());
 var barcodes;
 var mapper = mapper?mapper:"bowtie";
+var smartseq;
+var maxMismatch=maxMismatch?maxMismatch:3;
 
 if (mapper=="STAR")
 	System.out.println("We strongly advice against using STAR for mapping short reads (very very bad things will happen)!");
@@ -93,10 +97,11 @@ head -n4000000 <?JS name ?>.fastq > <?JS name ?>.head.fastq
 minion search-adapter -i <?JS name ?>.head.fastq -show 1 -write-fasta adapter.fasta
 rm <?JS name ?>.head.fastq 
 ADAPT=`head -n2 adapter.fasta | tail -n1`
+cp adapter.fasta <?JS wd ?>/log/<? name ?>.adapter.fasta
 <?JS } ?>
 
-reaper --nozip --noqc -3p-prefix 1/1/0/0 -swp 1/4/4 -geom no-bc -i <?JS name ?>.fastq -basename <?JS name ?>  -3pa $ADAPT
-gedi -e FastqFilter -D -ld <?JS name ?>.readlengths.tsv -min <?JS minlength ?> <?JS name ?>.lane.clean > <?JS name ?>.fastq
+reaper --nozip --noqc -3p-prefix 8/2/0/2 -geom no-bc -i <?JS name ?>.fastq -basename <?JS name ?>  -3pa $ADAPT
+gedi -e FastqFilter -D -ld <?JS name ?>.readlengths.tsv <? if (smartseq) print("-smartseq"); ?> -min <?JS minlength ?> <?JS name ?>.lane.clean > <?JS name ?>.fastq
 rm <?JS name ?>.lint <?JS name ?>.lane.clean
 
 echo -ne "Trimmed\t" >> <?JS name ?>.reads.tsv
@@ -128,19 +133,21 @@ mv <?JS name ?>.collapsed.png <?JS name ?>.collapsed.R <?JS name ?>.collapsed.re
 
 <?JS for (var i=0; i<infos.length; i++)  
 if (infos[i].priority==1) {
-	println(ReadMapper.bowtie.getShortReadCommand(new ReadMappingReferenceInfo(ReferenceType.rRNA,infos[i].getGenomic(),ReadMapper.bowtie),name+".fastq","/dev/null",name+"_unmapped.fastq",nthreads));
+	println(ReadMapper.bowtie.getShortReadCommand(new ReadMappingReferenceInfo(ReferenceType.rRNA,infos[i].getGenomic(),ReadMapper.bowtie),name+".fastq","/dev/null",name+"_unmapped.fastq",nthreads,3));
 ?>
 mv <?JS name ?>_unmapped.fastq <?JS name ?>.fastq
 echo -ne "rRNA removal\t" >> <?JS name ?>.reads.tsv
-leftreads=$( grep -c @ <?JS name ?>.fastq )
+L=`wc -l <?JS name ?>.fastq | cut -f1 -d' '`
+leftreads=$((L / 4))
 echo $leftreads >> <?JS name ?>.reads.tsv
+
 <?JS } ?>
 
 
 <?JS for (var i=0; i<infos.length; i++)  
 if (infos[i].priority!=1){ 
 	if (infos[i].mapper==null) throw new RuntimeException("Mapper unknown!");
-	println(infos[i].mapper.getShortReadCommand(infos[i],name+".fastq",infos[i].type+".sam",null,nthreads));
+	println(infos[i].mapper.getShortReadCommand(infos[i],name+".fastq",infos[i].type+".sam",null,nthreads,maxMismatch));
 	if (keepbams) {
 		infos[i].type+".sam" 
 		?>
@@ -155,10 +162,10 @@ rm <? print(infos[i].type+".bam") ?>
 <?JS if (nthreads>1) { ?>
 samtools sort -o <?JS print(infos[i].type) ?>.sort.sam -n -T ./sort -@ <?JS nthreads ?> <?JS print(infos[i].type) ?>.sam 
 mv <?JS print(infos[i].type) ?>.sort.sam <?JS print(infos[i].type) ?>.sam
-unali=$( grep -v @ <?JS print(infos[i].type) ?>.sam | cut -f2 | grep -c "^4$" )
-echo -ne "<?JS print(infos[i].name) ?>\t" >> <?JS name ?>.reads.tsv
-echo $((leftreads-unali)) >> <?JS name ?>.reads.tsv
 <?JS } ?>
+ali=$( samtools view -F 4 <?JS print(infos[i].type) ?>.sam | cut -f1 | uniq | wc -l )
+echo -ne "<?JS print(infos[i].name) ?>\t" >> <?JS name ?>.reads.tsv
+echo $ali >> <?JS name ?>.reads.tsv
 <?JS } ?>
 
 mkdir -p <?JS wd ?>/report
