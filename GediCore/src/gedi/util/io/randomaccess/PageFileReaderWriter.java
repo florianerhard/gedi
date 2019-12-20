@@ -19,6 +19,7 @@ package gedi.util.io.randomaccess;
 
 import gedi.app.extension.ExtensionContext;
 import gedi.util.FileUtils;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -109,7 +110,7 @@ public class PageFileReaderWriter implements AutoCloseable, BinaryReaderWriter {
 		return position();
 	}
 	
-	public void close() throws IOException {
+	public void close() {
 		for (int i=0; i<buffers.length; i++) {
 			if (buffers[i]!=null) {
 				WeakReference<MappedByteBuffer> r = new WeakReference<MappedByteBuffer>((MappedByteBuffer) buffers[i]);
@@ -117,11 +118,15 @@ public class PageFileReaderWriter implements AutoCloseable, BinaryReaderWriter {
 				FileUtils.unmap(r);
 			}
 		}
-		file.setLength(maxLength);
-		lock.release();
-		lock = null;
-		channel.close();
-		file.close();
+		try {
+			file.setLength(maxLength);
+			lock.release();
+			lock = null;
+			channel.close();
+			file.close();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 	public PageFileReaderWriter get(long pos, byte[] dst, int offset, int length) throws IOException {
@@ -687,6 +692,20 @@ public class PageFileReaderWriter implements AutoCloseable, BinaryReaderWriter {
 			}
 		}
 		return this;
+	}
+
+	@Override
+	public BinaryReader view(long start, long end) {
+		throw new NotImplementedException();
+	}
+
+	@Override
+	public long size() {
+		try {
+			return file.length();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 }

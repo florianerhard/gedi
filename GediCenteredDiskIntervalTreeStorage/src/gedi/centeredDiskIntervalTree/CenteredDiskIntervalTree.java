@@ -22,6 +22,7 @@ import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.util.FileUtils;
+import gedi.util.StringUtils;
 import gedi.util.io.randomaccess.ConcurrentPageFile;
 import gedi.util.io.randomaccess.ConcurrentPageFileView;
 
@@ -189,8 +190,6 @@ public class CenteredDiskIntervalTree<D> {
 					try {
 						if (file.eof()) return false;
 						
-//						int parts = file.getInt();
-//						long offset = file.getStart()+file.position();
 						GenomicRegion re = getRegion(file);//new PageGenomicRegion(new PageFile(file.getPath(), offset, offset+parts*2*Integer.BYTES));
 						D d = supplier.get();
 						FileUtils.deserialize(d,file);// dummy to advance

@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.ArrayList;
 
 import gedi.util.StringUtils;
+import gedi.util.functions.EI;
 import gedi.util.program.parametertypes.FileParameterType;
 import gedi.util.program.parametertypes.GediParameterType;
 
@@ -36,6 +37,7 @@ public class GediParameter<T> {
 	boolean optional;
 	boolean multi;
 	boolean removeFile = false;
+	private String[] shortcut = null; 
 
 	public GediParameter(GediParameterSet set, String name, String description, boolean multi, GediParameterType<T> type) {
 		this(set, name,description,multi,type,type.getDefaultValue(),false);
@@ -61,6 +63,19 @@ public class GediParameter<T> {
 		set.add(this);
 	}
 
+	public GediParameter<T> setShortcut(String... shortcut) {
+		this.shortcut = shortcut;
+		return this;
+	}
+	
+	public boolean isShortcut() {
+		return shortcut!=null;
+	}
+	
+	public String[] getShortcut() {
+		return shortcut;
+	}
+	
 	public String getName() {
 		return name;
 	}
@@ -136,10 +151,16 @@ public class GediParameter<T> {
 	public T get() {
 		if (isFile()) {
 			File f = getFile();
-			if (f.exists() && f.length()>0) return (T) f;
+			if (f.exists() && (f.length()>0 || f.isDirectory())) return (T) f;
 			return null;
 		}
 		return value;
+	}
+	
+	public String getStringDescriptor() {
+		if (isMulti())
+			return EI.wrap(values).concat(",");
+		return StringUtils.toString(value);
 	}
 	
 	public T getValue() {
@@ -187,6 +208,8 @@ public class GediParameter<T> {
 	public GediParameterSet getParameterSet() {
 		return set;
 	}
+
+	
 
 	
 	

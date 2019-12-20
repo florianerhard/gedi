@@ -24,7 +24,6 @@ import gedi.app.classpath.ClassPath;
 import gedi.app.classpath.ClassPathCache;
 import gedi.core.data.numeric.BigWigGenomicNumericLoader;
 import gedi.core.data.numeric.diskrmq.DiskGenomicNumericLoader;
-import gedi.core.data.table.CsvTableLoader;
 import gedi.core.region.GenomicRegionStorageCapabilities;
 import gedi.core.region.GenomicRegionStorageExtensionPoint;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
@@ -35,6 +34,7 @@ import gedi.util.io.text.jhp.TemplateGenerator;
 import gedi.util.io.text.jhp.display.DisplayTemplateGeneratorExtensionPoint;
 import gedi.util.io.text.tsv.formats.BedFileLoader;
 import gedi.util.io.text.tsv.formats.GediViewFileLoader;
+import gedi.util.io.text.tsv.formats.GffFileLoader;
 import gedi.util.io.text.tsv.formats.LocationsFileLoader;
 import gedi.util.job.pipeline.ClusterPipelineRunner;
 import gedi.util.job.pipeline.ParallelPipelineRunner;
@@ -47,14 +47,14 @@ public class CoreStartup implements Startup {
 	@Override
 	public void accept(ClassPath t) {
 		
-		for (String ext : CsvTableLoader.extensions)
-			WorkspaceItemLoaderExtensionPoint.getInstance().addExtension(CsvTableLoader.class,ext);
-		
 		for (String ext : LocationsFileLoader.extensions)
 			WorkspaceItemLoaderExtensionPoint.getInstance().addExtension(LocationsFileLoader.class,ext);
 		
 		for (String ext : BedFileLoader.extensions)
 			WorkspaceItemLoaderExtensionPoint.getInstance().addExtension(BedFileLoader.class,ext);
+		
+		for (String ext : GffFileLoader.extensions)
+			WorkspaceItemLoaderExtensionPoint.getInstance().addExtension(GffFileLoader.class,ext);
 		
 		for (String ext : GediViewFileLoader.extensions)
 			WorkspaceItemLoaderExtensionPoint.getInstance().addExtension(GediViewFileLoader.class,ext);

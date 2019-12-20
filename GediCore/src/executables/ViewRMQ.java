@@ -45,7 +45,7 @@ public class ViewRMQ {
 		DiskGenomicNumericProvider prov = new DiskGenomicNumericProvider(args[0]);
 		
 		if (args.length==1) {
-			for (ReferenceSequence ref : prov.getRefereneSequences()) {
+			for (ReferenceSequence ref : prov.getReferenceSequences()) {
 				System.out.println(">"+ref);
 				prov.dump(ref, s->System.out.print(s));
 			}

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Properties;
 import java.util.logging.Logger;
 
 import javax.swing.JFrame;
@@ -30,8 +31,12 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
 
+import org.freehep.graphicsbase.util.export.ExportDialog;
+import org.freehep.graphicsbase.util.export.ExportFileType;
+
 import gedi.app.Gedi;
 import gedi.app.extension.ExtensionContext;
+import gedi.commandline.GediCommandline;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.LazyGenome;
@@ -95,6 +100,7 @@ public class Display {
 		System.err.println(" -t <template-file>\t\tProcess a template");
 		System.err.println(" -d <string>\t\tInsert template source");
 		System.err.println(" -f <file1> [<file2> ...]\t\tLoad files and integrate them into a track according to extension system");
+		System.err.println(" -norepl \t\tDont show REPL");
 		System.err.println(" -out [<oml>]\t\tWrite current pipeline to oml file");
 		System.err.println(" -tab [<file>]\t\tWrite current tracks table (to edit and supply to -f!)");
 		System.err.println(" -dontshow \t\tDo not show viewer (useful in combination with -out or -tab!)");
@@ -168,6 +174,7 @@ public class Display {
 		boolean show = true;
 		boolean sort=true;
 		String omlFile = null;
+		boolean repl = true;
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -194,6 +201,9 @@ public class Display {
 			}
 			else if (args[i].equals("-oml")) {
 				omlFile = checkParam(args,++i);
+			}
+			else if (args[i].equals("-norepl")) {
+				repl = false;
 			}
 			else if (args[i].equals("-include")) {
 				String code = new LineOrientedFile(checkParam(args,++i)).readAllText();
@@ -239,10 +249,6 @@ public class Display {
 		if (!show) 
 			return;
 		
-		if (g==null) throw new UsageException("No genomes given!");
-		
-		log.info("Loading pipeline");
-		
 		String src = te.toString()+suffix;
 		String cps = te.getBuffer(CPS_ID);
 		
@@ -250,14 +256,21 @@ public class Display {
 			src = new LineOrientedFile(omlFile).readAllText();
 			if (new File(omlFile+".cps").exists())
 				cps = new LineOrientedFile(omlFile+".cps").readAllText();
-		}
+		} else if (g==null) 
+			throw new UsageException("No genomes given!");
 		
+		log.info("Loading pipeline");
 		String cpsc = new LineIterator(Template.class.getResourceAsStream("/resources/colors.cps")).concat("\n");
 		OmlNodeExecutor oml = new OmlNodeExecutor()
 				.addInterceptor(new CpsReader().parse(cpsc));
 		oml.addInterceptor(new CpsReader().parse(cps));
 		
 		Pipeline pipeline = (Pipeline)oml.execute(new OmlReader().parse(src));
+		if (g==null && pipeline.getGenomic()==null)
+			throw new UsageException("No genomes given!");
+		else if (g==null)
+			g = pipeline.getGenomic();
+		
 		if (sort)
 			pipeline.sortPlusMinusTracks();
 		
@@ -297,7 +310,20 @@ public class Display {
 		frame.pack();
 		frame.setVisible(true);
 		viewer.setLocation(reg.getReference(),reg.getRegion());
+		
+		if (repl) {
+			GediCommandline cmd = new GediCommandline();
+			cmd.addParam("viewer", viewer);
+			cmd.addParam("g", g);
+			cmd.getContext().js.execSource("var loc=function(l) viewer.setLocation(ImmutableReferenceGenomicRegion.parse(g,l));");
+			cmd.getContext().js.execSource("var screenshot=function(img) viewer.screenshot(img);");
+			cmd.read();
+		}
+		
+		
+		
 
+		System.exit(0);
 		
 	}
 

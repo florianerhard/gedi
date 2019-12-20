@@ -65,7 +65,7 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 	private int threads = Runtime.getRuntime().availableProcessors();
 	
 	
-	private long intermediateInterval = 1000*60*5;
+	private long intermediateInterval = 0;//1000*60*5;
 	
 	private boolean checkSorting = false;
 	
@@ -103,7 +103,7 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 		this.labels = new LineOrientedFile(file).lineIterator().skip(1).map(s->StringUtils.splitField(s, '\t', 1)).toArray(new String[0]);
 	}
 	
-	public void setLabelsFromStorage(GenomicRegionStorage<?> st) throws IOException {
+	public void setLabelsFromStorage(GenomicRegionStorage<?> st) {
 		setLabels(st.getMetaDataConditions());
 	}
 
@@ -119,13 +119,19 @@ public class GenomicRegionFeatureProgram<D> implements Consumer<ReferenceGenomic
 		this.intermediateInterval = intermediateInterval;
 	}
 	
-	public Set<String> getInputById(String id) {
+	public Set getInputById(String id) {
 		Integer index = idMap.get(id);
 		if (index==null) return null;
 		
 		ArrayList<Set> data = threads==0?this.data:((Runner)Thread.currentThread()).data;
 		 
 		return data.get(index);
+	}
+	
+	public <I> I getUniqueInputById(String name, I notUnique) {
+		Set in = getInputById(name);
+		if (in.size()==1) return (I) in.iterator().next();
+		return notUnique;
 	}
 	
 	/**

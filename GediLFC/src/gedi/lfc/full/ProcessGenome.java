@@ -19,10 +19,10 @@ package gedi.lfc.full;
 
 import gedi.core.data.annotation.Transcript;
 import gedi.core.data.reads.AlignedReadsData;
-import gedi.core.processing.CombinedGenomicRegionProcessor;
-import gedi.core.processing.GenomicRegionProcessor;
-import gedi.core.processing.OverlapMode;
-import gedi.core.processing.ProcessorContext;
+import gedi.core.processing.old.CombinedGenomicRegionProcessor;
+import gedi.core.processing.old.GenomicRegionProcessor;
+import gedi.core.processing.old.OverlapMode;
+import gedi.core.processing.old.ProcessorContext;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;

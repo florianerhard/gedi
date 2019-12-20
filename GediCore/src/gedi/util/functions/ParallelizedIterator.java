@@ -25,6 +25,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
@@ -82,6 +84,7 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 	
 	private Object[] states;
 	
+	private IntObjectConsumer<S> blockStateMaker;
 	
 	public ParallelizedIterator(ExtendedIterator<I> in, BiFunction<O,O,String> checker, Function<ExtendedIterator<I>,ExtendedIterator<O>> sub) {
 		this(in,Runtime.getRuntime().availableProcessors(),1024, checker, sub);
@@ -91,17 +94,21 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 		this(in,Runtime.getRuntime().availableProcessors(),1024, null, sub);
 	}
 	public ParallelizedIterator(ExtendedIterator<I> in, int threads, int blocksize, BiFunction<O,O,String> checker, Function<ExtendedIterator<I>,ExtendedIterator<O>> sub) {
-		this(in, threads, blocksize, checker, ()->null, (it,s)->sub.apply(it));
+		this(in, threads, blocksize, checker, (i)->null, null, (it,s)->sub.apply(it));
 	}
-	public ParallelizedIterator(ExtendedIterator<I> in, int threads, int blocksize, BiFunction<O,O,String> checker, Supplier<S> stateMaker, BiFunction<ExtendedIterator<I>,S,ExtendedIterator<O>> sub) {
+	public ParallelizedIterator(ExtendedIterator<I> in, int threads, int blocksize, BiFunction<O,O,String> checker, IntFunction<S> stateMaker, BiFunction<ExtendedIterator<I>,S,ExtendedIterator<O>> sub) {
+		this(in, threads, blocksize, checker, stateMaker, null, sub);
+	}
+	public ParallelizedIterator(ExtendedIterator<I> in, int threads, int blocksize, BiFunction<O,O,String> checker, IntFunction<S> stateMaker, IntObjectConsumer<S> blockStateMaker, BiFunction<ExtendedIterator<I>,S,ExtendedIterator<O>> sub) {
 		this.blockSize = blocksize;
 		this.process = sub;
 		this.states = new Object[threads];
+		this.blockStateMaker = blockStateMaker;
 		
 		runners = (Worker[]) Array.newInstance(Worker.class, threads);
 		log.fine("Starting "+runners.length+" workers");
 		for (int i=0; i<runners.length; i++)  {
-			runners[i] = new Worker(i,stateMaker.get());
+			runners[i] = new Worker(i,stateMaker.apply(i));
 			states[i]=runners[i].state;
 			runners[i].start();
 		}
@@ -112,7 +119,7 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 		if (checker!=null) {
 			this.checker = checker;
 			checkQueue = new LinkedList<O>();
-			S state = stateMaker.get();
+			S state = stateMaker.apply(-1);
 			in = in.sideEffect(i->sub.apply(EI.wrap(i),state).toCollection(checkQueue));
 		}
 		
@@ -141,6 +148,11 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 
 	public int getNthreads() {
 		return states.length;
+	}
+	
+	public ExtendedIterator<S> drainStates() {
+		drain();
+		return (ExtendedIterator<S>) EI.wrap(states);
 	}
 	
 	public S getState(int index) {
@@ -199,6 +211,7 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 			}
 			if (res.r==null) {
 				nindex = -1;
+				if (ex!=null) fatal(ex);
 				if (inputContr.get()!=inputWork.get())
 					throw new RuntimeException("Fatal error in parallelized iterator: input sizes do not match!");
 				if (outputContr.get()!=outputWork.get())
@@ -228,10 +241,14 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 		controller.interrupt();
 		throw new RuntimeException("Exception in parallel iterator thread!",e);
 	}
+	
+	private int blockIndex = 0;
 	private boolean consume(ExtendedIterator<I> in) {
 		if (block.size()==blockSize) { 
 			try {
 				Worker runner = freeRunner.take();
+				if (blockStateMaker!=null)
+					blockStateMaker.accept(blockIndex++, runner.state);
 				runner.setTasks(block);
 				inputContr.addAndGet(block.size());
 				block.clear();
@@ -250,6 +267,8 @@ public class ParallelizedIterator<I,O,S> implements ExtendedIterator<O>{
 		try {
 			Worker runner = freeRunner.take();
 			runner.setTasks(block);
+			if (blockStateMaker!=null)
+				blockStateMaker.accept(blockIndex++, runner.state);
 			inputContr.addAndGet(block.size());
 			block.clear();
 			log.fine("Put last block to worker thread "+runner.getName());

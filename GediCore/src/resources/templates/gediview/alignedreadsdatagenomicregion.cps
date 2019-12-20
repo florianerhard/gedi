@@ -27,7 +27,7 @@ if (typeof colors === "string") {
 .<?JS id ?> { "styles": 
 				[
 <?JS for (var j=0; j<colors.length; j++) {?>
-					{ "color": "<?JS print(PaintUtils.encodeColor(colors[j])); ?>", "name": "<?JS print(names[j]); ?>" },
+					{ "color": "<?JS print(PaintUtils.encodeColor(colors[j])); ?>", "fill": "<?JS print(PaintUtils.encodeColor(colors[j])); ?>", "name": "<?JS print(names[j]); ?>" },
 <?JS } ?>
 				]
 			}

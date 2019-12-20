@@ -52,9 +52,10 @@ public class ContrastMapping {
 			.forEachRemaining(a->addMapping(line.N++, mappedToIndex.computeIfAbsent(a[1],x->mappedToIndex.size()), a[1]));
 	}
 	
-	public void setMerge(String ranges) {
-		for (int i : ParseUtils.parseRangePositions(ranges, -1, new IntArrayList()).toIntArray())
-			addMapping(i, 0);
+	public void setMerge(String... ranges) {
+		for (int to=0; to<ranges.length; to++)
+			for (int i : ParseUtils.parseRangePositions(ranges[to], -1, new IntArrayList()).toIntArray())
+				addMapping(i, to);
 	}
 	
 	public ContrastMapping setUse(int...indices) {
@@ -88,8 +89,13 @@ public class ContrastMapping {
 		this.merged = null;
 	}
 	
-	public String getMappedName(int mapped) {
-		return namesMap.get(mapped);
+	public void setMappedName(int merged, String mappedName) {
+		namesMap.put(merged, mappedName);
+		namesMapInv.put(mappedName, merged);
+	}
+	
+	public String getMappedName(int merged) {
+		return namesMap.get(merged);
 	}
 	
 	public int getMappedIndex(String name) {

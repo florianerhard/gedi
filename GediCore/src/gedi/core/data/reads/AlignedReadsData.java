@@ -20,6 +20,9 @@ package gedi.core.data.reads;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.function.DoubleUnaryOperator;
+import java.util.function.IntPredicate;
+import java.util.function.IntUnaryOperator;
 
 import gedi.app.extension.GlobalInfoProvider;
 import gedi.core.data.HasConditions;
@@ -31,16 +34,20 @@ import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
+import gedi.util.FileUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
+import gedi.util.datastructure.array.sparse.AutoSparseDenseDoubleArrayCollector;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.functions.IntDoubleToDoubleFunction;
 import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
 import gedi.util.math.stat.Ranking;
+import gedi.util.sequence.DnaSequence;
 
 
 /**
@@ -95,6 +102,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	public static final String CONDITIONSATTRIBUTE = "CONDITIONS";
 	public static final String SPARSEATTRIBUTE = "SPARSE";
 	
+	public static final String BARCODEATTRIBUTE = "BARCODE";
 	
 	
 	default DynamicObject getGlobalInfo() {
@@ -103,7 +111,10 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		map.put(HASWEIGHTATTRIBUTE, hasWeights()?1:0);
 		map.put(HASGEOMETRYATTRIBUTE, hasGeometry()?1:0);
 		map.put(CONDITIONSATTRIBUTE, getNumConditions());
-		map.put(SPARSEATTRIBUTE, getNumConditions()>5?1:0);
+		map.put(SPARSEATTRIBUTE, getNumConditions()>5?2:0);
+		if (this instanceof HasBarcodes)
+			map.put(BARCODEATTRIBUTE, ((HasBarcodes)this).getBarcodeLength());
+		
 		return DynamicObject.from(map);
 	}
 	
@@ -125,8 +136,23 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	int getGeometryAfterOverlap(int distinct);
 	
 	
-	default int[] getNonzeroCountsForDistinct(int distinct) {
+	default int[] getNonzeroCountIndicesForDistinct(int distinct) {
 		return null;
+	}
+	
+	default int getNonzeroCountValueForDistinct(int distinct, int index) {
+		return -1;
+	}
+	
+	default double getNonzeroCountValue(int distinct, int index, ReadCountMode mode) {
+		return mode.computeCount(getNonzeroCountValueForDistinct(distinct,index), getMultiplicity(distinct), getWeight(distinct));
+	}
+	
+	default int getNonzeroCountValueInt(int distinct, int index, ReadCountMode mode) {
+		return mode.computeCountInt(getNonzeroCountValueForDistinct(distinct,index), getMultiplicity(distinct), getWeight(distinct));
+	}
+	default int getNonzeroCountValueFloor(int distinct, int index, ReadCountMode mode) {
+		return mode.computeCountFloor(getNonzeroCountValueForDistinct(distinct,index), getMultiplicity(distinct), getWeight(distinct));
 	}
 	
 	default boolean hasNonzeroInformation() {
@@ -210,6 +236,14 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 				);
 	}
 	
+	default int getNumParts(ReferenceGenomicRegion<?> read,int d) {
+		if (!hasGeometry() || getGeometryOverlap(d)>0) return read.getRegion().getNumParts();
+		int ind = read.getRegion().map(getGeometryBeforeOverlap(d)-1);
+		int part = read.getRegion().getEnclosingPartIndex(ind);
+		if (read.getRegion().getStop(part)==ind)
+			return read.getRegion().getNumParts()-1;
+		return read.getRegion().getNumParts();
+	}
 	
 	/**
 	 * l must be in mapped region coordinates
@@ -432,19 +466,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		return mode.computeCount(getCount(distinct, condition), getMultiplicity(distinct), getWeight(distinct));
 	}
 	
-	default double getTotalCountForDistinct(int distinct, ReadCountMode mode) {
-		if (hasNonzeroInformation()) {
-			double re = 0;
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re += getCount(distinct, i, mode);
-			return re;
-		}
-		
-		double re = 0;
-		for (int i=0; i<getNumConditions(); i++)
-			re += getCount(distinct, i, mode);
-		return re;
-	}
+	
 	
 	default double getTotalCountForCondition(int condition, ReadCountMode mode) {
 		double re = 0;
@@ -456,9 +478,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	default double[] getCountsForDistinct(int distinct, ReadCountMode mode) {
 		double[] re = new double[getNumConditions()];
 		
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re[i] = getCount(distinct, i, mode);
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				re[inds[i]] = getNonzeroCountValue(distinct, i, mode);
+		}
 		else
 			for (int i=0; i<re.length; i++)
 				re[i] = getCount(distinct, i, mode);
@@ -469,9 +493,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	default int[] getCountsForDistinctInt(int distinct, ReadCountMode mode) {
 		int[] re = new int[getNumConditions()];
 		
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re[i] = getCountInt(distinct, i, mode);
+		if (hasNonzeroInformation())  {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				re[inds[i]] = getNonzeroCountValueInt(distinct, i, mode);
+		}
 		else
 			for (int i=0; i<re.length; i++)
 				re[i] = getCountInt(distinct, i, mode);
@@ -482,9 +508,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		int[] re = new int[getNumConditions()];
 		
 		
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re[i] = getCountFloor(distinct, i, mode);
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				re[inds[i]] = getNonzeroCountValueFloor(distinct, i, mode);
+		}
 		else
 			for (int i=0; i<re.length; i++)
 				re[i] = getCountFloor(distinct, i, mode);
@@ -496,9 +524,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		if (re==null || re.length!=getNumConditions())
 			re = new double[getNumConditions()];
 		
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re[i] += getCount(distinct, i, mode);
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				re[inds[i]] += getNonzeroCountValue(distinct, i, mode);
+		}
 		else
 			for (int i=0; i<re.length; i++)
 				re[i] += getCount(distinct, i, mode);
@@ -510,9 +540,27 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		if (re==null || re.length()!=getNumConditions() || re.getType().getType()!=mode.getType())
 			re = NumericArray.createMemory(getNumConditions(), NumericArrayType.fromType(mode.getType()));
 		
-		if (hasNonzeroInformation()) 
-			for (int c : getNonzeroCountsForDistinct(distinct))
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				mode.addCount(re,inds[i],getNonzeroCountValueForDistinct(distinct, i),getMultiplicity(distinct),getWeight(distinct));
+		}
+		else
+			for (int c=0; c<re.length(); c++)
 				mode.addCount(re,c,getCount(distinct, c),getMultiplicity(distinct),getWeight(distinct));
+		return re;
+	}
+	
+	default AutoSparseDenseDoubleArrayCollector addCountsForDistinct(int distinct, AutoSparseDenseDoubleArrayCollector re, ReadCountMode mode) {
+		
+		if (re==null || re.length()!=getNumConditions())
+			re = new AutoSparseDenseDoubleArrayCollector(Math.max(50, getNumConditions()>>3),getNumConditions());
+		
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				mode.addCount(re,inds[i],getNonzeroCountValueForDistinct(distinct, i),getMultiplicity(distinct),getWeight(distinct));
+		}
 		else
 			for (int c=0; c<re.length(); c++)
 				mode.addCount(re,c,getCount(distinct, c),getMultiplicity(distinct),getWeight(distinct));
@@ -523,9 +571,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		if (re==null || re.length!=getNumConditions())
 			re = new int[getNumConditions()];
 		
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re[i] += getCountInt(distinct, i, mode);
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				re[inds[i]] += getNonzeroCountValueInt(distinct, i, mode);
+		}
 		else
 			for (int i=0; i<re.length; i++)
 				re[i] += getCountInt(distinct, i, mode);
@@ -535,9 +585,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	default int[] addCountsForDistinctFloor(int distinct, int[] re, ReadCountMode mode) {
 		if (re==null || re.length!=getNumConditions())
 			re = new int[getNumConditions()];
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re[i] += getCountFloor(distinct, i, mode);
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				re[inds[i]] += getNonzeroCountValueFloor(distinct, i, mode);
+		}
 		else
 			for (int i=0; i<re.length; i++)
 				re[i] += getCountFloor(distinct, i, mode);
@@ -548,9 +600,11 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		if (re==null || re.length()!=getNumConditions() || re.getType().getType()!=mode.getType())
 			re = NumericArray.createMemory(getNumConditions(), NumericArrayType.fromType(mode.getType()));
 		
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				mode.getCount(re,i,getCount(distinct, i),getMultiplicity(distinct),getWeight(distinct));
+		if (hasNonzeroInformation()) {
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				mode.getCount(re,inds[i],getNonzeroCountValueForDistinct(distinct, i),getMultiplicity(distinct),getWeight(distinct));
+		}
 		else
 			for (int i=0; i<re.length(); i++)
 				mode.getCount(re,i,getCount(distinct, i),getMultiplicity(distinct),getWeight(distinct));
@@ -648,10 +702,9 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	}
 	
 	default double getTotalCountOverall(ReadCountMode mode) {
-		double re = 0;
-		for (int c=0; c<getNumConditions(); c++)
-			for (int i=0; i<getDistinctSequences(); i++)
-				re += getCount(i, c, mode);
+		int re = 0;
+		for (int i=0; i<getDistinctSequences(); i++)
+			re += getTotalCountForDistinct(i, mode);
 		return re;
 	}
 	
@@ -661,14 +714,48 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		return mode.computeCountInt(getCount(distinct, condition), getMultiplicity(distinct), getWeight(distinct));
 	}
 	
+	default double getTotalCountForDistinct(int distinct, ReadCountMode mode) {
+		if (hasNonzeroInformation()) {
+			double re = 0;
+			int n = getNonzeroCountIndicesForDistinct(distinct).length;
+			for (int i=0; i<n; i++)
+				re += getNonzeroCountValue(distinct, i, mode);
+			return re;
+		}
+		
+		double re = 0;
+		for (int i=0; i<getNumConditions(); i++)
+			re += getCount(distinct, i, mode);
+		return re;
+	}
+	
+	default double getTotalCountForDistinct(int distinct, ReadCountMode mode, IntDoubleToDoubleFunction op) {
+		if (hasNonzeroInformation()) {
+			double re = 0;
+			int[] inds = getNonzeroCountIndicesForDistinct(distinct);
+			for (int i=0; i<inds.length; i++)
+				re += op.applyAsDouble(inds[i],getNonzeroCountValue(distinct, i, mode));
+			return re;
+		}
+		
+		double re = 0;
+		for (int i=0; i<getNumConditions(); i++)
+			re += op.applyAsDouble(i,getCount(distinct, i, mode));
+		return re;
+	}
+	
 	default int getTotalCountForDistinctInt(int distinct, ReadCountMode mode) {
+		if (hasNonzeroInformation()) {
+			int re = 0;
+			int n = getNonzeroCountIndicesForDistinct(distinct).length;
+			for (int i=0; i<n; i++)
+				re += getNonzeroCountValueInt(distinct, i, mode);
+			return re;
+		}
+		
 		int re = 0;
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re += getCountInt(distinct, i, mode);
-		else
-			for (int i=0; i<getNumConditions(); i++)
-				re += getCountInt(distinct, i, mode);
+		for (int i=0; i<getNumConditions(); i++)
+			re += getCountInt(distinct, i, mode);
 		return re;
 	}
 	
@@ -688,12 +775,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	default int[] getTotalCountsForDistinctsInt(ReadCountMode mode) {
 		int[] re = new int[getDistinctSequences()];
 		for (int d=0; d<re.length; d++)
-			if (hasNonzeroInformation()) 
-				for (int i : getNonzeroCountsForDistinct(d))
-					re[d] += getCountInt(d, i, mode);
-			else
-				for (int i=0; i<getNumConditions(); i++)
-					re[d] += getCountInt(d, i, mode);
+			re[d] = getTotalCountForDistinctInt(d, mode);
 		return re;
 	}
 	
@@ -707,16 +789,15 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		int[] re = new int[getNumConditions()];
 		for (int c=0; c<getNumConditions(); c++)
 			for (int i=0; i<getDistinctSequences(); i++)
-				re[c] += getCountInt(i, c, mode);
+				re[c] += getTotalCountForDistinctInt(i,  mode);
 		return re;
 	}
 	
 	
 	default int getTotalCountOverallInt(ReadCountMode mode) {
 		int re = 0;
-		for (int c=0; c<getNumConditions(); c++)
-			for (int i=0; i<getDistinctSequences(); i++)
-				re += getCountInt(i, c, mode);
+		for (int i=0; i<getDistinctSequences(); i++)
+			re += getTotalCountForDistinctInt(i, mode);
 		return re;
 	}
 	
@@ -727,13 +808,17 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	}
 	
 	default int getTotalCountForDistinctFloor(int distinct, ReadCountMode mode) {
+		if (hasNonzeroInformation()) {
+			int re = 0;
+			int n = getNonzeroCountIndicesForDistinct(distinct).length;
+			for (int i=0; i<n; i++)
+				re += getNonzeroCountValueFloor(distinct, i, mode);
+			return re;
+		}
+		
 		int re = 0;
-		if (hasNonzeroInformation()) 
-			for (int i : getNonzeroCountsForDistinct(distinct))
-				re += getCountFloor(distinct, i, mode);
-		else
-			for (int i=0; i<getNumConditions(); i++)
-				re += getCountFloor(distinct, i, mode);
+		for (int i=0; i<getNumConditions(); i++)
+			re += getCountFloor(distinct, i, mode);
 		return re;
 	}
 	
@@ -752,12 +837,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	default int[] getTotalCountsForDistinctsFloor(ReadCountMode mode) {
 		int[] re = new int[getDistinctSequences()];
 		for (int d=0; d<re.length; d++)
-			if (hasNonzeroInformation()) 
-				for (int i : getNonzeroCountsForDistinct(d))
-					re[d] += getCountFloor(d, i, mode);
-			else
-				for (int i=0; i<getNumConditions(); i++)
-					re[d] += getCountFloor(d, i, mode);
+			re[d] = getTotalCountForDistinctFloor(d, mode);
 		return re;
 	}
 	
@@ -778,9 +858,8 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	
 	default int getTotalCountOverallFloor(ReadCountMode mode) {
 		int re = 0;
-		for (int c=0; c<getNumConditions(); c++)
-			for (int i=0; i<getDistinctSequences(); i++)
-				re += getCountFloor(i, c, mode);
+		for (int i=0; i<getDistinctSequences(); i++)
+			re += getTotalCountForDistinctFloor(i, mode);
 		return re;
 	}
 	
@@ -795,20 +874,24 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	default NumericArray getTotalCountsForDistincts(NumericArray re, ReadCountMode mode) {
 		if (re!=null)
 			re.clear();
-		return getTotalCountsForDistincts(re, mode);
+		return addTotalCountsForDistincts(re, mode);
 	}
 	
 	default NumericArray addTotalCountsForDistincts(NumericArray re, ReadCountMode mode) {
 		if (re==null || re.length()!=getDistinctSequences() || re.getType().getType()!=mode.getType())
 			re = NumericArray.createMemory(getDistinctSequences(), NumericArrayType.fromType(mode.getType()));
 		
-		for (int i=0; i<getDistinctSequences(); i++)
-			if (hasNonzeroInformation()) 
-				for (int c : getNonzeroCountsForDistinct(i))
-					mode.addCount(re,i,getCount(i, c),getMultiplicity(i),getWeight(i));
+		
+		
+		for (int d=0; d<getDistinctSequences(); d++)
+			if (hasNonzeroInformation()) {
+				int[] inds = getNonzeroCountIndicesForDistinct(d);
+				for (int i=0; i<inds.length; i++)
+					mode.addCount(re,d,getNonzeroCountValueForDistinct(d, i),getMultiplicity(d),getWeight(d));
+			}
 			else
 				for (int c=0; c<getNumConditions(); c++)
-					mode.addCount(re,i,getCount(i, c),getMultiplicity(i),getWeight(i));
+					mode.addCount(re,d,getCount(d, c),getMultiplicity(d),getWeight(d));
 		return re;
 	}
 	
@@ -832,13 +915,15 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 		if (re==null || re.length()!=getNumConditions() || re.getType().getType()!=mode.getType())
 			re = NumericArray.createMemory(getNumConditions(), NumericArrayType.fromType(mode.getType()));
 	
-		for (int i=0; i<getDistinctSequences(); i++)
-			if (hasNonzeroInformation()) 
-				for (int c : getNonzeroCountsForDistinct(i))
-					mode.addCount(re,c,getCount(i, c),getMultiplicity(i),getWeight(i));
+		for (int d=0; d<getDistinctSequences(); d++)
+			if (hasNonzeroInformation()){
+				int[] inds = getNonzeroCountIndicesForDistinct(d);
+				for (int i=0; i<inds.length; i++)
+					mode.addCount(re,inds[i],getNonzeroCountValueForDistinct(d, i),getMultiplicity(d),getWeight(d));
+			} 
 			else
 				for (int c=0; c<getNumConditions(); c++)
-					mode.addCount(re,c,getCount(i, c),getMultiplicity(i),getWeight(i));
+					mode.addCount(re,c,getCount(d, c),getMultiplicity(d),getWeight(d));
 		return re;
 	}
 	
@@ -1049,14 +1134,20 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 	}
 
 	
-
-	
 	default String toString2() {
 		StringBuilder sb = new StringBuilder();
 		for (int d=0; d<getDistinctSequences(); d++) {
 			if (hasId()) 
 				sb.append(getId(d)).append(": ");
-			sb.append(Arrays.toString(getCountsForDistinctInt(d, ReadCountMode.All)));
+			if (hasNonzeroInformation()) {
+				sb.append("[");
+				int[] inds = getNonzeroCountIndicesForDistinct(d);
+				for (int i=0; i<inds.length; i++)
+					sb.append(inds[i]+":"+getNonzeroCountValueForDistinct(d, i)+",");
+				sb.deleteCharAt(sb.length()-1);
+				sb.append("]");
+			} else
+				sb.append(Arrays.toString(getCountsForDistinctInt(d, ReadCountMode.All)));
 			sb.append(" x");
 			sb.append(getMultiplicity(d));
 			if (hasWeights()) 
@@ -1161,7 +1252,7 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 				for (int j=0; j<c; j++)
 					out.putCInt(getCount(i, j));
 		}
-		else {
+		else if (gi.getEntry(SPARSEATTRIBUTE).asInt()==1){
 			int co = 0;
 			for (int i=0; i<d; i++)
 				for (int j=0; j<c; j++) 
@@ -1177,6 +1268,32 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 					}
 					ind++;
 				}
+		}
+		else if (gi.getEntry(SPARSEATTRIBUTE).asInt()==2){ // supersparse mode
+			for (int i=0; i<d; i++) {
+				
+				
+				if (hasNonzeroInformation()) {
+					int[] inds = getNonzeroCountIndicesForDistinct(i);
+					out.putCInt(inds.length);
+					for (int ii=0; ii<inds.length; ii++) {
+						out.putCInt(inds[ii]);
+						out.putCInt(getNonzeroCountValueForDistinct(i, ii));
+					}
+				} else {
+					int co = 0;
+					for (int j=0; j<c; j++) 
+						if (getCount(i, j)>0)
+							co++;
+					out.putCInt(co);
+					for (int j=0; j<c; j++) {
+						if (getCount(i,j)>0) {
+							out.putCInt(j);
+							out.putCInt(getCount(i, j));
+						}
+					}
+				}
+			}
 		}
 		
 		for (int i=0; i<d; i++) {
@@ -1239,6 +1356,32 @@ public interface AlignedReadsData extends BinarySerializable, GlobalInfoProvider
 //		else
 //			out.put(NO_ID_MAGIC);
 
+		if (this instanceof HasBarcodes) {
+			HasBarcodes bc = (HasBarcodes)this;
+			if (!gi.hasProperty(BARCODEATTRIBUTE)) {
+				out.putCInt(bc.getBarcodeLength());			
+			}
+			
+			for (int i=0; i<d; i++) {
+				
+				if (hasNonzeroInformation())
+					for (int j : getNonzeroCountIndicesForDistinct(i)) {
+						DnaSequence[] bcs = bc.getBarcodes(i, j);
+						for (int b=0; b<bcs.length;b++)
+							FileUtils.writeBitVector(bcs[b], out, false);
+					}
+				else
+					for (int j=0; j<c; j++) {
+						if (getCount(i,j)>0) {
+							DnaSequence[] bcs = bc.getBarcodes(i, j);
+							for (int b=0; b<bcs.length;b++)
+								FileUtils.writeBitVector(bcs[b], out, false);
+						}
+					}
+				
+				
+			}
+		}
 		
 	}
 	default int getNumConditionsWithCounts() {

@@ -104,5 +104,8 @@ public class AlignedReadsInsertion implements AlignedReadsVariation {
 		return hashCode2();
 	}
 
-	
+	@Override
+	public AlignedReadsInsertion reposition(int newPos) {
+		return new AlignedReadsInsertion(newPos, sequence, isFromSecondRead);
+	}
 }

@@ -582,28 +582,28 @@ public class CleavageModelEstimator {
 	
 	
 	public BufferedImage plotProbabilities(String title, String plotFile) {
-		try {
-			R r = RConnect.getInstance().get();
-			r.assign("col", bestPl);
-			r.assign("row", bestPr);
-			if (generatedLeft!=null) {
-				r.assign("gl", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedLeft,ArrayUtils.repeat(0, bestPl.length-generatedLeft.length-10)));
-				r.assign("gr", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedRight,ArrayUtils.repeat(0, bestPr.length-generatedRight.length-10)));
-				r.startPlots(800, 800).eval("barplot(rbind(gl, col, gr, row),beside=T)");
-			}
-			else {
-				String t = title!=null?title:FileUtils.getNameWithoutExtension(plotFile);
-				r.startPlots(800, 800).eval("barplot(c(rev(col[-1]),NA,NA,NA,row),beside=T,main='"+t+"', names.args=c())");
-			}
-			
-			BufferedImage img = r.finishPlot();
-			
-			if (plotFile!=null)
-				ImageIO.write(img, "png", new File(plotFile));
-			return img;
-		} catch (Exception e) {
+//		try {
+//			R r = RConnect.getInstance().get();
+//			r.assign("col", bestPl);
+//			r.assign("row", bestPr);
+//			if (generatedLeft!=null) {
+//				r.assign("gl", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedLeft,ArrayUtils.repeat(0, bestPl.length-generatedLeft.length-10)));
+//				r.assign("gr", ArrayUtils.concat(ArrayUtils.repeat(0, 10),generatedRight,ArrayUtils.repeat(0, bestPr.length-generatedRight.length-10)));
+//				r.startPlots(800, 800).eval("barplot(rbind(gl, col, gr, row),beside=T)");
+//			}
+//			else {
+//				String t = title!=null?title:FileUtils.getNameWithoutExtension(plotFile);
+//				r.startPlots(800, 800).eval("barplot(c(rev(col[-1]),NA,NA,NA,row),beside=T,main='"+t+"', names.args=c())");
+//			}
+//			
+//			BufferedImage img = r.finishPlot();
+//			
+//			if (plotFile!=null)
+//				ImageIO.write(img, "png", new File(plotFile));
+//			return img;
+//		} catch (Exception e) {
 			return null;
-		}
+//		}
 	}
 	
 	public double estimateBoth(int c, int nthreads) {

@@ -33,6 +33,7 @@ import gedi.util.nashorn.JSPredicate;
 import gedi.util.orm.Orm;
 import gedi.util.userInteraction.results.ResultProducer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -122,9 +123,19 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 		});
 	};
 	
+	default void addContainsAnyCondition(String inp, String file) throws IOException {
+		HashSet<String> elements = EI.lines(file).set();
+		addCondition(f->{
+			for (Object o : f.getProgram().getInputById(inp))
+				if (elements.contains(StringUtils.toString(o)))
+					return true;
+			return false;
+		});
+	};
+	
 	default GenomicRegionFeature<O> addCondition(String js) throws ScriptException {
 		StringBuilder code = new StringBuilder();
-		code.append("function() {\n");
+		code.append("function(f) {\n");
 		if (js.contains(";")) {
 			code.append(js);
 			code.append("}");
@@ -169,7 +180,10 @@ public interface GenomicRegionFeature<O> extends Consumer<Set<O>> {
 		
 		switch (ff) {
 		case "": re = s->s.isEmpty(); break;
-		case "U": re = s->s.size()==1; break;
+		case "U": re = s->{
+			return s.size()==1;
+		};
+		 break;
 		case "N": re = s->s.size()>1; break;
 		case "?": re = s->s.size()<=1; break;
 		case "+": re = s->s.size()>=1; break;

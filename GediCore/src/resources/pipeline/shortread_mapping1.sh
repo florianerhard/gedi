@@ -35,8 +35,8 @@ var mapper = mapper?mapper:"bowtie";
 var smartseq;
 var maxMismatch=maxMismatch?maxMismatch:3;
 
-if (mapper=="STAR")
-	System.out.println("We strongly advice against using STAR for mapping short reads (very very bad things will happen)!");
+//if (mapper=="STAR")
+//	System.out.println("We strongly advice against using STAR for mapping short reads (very very bad things will happen)!");
 
 var smapper = mapper;
 mapper = ParseUtils.parseEnumNameByPrefix(mapper,true,ReadMapper.class);
@@ -63,7 +63,7 @@ cd <?JS tmp ?>/<?JS name ?>
 
 
 <?JS if (mode=="SRR") { ?>
-fastq-dump <?JS if(test) print("-X 10000"); ?> -Z <?JS files ?> > <?JS name ?>.fastq
+RETRY=1; until fastq-dump <?JS if(test) print("-X 10000"); ?> -Z <?JS files ?> > <?JS name ?>.fastq; do echo Retry after $RETRY; sleep $RETRY; RETRY=$((RETRY*2)); done
 <?JS } else if (mode=="FASTQ" && !test && files.endsWith(".gz")) {  ?>
 zcat <?JS files ?> > <?JS name ?>.fastq
 <?JS } else if (mode=="FASTQ" && test && files.endsWith(".gz")) {  ?>
@@ -136,7 +136,7 @@ if (infos[i].priority==1) {
 	println(ReadMapper.bowtie.getShortReadCommand(new ReadMappingReferenceInfo(ReferenceType.rRNA,infos[i].getGenomic(),ReadMapper.bowtie),name+".fastq","/dev/null",name+"_unmapped.fastq",nthreads,3));
 ?>
 mv <?JS name ?>_unmapped.fastq <?JS name ?>.fastq
-echo -ne "rRNA removal\t" >> <?JS name ?>.reads.tsv
+echo -ne "filtered <? print(infos[i].getGenomic().getId()) ?>\t" >> <?JS name ?>.reads.tsv
 L=`wc -l <?JS name ?>.fastq | cut -f1 -d' '`
 leftreads=$((L / 4))
 echo $leftreads >> <?JS name ?>.reads.tsv

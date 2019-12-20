@@ -75,6 +75,12 @@ public class AlignmentChain {
 				querySequenceLength, queryRegion.getReference().toOppositeStrand(), queryRegion.getRegion(), 
 				targetBlocks, queryBlocks);
 	}
+	
+	public AlignmentChain independent() {
+		return new AlignmentChain(id, score, targetSequenceLength, targetRegion.getReference().toStrandIndependent(), targetRegion.getRegion(), 
+				querySequenceLength, queryRegion.getReference().toStrandIndependent(), queryRegion.getRegion(), 
+				targetBlocks, queryBlocks);
+	}
 
 	public int getId() {
 		return id;
@@ -131,6 +137,10 @@ public class AlignmentChain {
 			data = (D) d;
 		}
 		
+		if (re.isEmpty())
+			System.err.println(r+" "+re);
+		 
+		
 		return new ImmutableReferenceGenomicRegion<>(targetRegion.getReference(), re, data);
 	}
 	
@@ -170,7 +180,7 @@ public class AlignmentChain {
 		MemoryIntervalTreeStorage<AlignmentChain> re = new MemoryIntervalTreeStorage<>(AlignmentChain.class);
 		
 		fromChain(EI.lines(file))
-			.unfold(ac->EI.wrap(ac,ac.opposite()))
+			.unfold(ac->EI.wrap(ac,ac.opposite(),ac.independent()))
 			.map(ac->ac.queryRegion.toImmutable(ac))
 			.add(re);
 		

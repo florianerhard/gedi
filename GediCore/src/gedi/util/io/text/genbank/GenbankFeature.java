@@ -155,7 +155,7 @@ public class GenbankFeature implements Comparable<GenbankFeature> {
 			position = ma.group(1);
 		if (position.startsWith(ComplementFeaturePosition.prefix))
 			return new ComplementFeaturePosition(this,position);
-		else if (position.startsWith(JoinedFeaturePosition.prefix))
+		else if (position.startsWith(JoinedFeaturePosition.prefix)||position.startsWith(JoinedFeaturePosition.prefix2))
 			return new JoinedFeaturePosition(this,position);
 		else if (position.contains(".."))
 			return new SpanFeaturePosition(this,position);

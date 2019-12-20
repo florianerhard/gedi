@@ -17,11 +17,10 @@
  */
 package gedi.util.userInteraction.results;
 
-import javafx.scene.image.Image;
-
+import java.awt.image.BufferedImage;
 
 public interface ImageResult extends Result {
 
-	Image getImage();
+	BufferedImage getImage();
 	
 }

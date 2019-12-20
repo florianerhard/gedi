@@ -69,6 +69,13 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 		if (strand==null) return this;
 		return Chromosome.obtain(getName(),strand);
 	}
+
+	default ReferenceSequence toStrand(Strandness strand) {
+		if (strand==Strandness.Antisense) return toOppositeStrand();
+		if (strand==Strandness.Unspecific) return toStrandIndependent();
+		return this;
+	}
+
 	
 	default ReferenceSequence toStrand(boolean strand) {
 		return Chromosome.obtain(getName(),strand);
@@ -101,7 +108,9 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 		boolean an = StringUtils.isInt(ca);
 		boolean bn = StringUtils.isInt(cb);
 		
-		if (an&&bn) return Integer.compare(Integer.parseInt(ca), Integer.parseInt(cb));
+		if (an&&bn) return Long.compare(Long.parseLong(ca), Long.parseLong(cb));
+		if (an) return -1;
+		if (bn) return 1;
 		return a.compareTo(b);
 	}
 
@@ -123,6 +132,8 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 		if (getName().startsWith("M")) return true;
 		if (getName().startsWith("NC_")) return true;
 		if (getName().startsWith("JN")) return true;
+		if (getName().startsWith("EF")) return true;
+		if (getName().startsWith("K")) return true;
 		
 		int digits = 0;
 		int max = 0;
@@ -137,7 +148,7 @@ public interface ReferenceSequence extends Comparable<ReferenceSequence> {
 	}
 	
 	default boolean isMitochondrial() {
-		return getChrStrippedName().equals("M") || getChrStrippedName().equals("MT");
+		return getChrStrippedName().equals("M") || getChrStrippedName().equals("MT") || getChrStrippedName().contains("mitoch");
 	}
 	
 }

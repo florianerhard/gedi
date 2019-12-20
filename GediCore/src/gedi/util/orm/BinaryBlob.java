@@ -23,6 +23,7 @@ import gedi.util.io.randomaccess.BinaryReaderWriter;
 import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.FixedSizeBinarySerializable;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -633,6 +634,16 @@ public class BinaryBlob implements Blob, BinaryReaderWriter {
 		buffer.put(dst, offset, length);
 		position(pos);
 		return this;
+	}
+
+	@Override
+	public BinaryReader view(long start, long end) {
+		throw new NotImplementedException();
+	}
+
+	@Override
+	public long size() {
+		return buffer.limit();
 	}
 
 

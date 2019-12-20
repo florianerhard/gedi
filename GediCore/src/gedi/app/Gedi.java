@@ -32,7 +32,6 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 public class Gedi {
-	private static final Logger log = Logger.getLogger( Gedi.class.getName() );
 	
 	private static boolean started = false;
 	
@@ -40,22 +39,35 @@ public class Gedi {
 		startup(false);
 	}
 	public synchronized static void startup(boolean discoverClasses) {
-		startup(discoverClasses,isDebug()?LogMode.Debug:LogMode.Normal);
+		startup(discoverClasses,isDebug()?LogMode.Debug:LogMode.Normal, null);
 	}
 	private static boolean isDebug() {
 		return java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("jdwp") >= 0;
 	}
-	public synchronized static void startup(boolean discoverClasses, LogMode mode) {
+	public synchronized static void startup(boolean discoverClasses, LogMode mode, String app) {
 		if (!started) {
+			Locale.setDefault(Locale.US);
 			long start = System.currentTimeMillis();
 			Config.getInstance();
-			LogUtils.config(mode);
-			log.info("Command: "+getStartupCommand());
-			log.info("Gedi "+version()+" ("+develOption()+") startup");
+			LogUtils.config(mode,false);
+			
+			Logger log = Logger.getLogger( Gedi.class.getName() );
+			log.info("OS: "+System.getProperty("os.name")+" "+System.getProperty("os.version")+" "+System.getProperty("os.arch"));
+			log.info("Java: "+System.getProperty("java.vm.name")+" "+System.getProperty("java.runtime.version"));
+			log.info("Gedi version "+version()+" ("+develOption()+") startup");
 			if (isDebug()) 
 				log.info("Debug mode");
-			Runtime.getRuntime().addShutdownHook(new Thread(()->log.info("Finished: "+getStartupCommand()+"\nTook "+StringUtils.getHumanReadableTimespan(System.currentTimeMillis()-start))));
-			Locale.setDefault(Locale.US);
+			
+			log.info("Command: "+getStartupCommand());
+			
+			if (app!=null)
+				log.info(app+" version "+version(app));
+			
+			Runtime.getRuntime().addShutdownHook(new Thread(()->{
+				log.info("Finished: "+getStartupCommand());
+				log.info("Took "+StringUtils.getHumanReadableTimespan(System.currentTimeMillis()-start));
+				LogUtils.shutdown();
+			}));
 			
 			if (discoverClasses)
 				ClassPathCache.getInstance().discover();

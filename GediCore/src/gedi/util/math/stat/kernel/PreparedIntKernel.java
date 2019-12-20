@@ -26,12 +26,14 @@ public class PreparedIntKernel implements Kernel {
 	private double[] cumWeights;
 	private int halfInt;
 	
-	public PreparedIntKernel(Kernel kernel) {
+	public PreparedIntKernel(Kernel kernel, boolean normalize) {
 		this.kernel = kernel;
 		halfInt = (int)Math.floor(kernel.halfSize());
 		weights = new double[halfInt*2+1];
 		for (int i=0; i<weights.length; i++)
 			weights[i] = kernel.applyAsDouble(i-halfInt);
+		if (normalize) 
+			ArrayUtils.normalize(weights);
 		cumWeights = weights.clone();
 		ArrayUtils.cumSumInPlace(cumWeights, 1);
 	}

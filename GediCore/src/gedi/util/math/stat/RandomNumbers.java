@@ -18,6 +18,7 @@
 package gedi.util.math.stat;
 
 import gedi.util.ArrayUtils;
+import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 
@@ -135,6 +136,23 @@ public class RandomNumbers {
 		
 		for (int i=0; i<cumulativeProbs.length; i++) {
 			if (cumulativeProbs[i]>=r)
+				return i;
+		};
+		return -1;
+	}
+	
+	/**
+	 * First is prob of first! Last must be 1. (As it can be caluculated by {@link ArrayUtils#cumSumInPlace(double[], int)}
+	 * 
+	 * Update: last must not be 1, will be normalized automatically.
+	 * @param cumulativeProbs
+	 * @return
+	 */
+	public int getCategorial(DoubleArrayList cumulativeProbs) {
+		double r = getUnif()*cumulativeProbs.getLastDouble();
+		
+		for (int i=0; i<cumulativeProbs.size(); i++) {
+			if (cumulativeProbs.getDouble(i)>=r)
 				return i;
 		};
 		return -1;
@@ -575,6 +593,16 @@ public class RandomNumbers {
 		return a;
 	}
 	
+	public <T> T[] shuffle(T[] a, int s, int e) {
+		for (int k=s; k<e-1; k++) {
+			int m =getUnif(k, e);
+			T tmp = a[k];
+			a[k] = a[m];
+			a[m] = tmp;
+		}
+		return a;
+	}
+	
 	public <T> List<T> shuffle(List<T> c) {
 		int size = c.size();
         if (size < 5 || c instanceof RandomAccess) {
@@ -636,6 +664,7 @@ public class RandomNumbers {
 		}
 		return a;
 	}
+	
 
 	
 	private static RandomNumbers global = new  RandomNumbers();

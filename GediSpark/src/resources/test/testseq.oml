@@ -1,8 +1,8 @@
 <Pipeline>
 
-	<Genomic.get id="genomic" names="h.ens86" />
+	<Genomic.get id="genomic" names="h.ens90" />
 	<SequenceSource id="sequence">
-		<Genomic file="genomic" />
+		<Genomic genomic="genomic" />
 	</SequenceSource>
 	
 	<SequenceGTrack input="sequence" id="+.Sequence (dna)" class="basecolors">

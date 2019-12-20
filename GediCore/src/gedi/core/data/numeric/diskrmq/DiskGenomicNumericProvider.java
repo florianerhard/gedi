@@ -43,6 +43,8 @@ import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.computed.ComputedIntegerArray;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.datastructure.tree.redblacktree.IntervalTree;
+import gedi.util.io.randomaccess.BinaryReader;
+import gedi.util.io.randomaccess.ConcurrentPageFile;
 import gedi.util.io.randomaccess.PageFile;
 import gedi.util.io.randomaccess.PageFileView;
 import gedi.util.io.randomaccess.diskarray.IntDiskArray;
@@ -51,7 +53,7 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 
 	private HashMap<ReferenceSequence,IntegerArray> positions;
 	private HashMap<ReferenceSequence,DiskMinMaxSumIndex[]> rmqs;
-	private PageFile file;
+	private BinaryReader file;
 	private int rows = -1;
 	
 	private boolean coverageMode = false;
@@ -62,10 +64,13 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		positions = new HashMap<ReferenceSequence, IntegerArray>();
 		rmqs = new HashMap<ReferenceSequence, DiskMinMaxSumIndex[]>();
 		
-		this.file = new PageFile(file);
+		
+		this.file = new ConcurrentPageFile(file);
 		if (!this.file.getAsciiChars(DiskGenomicNumericBuilder.MAGIC.length()).equals(DiskGenomicNumericBuilder.MAGIC))
 			throw new RuntimeException("Not a valid file!");
-		
+
+		System.err.print("Loading "+file+"... ");
+
 		int refs = this.file.getInt();
 		for (int i=0; i<refs; i++) {
 			Chromosome chr = Chromosome.read(this.file);
@@ -85,7 +90,7 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 			else if(rows!=numCond) throw new RuntimeException("Inconsistent number of conditions!");
 			
 			if (!dense) {
-				PageFileView view = new PageFileView(this.file, this.file.position(), this.file.position()+size*Integer.BYTES);
+				BinaryReader view = this.file.view(this.file.position(), this.file.position()+size*Integer.BYTES);
 				DiskIntegerArray ida = new DiskIntegerArray();
 				ida.deserialize(view, size);
 				positions.put(chr, ida);
@@ -97,7 +102,7 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 			long rmqPos = this.file.position();
 			DiskMinMaxSumIndex[] ind = new DiskMinMaxSumIndex[numCond];
 			for (int j=0; j<numCond; j++) {
-				PageFileView pfv = new PageFileView(this.file,rmqPos,this.file.size());
+				BinaryReader pfv = this.file.view(rmqPos,this.file.size());
 				ind[j] = new DiskMinMaxSumIndex(pfv);
 				rmqPos = pfv.position()+pfv.getStart();
 			}
@@ -109,6 +114,8 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 //			if (chr.getName().equals())
 			
 		}
+		
+		System.err.println("done!");
 		
 	}
 	
@@ -133,7 +140,7 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		return -dia.getInt(dia.length()-1);
 	}
 	
-	public Collection<ReferenceSequence> getRefereneSequences() {
+	public Collection<ReferenceSequence> getReferenceSequences() {
 		return positions.keySet();
 	}
 	
@@ -225,7 +232,11 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 		
 		if (coverageMode) {
 			IntegerArray ind = positions.get(reference);
-
+			
+			if(ind==null) return GenomicNumericProvider.empty();
+			
+			boolean leftZero = false;
+			
 			IntArrayList idxs = new IntArrayList();
 			for (int p=0; p<region.getNumParts(); p++) {
 				int idx1 = ind.binarySearch(region.getStart(p));
@@ -233,6 +244,10 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 				
 				if (idx1<0) idx1 = -idx1-2;
 				if (idx2<0) idx2 = -idx2-1;
+				if (idx1<0) {
+					leftZero = true;
+					idx1=0;
+				}
 				
 				idxs.add(idx1);
 				idxs.add(idx2);
@@ -243,34 +258,14 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 			rmqs.get(reference);
 			double[] currValue = new double[getNumDataRows()];
 			for (int i=0; i<currValue.length; i++)
-				currValue[i] = rmqs.get(reference)[i].getValue(idxRegion.getStart());
+				currValue[i] = leftZero?0:rmqs.get(reference)[i].getValue(idxRegion.getStart());
 			
-			if(idxRegion.isEmpty()) return new PositionNumericIterator() {
-				@Override
-				public int nextInt() {
-					return 0;
-				}
-
-				@Override
-				public boolean hasNext() {
-					return false;
-				}
-
-				@Override
-				public double[] getValues(double[] re) {
-					return null;
-				}
-
-				@Override
-				public double getValue(int row) {
-					return 0;
-				}
-				
-			};
+			if(idxRegion.isEmpty()) return GenomicNumericProvider.empty();
 			
+			boolean uLeftZero=leftZero;
 			return new PositionNumericIterator() {
 				int p = 0;
-				int currIdx = 0;
+				int currIdx = uLeftZero?-1:0;
 				int nextPos = currIdx+1>=idxRegion.getTotalLength()?Integer.MAX_VALUE:ind.getInt(idxRegion.map(currIdx+1));
 				
 				@Override
@@ -281,7 +276,7 @@ public class DiskGenomicNumericProvider implements GenomicNumericProvider, AutoC
 				@Override
 				public int nextInt() {
 					int re = region.map(p++);
-					if (re==nextPos) {
+					if (re>=nextPos) {
 						int pp=idxRegion.map(++currIdx);
 						nextPos = currIdx+1>=idxRegion.getTotalLength()?Integer.MAX_VALUE:ind.getInt(idxRegion.map(currIdx+1));
 						for (int i=0; i<currValue.length; i++)

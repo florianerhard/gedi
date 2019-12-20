@@ -8,7 +8,7 @@ varin("aaclass","Class (i.e. coloring) for amino acid tracks (Default: aminotryp
 var id = id?id:"genomic";
 var seqmbppp = seqmbppp?seqmbppp:1;
 var hideaa = hideaa?hideaa:true;
-var aaclass = aaclass?aaclass:"aminotrypto";
+var aaclass = aaclass?aaclass:"aminosimple";
 ?>
 	<SequenceSource id="<?JS id ?>.sequence">
 		<Genomic g="<?JS id ?>" />

@@ -33,6 +33,7 @@ import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.nashorn.JSBiPredicate;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -40,6 +41,8 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.UnaryOperator;
+
+import javax.script.ScriptException;
 
 
 @GenomicRegionFeatureDescription(toType=Object.class)
@@ -141,6 +144,18 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 //			storages.set(i, (GenomicRegionStorage)converter.apply(storages.get(i).toMemory()));
 //	}
 	
+	public void setFilter(String js) throws ScriptException {
+		StringBuilder code = new StringBuilder();
+		code.append("function(ann,cod) {\n");
+		if (js.contains(";")) {
+			code.append(js);
+			code.append("}");
+		} else {
+			code.append("return "+js+";\n}");
+		}
+		
+		checker = new JSBiPredicate<ImmutableReferenceGenomicRegion<T>,MutableReferenceGenomicRegion<Object>>(false, code.toString());
+	}
 	
 	public void setExact(int tolerance5p, int tolerance3p) {
 		
@@ -158,6 +173,10 @@ public class AnnotationFeature<T> extends AbstractFeature<Object> {
 	}
 	public AnnotationFeature<T> setContainsPosition(GenomicRegionPosition position, int offset) {
 		checker = (r,referenceRegion)->r.getRegion().contains(position.position(referenceRegion.getReference(),referenceRegion.getRegion(),offset));
+		return this;
+	}
+	public AnnotationFeature<T> setContains() {
+		checker = (r,referenceRegion)->r.getRegion().contains(referenceRegion.getRegion());
 		return this;
 	}
 	

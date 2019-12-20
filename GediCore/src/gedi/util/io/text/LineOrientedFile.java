@@ -187,7 +187,8 @@ public class LineOrientedFile extends File {
 			
 			@Override
 			public void flush() throws IOException {
-				fw.flush();
+				if (fw!=null)
+					fw.flush();
 			}
 			
 			public String toString() {

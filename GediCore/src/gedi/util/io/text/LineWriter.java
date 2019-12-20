@@ -52,6 +52,12 @@ public interface LineWriter extends AutoCloseable {
 		return this;
 	}
 	void write(String line) throws IOException;
+	default void write(char[] a) throws IOException {
+		write(String.valueOf(a));
+	}
+	default void write2(char[] a) {
+		write2(String.valueOf(a));
+	}
 	
 	default LineWriter writeLine2() {
 		try {
@@ -128,5 +134,6 @@ public interface LineWriter extends AutoCloseable {
 		if (deleteOnExit) f.deleteOnExit();
 		return new LineOrientedFile(f.getPath()).write();
 	}
+	
 	
 }

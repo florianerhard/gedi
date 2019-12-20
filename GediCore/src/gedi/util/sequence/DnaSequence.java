@@ -28,6 +28,10 @@ public class DnaSequence extends BitVector implements CharSequence {
 	
 	private static final long serialVersionUID = -2998934882733151866L;
 
+	public DnaSequence(int len) {
+		super(len*2);
+	}
+	
 	public DnaSequence(CharSequence sequence) {
 		super(sequence.length()*2);
 		for (int i=0; i<sequence.length(); i++) {
@@ -46,6 +50,12 @@ public class DnaSequence extends BitVector implements CharSequence {
 		}
 	}
 	
+	public String substring(int s, int e) {
+		char[] re = new char[e-s];
+		for (int i=s; i<e; i++)
+			re[i-s] = charAt(i);
+		return new String(re);
+	}
 	
 	@Override
 	public String toString() {

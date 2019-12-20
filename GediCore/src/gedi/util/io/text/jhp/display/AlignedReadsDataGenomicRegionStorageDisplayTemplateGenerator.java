@@ -71,10 +71,20 @@ public class AlignedReadsDataGenomicRegionStorageDisplayTemplateGenerator implem
 		for (int i=0; i<g.length; i++) {
 			DynamicObject[] tot = g[i].pre.getInfo().getMetaData().getEntry("conditions").asArray();
 			if (tot.length>0) {
-				double[] ttots = EI.wrap(tot).mapToDouble(d->d.getEntry("total").asDouble(Double.NaN)).toDoubleArray();
-				for (int c=0; c<ttots.length; c++) if (Double.isNaN(ttots[c])) {
-					ttots[c] = 1_000_000;
-					log.warning("No total count info for "+g[i].pre.getInfo().getMetaData().get("conditions").getEntry(c).getEntry("name").asString(""+c)+" in "+g[i].path);
+				double[] ttots = EI.wrap(tot).mapToDouble(d->d.getEntry("sizefactor").asDouble(Double.NaN)).toDoubleArray();
+				boolean nosf = false;
+				for (int c=0; c<ttots.length; c++) 
+					if (Double.isNaN(ttots[c])) {
+						nosf=true;
+					} else ttots[c]=1E6*ttots[c];
+				
+				if (nosf) {
+					ttots = EI.wrap(tot).mapToDouble(d->d.getEntry("total").asDouble(Double.NaN)).toDoubleArray();
+					for (int c=0; c<ttots.length; c++) 
+						if (Double.isNaN(ttots[c])) {
+							ttots[c] = 1_000_000;
+							log.warning("No total count/size factor info for "+g[i].pre.getInfo().getMetaData().get("conditions").getEntry(c).getEntry("name").asString(""+c)+" in "+g[i].path);
+						}
 				}
 				totals.addAll(ttots);
 			} else {
@@ -82,7 +92,7 @@ public class AlignedReadsDataGenomicRegionStorageDisplayTemplateGenerator implem
 				for (int j=0; j<num; j++) {
 					totals.add(1_000_000);
 				}
-				log.warning("No total count info in "+g[i].path);
+				log.warning("No total count/size factor info in "+g[i].path);
 			}
 		}
 		
@@ -136,7 +146,7 @@ public class AlignedReadsDataGenomicRegionStorageDisplayTemplateGenerator implem
 			.cascade(DynamicObject.arrayOfObjects("file",files));
 		
 		if (colors==null)
-			sl = sl.cascade(DynamicObject.arrayOfObjects("color",EI.repeat(names.size(), "Accent").toArray(String.class)));
+			sl = sl.cascade(DynamicObject.arrayOfObjects("color",EI.repeat(names.size(), "Dark2").toArray(String.class)));
 		else
 			sl = sl.cascade(DynamicObject.arrayOfObjects("color",colors));
 		

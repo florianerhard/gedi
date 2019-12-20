@@ -31,18 +31,28 @@ import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.features.AbstractFeature;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
+import gedi.util.ArrayUtils;
 import gedi.util.datastructure.array.MemoryDoubleArray;
 import gedi.util.datastructure.array.NumericArray;
+import gedi.util.datastructure.array.decorators.NumericArraySlice;
 import gedi.util.functions.IterateIntoSink;
 
 public class WriteJunctionCit extends AbstractFeature<Void> {
 
 	private String file;
 	private NumericArray buffer;
+	private String condition;
+	private int conditionIndex;
 	
 	public WriteJunctionCit(String file) {
 		this.file = file;
 	}
+	
+	public WriteJunctionCit(String file, String condition) {
+		this.file = file;
+		this.condition = condition;
+	}
+
 
 	@Override
 	public GenomicRegionFeature<Void> copy() {
@@ -56,13 +66,17 @@ public class WriteJunctionCit extends AbstractFeature<Void> {
 	public void begin() {
 		if (program.getThreads()>1) throw new RuntimeException("Can only be run with 1 thread!");
 		mem = new MemoryIntervalTreeStorage<>(MemoryDoubleArray.class);
+		
+		if (condition!=null) {
+			conditionIndex = ArrayUtils.linearSearch(program.getLabels(),condition);
+			if (conditionIndex==-1) throw new RuntimeException("Could not find "+condition+" in labels!");
+		}
 	}
 	
 	@Override
 	protected void accept_internal(Set<Void> t) {
 		GenomicRegion region = referenceRegion.getRegion();
 		if (region.getNumParts()>1) {
-			buffer = program.dataToCounts(referenceRegion.getData(), buffer);
 			int l=!referenceRegion.getReference().isMinus()?0:referenceRegion.getRegion().getTotalLength();
 			for (int i=0; i<region.getNumParts()-1; i++) {
 				if (!referenceRegion.getReference().isMinus())
@@ -78,9 +92,15 @@ public class WriteJunctionCit extends AbstractFeature<Void> {
 						buffer = program.dataToCounts(referenceRegion.getData(), buffer);
 						if (buffer.sum()>0) {
 							MemoryDoubleArray in = mem.getData(referenceRegion.getReference(), reg);
-							if (in==null) in = new MemoryDoubleArray(buffer.length());
-							in.add(buffer);
-							mem.add(referenceRegion.getReference(), reg, in);
+							if (condition==null) {
+								if (in==null) in = new MemoryDoubleArray(buffer.length());
+								in.add(buffer);
+							} else {
+								if (in==null) in = new MemoryDoubleArray(1);
+								in.add(0,buffer.getDouble(0));
+							}
+							if (in.sum()>0)
+								mem.add(referenceRegion.getReference(), reg, in);
 						}
 					}
 				}

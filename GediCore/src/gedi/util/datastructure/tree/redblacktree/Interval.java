@@ -61,6 +61,16 @@ public interface Interval {
 			public String toString() {
 				return toRegionString();
 			}
+			
+			@Override
+			public boolean equals(Object obj) {
+				return equals2(obj);
+			}
+			
+			@Override
+			public int hashCode() {
+				return hashCode2();
+			}
 		};
 	}
 }

@@ -20,6 +20,7 @@ package gedi.util.oml.petrinet;
 import gedi.core.data.mapper.GenomicRegionDataMapper;
 import gedi.core.data.mapper.GenomicRegionDataMappingJob;
 import gedi.core.data.mapper.MutableDemultiplexMapper;
+import gedi.core.genomic.Genomic;
 import gedi.gui.genovis.VisualizationTrack;
 import gedi.util.ReflectionUtils;
 import gedi.util.StringUtils;
@@ -64,6 +65,7 @@ public class Pipeline implements OmlInterceptor {
 
 	private Place[] inputs;
 	private String inputIds;
+	private Genomic genomic;
 	
 	public Pipeline() {
 		pn = new PetriNet();
@@ -74,6 +76,11 @@ public class Pipeline implements OmlInterceptor {
 			pn.prepare();
 		return pn;
 	}
+
+	public Genomic getGenomic() {
+		return genomic;
+	}
+		
 	
 	public void sortPlusMinusTracks() {
 		Collections.sort(tracks,(a,b)->pmPref(a).compareTo(pmPref(b)));
@@ -116,7 +123,8 @@ public class Pipeline implements OmlInterceptor {
 	public void setObject(OmlNode node, Object obj, String id, String[] classes,
 			HashMap<String, Object> context) {
 		
-		
+		if (obj instanceof Genomic && genomic==null)
+			genomic = (Genomic) obj;
 		
 		if (obj instanceof GenomicRegionDataMapper) {
 			
@@ -233,7 +241,6 @@ public class Pipeline implements OmlInterceptor {
 		
 		return (Pipeline)oml.execute(new OmlReader().parse(fileResourceOrSource));
 	}
-	
-		
+
 		
 }

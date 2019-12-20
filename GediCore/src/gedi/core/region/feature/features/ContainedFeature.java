@@ -17,6 +17,7 @@
  */
 package gedi.core.region.feature.features;
 
+import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.region.GenomicRegionPosition;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.core.region.feature.GenomicRegionFeature;
@@ -51,8 +52,12 @@ public class ContainedFeature extends AbstractFeature<ReferenceGenomicRegion<?>>
 		Set<ReferenceGenomicRegion<?>> inputs = getInput(0);
 		
 		for (ReferenceGenomicRegion<?> rgr : inputs) {
-		
-			if (rgr.getRegion().containsUnspliced(referenceRegion.getRegion()))
+			if (referenceRegion.getData() instanceof AlignedReadsData) {
+				AlignedReadsData d = (AlignedReadsData)referenceRegion.getData();
+				if (d.isConsistentlyContained(referenceRegion,rgr,0))
+					values.add(rgr);
+			}
+			else if (rgr.getRegion().containsUnspliced(referenceRegion.getRegion()))
 				values.add(rgr);
 			
 		}

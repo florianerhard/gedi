@@ -106,9 +106,7 @@ public class FastSortingCollection<T> implements Collection<T>, Closeable {
 				);
 			}
 			return EI.merge(comp, iter).endAction(()->{
-				try {
-					f.close();
-				} catch (IOException e){} 
+				f.close();
 			});
 		
 		} catch (IOException e) {

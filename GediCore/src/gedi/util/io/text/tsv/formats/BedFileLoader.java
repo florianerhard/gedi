@@ -39,7 +39,7 @@ public class BedFileLoader implements WorkspaceItemLoader<MemoryIntervalTreeStor
 	@Override
 	public MemoryIntervalTreeStorage<ScoreNameAnnotation> load(Path path)
 			throws IOException {
-		return new ScoreNameBedFileReader(path.toString()).readIntoMemoryThrowOnNonUnique();
+		return new ScoreNameBedFileReader(path.toString()).readIntoMemoryTakeFirst();
 	}
 	
 	@Override

@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import javax.json.Json;
 import javax.lang.model.type.NullType;
@@ -51,12 +52,6 @@ import gedi.util.dynamic.impl.ObjectDynamicObject;
 import gedi.util.dynamic.impl.StringDynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.orm.Orm;
-import gedi.util.properties.PropertyProvider;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.Property;
-import javafx.beans.property.StringProperty;
 
 
 /**
@@ -180,6 +175,14 @@ public interface DynamicObject {
 	default boolean asBoolean(boolean defaultValue) {
 		if (!isBoolean()) return defaultValue;
 		return asBoolean();
+	}
+	
+	default DynamicObject removeEntries(Predicate<String> remove) {
+		HashMap<String,Object> re = new HashMap<>();
+		for (String e : getProperties())
+			if (!remove.test(e))
+				re.put(e, getEntry(e));
+		return from(re);
 	}
 	
 	default DynamicObject get(String expression) {
@@ -486,100 +489,78 @@ public interface DynamicObject {
 		
 		else if (isObject() && !o.getClass().isPrimitive() && !o.getClass().isArray()) {
 			
-			PropertyProvider pp = (o instanceof PropertyProvider)?(PropertyProvider)o:null;
 			
 			for (String propName : getProperties()) {
 
 				DynamicObject en = getEntry(propName);
 				
-				if (pp!=null && pp.getProperties().containsKey(propName)) {
-					
-					Property p = pp.getProperty(propName);
-					
-					if (pp.getPropertyClass(propName)==(Class)DynamicObject.class)
-						p.setValue(en);
-					else if (en.isBoolean() && p instanceof BooleanProperty)
-						((BooleanProperty)p).set(en.asBoolean());
-					else if (en.isDouble() && p instanceof DoubleProperty)
-						((DoubleProperty)p).set(en.asDouble());
-					else if (en.isInt() && p instanceof IntegerProperty)
-						((IntegerProperty)p).set(en.asInt());
-					else if (en.isString() && p instanceof StringProperty)
-						((StringProperty)p).set(en.asString());
-					else 
-						en.applyTo(p.getValue());
-				}
 				
-				else {
-					
-					try {
-						if (en.isBoolean()) {
-							Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Boolean.TYPE);
-							if (m==null)
-								m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Boolean.class);
-	//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
-							if (m!=null)
-								m.invoke(o, en.asBoolean());
+				try {
+					if (en.isBoolean()) {
+						Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Boolean.TYPE);
+						if (m==null)
+							m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Boolean.class);
+//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
+						if (m!=null)
+							m.invoke(o, en.asBoolean());
+					}
+					else if (en.isInt()) {
+						Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Integer.TYPE);
+						if (m==null)
+							m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Integer.class);
+//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
+						if (m!=null)
+							m.invoke(o, en.asInt());
+					}
+					else if (en.isDouble()) {
+						Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Double.TYPE);
+						if (m==null)
+							m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Double.class);
+//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
+						if (m!=null)
+							m.invoke(o, en.asDouble());
+					}
+					else if (en.isString()) {
+						Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, String.class);
+//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
+						if (m!=null)
+							m.invoke(o, en.asString());
+						else {
+							 m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Enum.class);
+							 if (m!=null) 
+								 m.invoke(o, ParseUtils.parseEnumNameByPrefix(en.asString(), true, m.getParameterTypes()[0]));
 						}
-						else if (en.isInt()) {
-							Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Integer.TYPE);
-							if (m==null)
-								m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Integer.class);
-	//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
-							if (m!=null)
-								m.invoke(o, en.asInt());
-						}
-						else if (en.isDouble()) {
-							Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Double.TYPE);
-							if (m==null)
-								m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Double.class);
-	//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
-							if (m!=null)
-								m.invoke(o, en.asDouble());
-						}
-						else if (en.isString()) {
-							Method m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, String.class);
-	//						if (m==null) throw new RuntimeException("Cannot apply "+propName+" to class "+o.getClass().getName());
-							if (m!=null)
-								m.invoke(o, en.asString());
-							else {
-								 m = ReflectionUtils.findMethodIgnoreCase(o.getClass(), "set"+propName, Enum.class);
-								 if (m!=null) 
-									 m.invoke(o, ParseUtils.parseEnumNameByPrefix(en.asString(), true, m.getParameterTypes()[0]));
-							}
-						}
-							
+					}
 						
-						Method setter = null;
-						Method getter = null;
-						for (Method m : o.getClass().getMethods()){
-							if (m.getName().equalsIgnoreCase("set"+propName) && m.getParameterTypes().length==1)
-								setter = m;
-							else if ((m.getName().equalsIgnoreCase("get"+propName) || m.getName().equalsIgnoreCase("is"+propName)) && m.getParameterTypes().length==0)
-								getter = m;
-						}
-						if (getter!=null || setter!=null) {
-							
-							Class type = setter!=null ? setter.getParameterTypes()[0] : getter.getReturnType();
-							
-							if (type==DynamicObject.class && setter!=null)
-								setter.invoke(o, en);
-							else if (en.isBoolean() && type==boolean.class && setter!=null)
-								setter.invoke(o, en.asBoolean());
-							else if (en.isDouble() && type==double.class && setter!=null)
-								setter.invoke(o, en.asDouble());
-							else if (en.isInt() && type==int.class && setter!=null)
-								setter.invoke(o, en.asInt());
-							else if (en.isString() && type==String.class && setter!=null)
-								setter.invoke(o, en.asString());
-							else if (getter!=null)
-								en.applyTo(getter.invoke(o));
-							
-							
-						}
-					} catch (Exception e) {}						
-				}
-				
+					
+					Method setter = null;
+					Method getter = null;
+					for (Method m : o.getClass().getMethods()){
+						if (m.getName().equalsIgnoreCase("set"+propName) && m.getParameterTypes().length==1)
+							setter = m;
+						else if ((m.getName().equalsIgnoreCase("get"+propName) || m.getName().equalsIgnoreCase("is"+propName)) && m.getParameterTypes().length==0)
+							getter = m;
+					}
+					if (getter!=null || setter!=null) {
+						
+						Class type = setter!=null ? setter.getParameterTypes()[0] : getter.getReturnType();
+						
+						if (type==DynamicObject.class && setter!=null)
+							setter.invoke(o, en);
+						else if (en.isBoolean() && type==boolean.class && setter!=null)
+							setter.invoke(o, en.asBoolean());
+						else if (en.isDouble() && type==double.class && setter!=null)
+							setter.invoke(o, en.asDouble());
+						else if (en.isInt() && type==int.class && setter!=null)
+							setter.invoke(o, en.asInt());
+						else if (en.isString() && type==String.class && setter!=null)
+							setter.invoke(o, en.asString());
+						else if (getter!=null)
+							en.applyTo(getter.invoke(o));
+						
+						
+					}
+				} catch (Exception e) {}						
 				
 			}
 		}

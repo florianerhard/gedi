@@ -19,7 +19,7 @@ package gedi.startup;
 
 import gedi.app.Startup;
 import gedi.app.classpath.ClassPath;
-import gedi.core.processing.GenomicRegionProcessorExtensionPoint;
+import gedi.core.processing.old.GenomicRegionProcessorExtensionPoint;
 import gedi.lfc.LfcAlignedReadsProcessor;
 
 public class GediLfcStartup implements Startup {

@@ -104,5 +104,9 @@ public class AlignedReadsDeletion implements AlignedReadsVariation{
 		return hashCode2();
 	}
 
+	@Override
+	public AlignedReadsDeletion reposition(int newPos) {
+		return new AlignedReadsDeletion(newPos, sequence, isFromSecondRead);
+	}
 
 }

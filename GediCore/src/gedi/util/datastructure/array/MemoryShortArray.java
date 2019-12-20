@@ -107,7 +107,7 @@ public class MemoryShortArray extends ShortArray {
         while (from< to) {
         	short tmp = a[from];
     		a[from++] = a[to];
-    		a[to++] = tmp;
+    		a[to--] = tmp;
         }
         return this;
 	}

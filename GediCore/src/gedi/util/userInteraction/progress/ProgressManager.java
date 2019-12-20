@@ -33,10 +33,11 @@ public class ProgressManager implements Runnable {
 	
 	private LinkedHashMap<Progress,ProgressState> activeProgresses = new LinkedHashMap<>();
 	private Thread thread;
+	private boolean started;
 	
-	private Thread getThread() {
+	private synchronized Thread getThread() {
 		synchronized (this) {
-			if (thread!=null && thread.isAlive())
+			if (thread!=null && started)
 				return thread;
 			thread = new Thread(this);
 			thread.setName("ProgressManager");
@@ -51,8 +52,10 @@ public class ProgressManager implements Runnable {
 			activeProgresses.put(p,ProgressState.BeforeFirstView);
 		}
 		getThread();
-		if (!thread.isAlive())
+		if (!started) {
 			thread.start();
+			started = true;
+		}
 	}
 	
 	public void finished(Progress p) {
@@ -68,7 +71,10 @@ public class ProgressManager implements Runnable {
 		
 		if (allfinished)
 			try {
-				thread.join();
+				if (thread!=null)
+					thread.join();
+				started = false;
+				thread = null;
 			} catch (InterruptedException e) {
 			}
 	}

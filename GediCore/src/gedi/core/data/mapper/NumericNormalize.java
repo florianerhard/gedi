@@ -41,11 +41,11 @@ public class NumericNormalize extends NumericCompute {
 
 		@Override
 		public NumericArray apply(NumericArray t) {
-			if (totals.length!=1 && totals.length!=t.length())
+			if (totals.length!=t.length())
 				throw new RuntimeException("Given normalization constants do not match the input data!");
 			NumericArray re = t.copy();
 			for (int i=0; i<re.length(); i++)
-				re.mult(i,1E6/totals[totals.length==1?0:i]);
+				re.mult(i,1E6/totals[i]);
 			return re;
 		}
 		

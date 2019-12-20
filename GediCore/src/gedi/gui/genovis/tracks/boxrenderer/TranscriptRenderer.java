@@ -33,8 +33,7 @@ public class TranscriptRenderer extends BoxRenderer<Transcript> {
 	private BoxRenderer<Transcript> coding = new BoxRenderer<Transcript>();
 	
 	public TranscriptRenderer() {
-		coding.setBorder();
-		coding.setBackground(t->PaintUtils.DARK_RED);
+		coding.setBackground(t->PaintUtils.parseColor("#5b95ad"));
 		coding.setForeground(t->Color.WHITE);
 		coding.setHeight(20);
 		coding.setFont("Arial", 14, true, false);
@@ -42,7 +41,7 @@ public class TranscriptRenderer extends BoxRenderer<Transcript> {
 		setHeight(20);
 		setFont("Arial", 14, true, false);
 		setForeground(t->Color.WHITE);
-		setBackground(t->PaintUtils.VERY_LIGHT_RED);
+		setBackground(t->PaintUtils.parseColor("#98c1d2"));
 		stringer = d->"";
 	}
 	

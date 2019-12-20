@@ -21,6 +21,8 @@ import java.awt.Color;
 import java.awt.Paint;
 import java.util.HashMap;
 
+import gedi.core.data.reads.ReadCountMode;
+
 
 public class ParserCache {
 
@@ -43,6 +45,7 @@ public class ParserCache {
 			instance.map.put(double[].class.getName(), new DoubleArrayParser());
 			instance.map.put(Color.class.getName(), new ColorParser());
 			instance.map.put(Paint.class.getName(), new PaintParser());
+			instance.map.put(ReadCountMode.class.getName(), new ReadCountModeParser());
 		}
 		
 		return instance;

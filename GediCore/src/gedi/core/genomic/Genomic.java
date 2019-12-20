@@ -24,6 +24,7 @@ import gedi.core.data.annotation.Transcript;
 import gedi.core.data.annotation.TranscriptToGene;
 import gedi.core.data.annotation.TranscriptToMajorTranscript;
 import gedi.core.data.reads.AlignedReadsData;
+import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
@@ -42,6 +43,7 @@ import gedi.util.oml.Oml;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -88,6 +90,9 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	public static Genomic merge(Genomic a, Genomic b) {
 		HashSet<ReferenceSequence> ar = a.iterateReferenceSequences().set();
 		HashSet<ReferenceSequence> br = b.iterateReferenceSequences().set();
+		EI.wrap(a.getSequenceNames()).unfold(s->EI.wrap(Arrays.asList(Chromosome.obtain(s, true),Chromosome.obtain(s, false)))).toCollection(ar);
+		EI.wrap(b.getSequenceNames()).unfold(s->EI.wrap(Arrays.asList(Chromosome.obtain(s, true),Chromosome.obtain(s, false)))).toCollection(br);
+		
 		if (!Collections.disjoint(ar, br))
 			throw new RuntimeException("Genomes are not disjoint!");
 
@@ -136,9 +141,11 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 			else pres.merge(b.mapTabs.get(k));
 		}
 		
-		if (a.nameIndex!=null) re.add(a.nameIndex);
-		if (b.nameIndex!=null) re.add(b.nameIndex);
 		return re;
+	}
+	
+	public HashSet<String> getOrigins() {
+		return EI.wrap(getSequenceNames()).map(n->getOrigin(n).getId()).set();
 	}
 	
 	public Genomic getOrigin(ReferenceSequence ref) {
@@ -151,7 +158,8 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 	}
 	
 	public Trie<ReferenceGenomicRegion<?>> getNameIndex() {
-		return nameIndex==null?null:nameIndex.getIndex();
+		if (nameIndex==null) nameIndex = new NameIndex(this);
+		return nameIndex.getIndex();
 	}
 	
 	
@@ -168,12 +176,6 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 		mapTabs.put(table.getId(),table);
 	}
 	
-	public void add(NameIndex ni) {
-		if (nameIndex==null)
-			nameIndex = ni.clone();
-		else
-			nameIndex.merge(ni);
-	}
 	
 	@Override
 	public String toString() {
@@ -222,6 +224,18 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 		Annotation<?> a = annotations.get(AnnotationType.Transcripts.name());
 		if (a==null) return new MemoryIntervalTreeStorage<>(Transcript.class);
 		return (MemoryIntervalTreeStorage<Transcript>) a.get();
+	}
+	
+	
+	@SuppressWarnings("unchecked")
+	public MemoryIntervalTreeStorage<String> getGenesWithFlank(int flank) {
+		String sid = AnnotationType.Genes.name()+"_"+flank;
+		if (!annotations.containsKey(sid)) {
+			MemoryIntervalTreeStorage<String> extendedGenes = new MemoryIntervalTreeStorage<>(String.class);
+			extendedGenes.fill(getGenes().ei().map(ge->ge.toMutable().alterRegion(reg->reg.extendBack(flank).extendFront(flank)).toImmutable()));
+			add(new Annotation<String>(sid).set(extendedGenes));
+		}
+		return (MemoryIntervalTreeStorage<String>) annotations.get(sid).get();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -486,7 +500,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 			outer:for (Path folder : folders)
 				if (folder.toFile().exists())
 					for (String p : folder.toFile().list()) {
-						if (p.startsWith(name+".")) {
+						if (p.equals(name+".oml")) {
 							path = folder.resolve(p);
 							
 							if (path==null || !path.toFile().exists()) {
@@ -516,6 +530,7 @@ public class Genomic implements SequenceProvider, ReferenceSequencesProvider {
 			}
 			return g;
 		}
+		
 		return cache.get(name);
 	}
 

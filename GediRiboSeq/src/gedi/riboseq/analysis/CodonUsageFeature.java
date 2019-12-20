@@ -17,10 +17,11 @@
  */
 package gedi.riboseq.analysis;
 
+import gedi.core.genomic.Genomic;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.features.AbstractFeature;
 import gedi.core.region.feature.output.Barplot;
-import gedi.riboseq.inference.orf.Orf;
+import gedi.riboseq.inference.orf.PriceOrf;
 import gedi.util.SequenceUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
@@ -64,6 +65,7 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 	private double minThreshold = 1;
 	private boolean maxDownsampling = false;
 	private boolean normalizeExpression = false;
+	private Genomic genomic;
 	
 	
 	private ArrayList<CodonUsageOutputOption> outputs = new ArrayList<>();
@@ -78,6 +80,9 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 		setId(path);
 	}
 	
+	public void setGenomic(Genomic genomic) {
+		this.genomic = genomic;
+	}
 	
 	
 	public void add(CodonUsageOutputOption option) {
@@ -90,6 +95,12 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 	
 	public void addRepresentationA() throws ScriptException {
 		addOutput("A-site", "A/(d[0]+d[1]+d[2])*3");
+		afterA = Math.max(afterA, 3);
+	}
+	
+	public void addSticky() throws ScriptException {
+		addOutput("Sticky-site", "u[2]");
+		beforeE=9;
 		afterA = Math.max(afterA, 3);
 	}
 	
@@ -129,9 +140,12 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 	@Override
 	protected void accept_internal(Set<Void> values) {
 		
-		Orf orf = (Orf) referenceRegion.getData();
-		double[][] act = orf.getCodons();
-		int start = Math.max(orf.getInferredStartPosition(),0)+Math.max(beforeE+1, offsetFromStart);
+		
+		
+		PriceOrf orf = (PriceOrf) referenceRegion.getData();
+		int start = Math.max(orf.getPredictedStartAminoAcid(),0)+Math.max(beforeE+1, offsetFromStart);
+		String seq = genomic.getSequence(referenceRegion).toString();
+		seq = seq.substring(orf.getPredictedStartAminoAcid()*3);
 		
 		for (NumericArray[] c : buffers.values())
 			for (NumericArray a : c)
@@ -141,36 +155,37 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 		int ncount = 3+beforeE+afterA;
 		
 		if (total==null)
-			total = NumericArray.createMemory(act.length, NumericArrayType.Double);
+			total = NumericArray.createMemory(orf.getNumConditions(), NumericArrayType.Double);
 		else
 			total.clear();
 		
 		if (codonCount==null)
-			codonCount = NumericArray.createMemory(act.length, NumericArrayType.Integer);
+			codonCount = NumericArray.createMemory(orf.getNumConditions(), NumericArrayType.Integer);
 		else
 			codonCount.clear();
 		
 //		int[] perm = EI.seq(0,act[0].length).toIntArray();
 //		ArrayUtils.shuffleSlice(perm, start, perm.length);
 		
-		for (int i=start; i<act[0].length-Math.max(offsetFromEnd,afterA+1); i++) {
+		for (int i=start; i<orf.getOrfAaLength()-Math.max(offsetFromEnd,afterA+1); i++) {
 			double downsamplingFactor = 1;
 			if (maxDownsampling) {
-				for (int c=0; c<act.length; c++)
-					downsamplingFactor = Math.max(downsamplingFactor,act[c][i]);
+				for (int c=0; c<orf.getNumConditions(); c++)
+					downsamplingFactor = Math.max(downsamplingFactor,orf.getProfile(c, i));
 				downsamplingFactor = 1/downsamplingFactor;
 			}
-			for (int c=0; c<act.length; c++) {
-				if (act[c][i]>=minThreshold ) {
+			for (int c=0; c<orf.getNumConditions(); c++) {
+				if (orf.getProfile(c, i)>=minThreshold ) {
 					
-					total.add(c,act[c][i]*downsamplingFactor);
+					total.add(c,orf.getProfile(c, i)*downsamplingFactor);
 					codonCount.add(c, 1);
 					
 					
 					for (int off=0; off<ncount; off++) {
-						String codon = orf.getCodonTriplett(i+off-beforeE-1);
-						NumericArray[] bi = buffers.computeIfAbsent(codon, x->createBuffer(act.length,ncount));
-						bi[off].add(c,act[c][i]*downsamplingFactor);
+						int aapos = i+off-beforeE-1;
+						String codon = seq.substring(aapos*3, aapos*3+3);
+						NumericArray[] bi = buffers.computeIfAbsent(codon, x->createBuffer(orf.getNumConditions(),ncount));
+						bi[off].add(c,orf.getProfile(c, i)*downsamplingFactor);
 					}
 					
 				}
@@ -194,7 +209,7 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 			
 	
 			for (String codon : buffers.keySet()) {
-				NumericArray[] cou = counters.computeIfAbsent(codon, x->createBuffer(act.length, ncount));
+				NumericArray[] cou = counters.computeIfAbsent(codon, x->createBuffer(orf.getNumConditions(), ncount));
 				NumericArray[] buff = buffers.get(codon);
 				for (int i=0; i<cou.length; i++)
 					cou[i].add(buff[i]);
@@ -218,6 +233,7 @@ public class CodonUsageFeature extends AbstractFeature<Void> {
 		re.copyProperties(this);
 		re.plots = plots;
 		re.decimals = decimals;
+		re.genomic = genomic;
 		return re;
 	}
 	

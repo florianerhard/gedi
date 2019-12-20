@@ -26,9 +26,29 @@ import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.SequenceUtils;
+import gedi.util.StringUtils;
 
 public interface SequenceProvider extends ReferenceSequenceLengthProvider {
 
+	
+	/**
+	 * Instead of throwing exceptions, returns the appropriate amount of N, if sequence not available (i.e. ref not known, region exceeds bounds).
+	 * @param rgr
+	 * @return
+	 */
+	default CharSequence getSequenceSave(ReferenceGenomicRegion<?> rgr) {
+		if (rgr==null) return null;
+		if (!knowsSequence(rgr.getReference().getName()) || !rgr.getRegion().intersects(getRegionOfReference(rgr.getReference().getName()))) return StringUtils.repeatSequence('N', rgr.getRegion().getTotalLength());
+
+		CharSequence re = getSequence(rgr.getReference(),rgr.getRegion().intersect(getRegionOfReference(rgr.getReference().getName())));
+		
+		if (rgr.getRegion().getStart()<0) re = StringUtils.repeatSequence('N', new ArrayGenomicRegion(rgr.getRegion().getStart(),0).intersect(rgr.getRegion()).getTotalLength())+re.toString();
+		if (rgr.getRegion().getEnd()>getLength(rgr.getReference().getName())) re = re.toString()+StringUtils.repeatSequence('N', new ArrayGenomicRegion(getLength(rgr.getReference().getName()),rgr.getRegion().getEnd()).intersect(rgr.getRegion()).getTotalLength());
+		
+		return re;
+	}
+	
+	
 	/**
 	 * In 5' to 3' direction! Returns null if ref is unknown; throws an Exception if region is outside of ref's bounds
 	 * @param ref

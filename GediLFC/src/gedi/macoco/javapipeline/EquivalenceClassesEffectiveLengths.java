@@ -104,12 +104,12 @@ public class EquivalenceClassesEffectiveLengths extends GediProgram {
 		LineWriter out = new LineOrientedFile(getOutputFile(0).getPath()).write();
 		out.writef("Equivalence class");
 		for (int i=0; i<info.getConditionNames().length; i++)
-			out.writef("%s\t", info.getConditionNames()[i]);
+			out.writef("\t%s", info.getConditionNames()[i]);
 		out.writeLine();
 		for (int i=0; i<info.getE().length; i++) {
 			out.writef(StringUtils.concat(",", info.getE()[i]));
 			for (int cond=0; cond<el.length; cond++)
-				out.writef("\t%.1f", el[cond][i]);
+				out.writef("\t%.2f", el[cond][i]);
 			out.writeLine();
 		}
 		out.close();

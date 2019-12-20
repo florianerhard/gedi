@@ -25,6 +25,9 @@
 
 	<AnnotationFeature id="Transcript" data="false" >
 		<Transcripts g="genomic" flank="50" />
+		<? var referenceSequenceConversion; if (referenceSequenceConversion) { ?>
+		<ReferenceSequenceConversion referenceSequenceConversion="<? referenceSequenceConversion ?>" />
+		<? } ?>
 	</AnnotationFeature>
 	<MapFeature id="GeneId" input="Transcript">
 		<Field n='data' />
@@ -36,8 +39,28 @@
 	</MapFeature>
 	<UnfoldFeature id="TranscriptId" input="TranscriptIdFolded" />
 	
+	<AnnotationFeature id="Gene" data="true" >
+		<Genes g="genomic" />
+		<? var referenceSequenceConversion; if (referenceSequenceConversion) { ?>
+		<ReferenceSequenceConversion referenceSequenceConversion="<? referenceSequenceConversion ?>" />
+		<? } ?>
+		<Contains/>
+	</AnnotationFeature>
+	<MapFeature id="Type" input="GeneId" />
+	<MultiFeatureMapping input="Gene,Type">
+		<Mapping from="[*],[N]" to="[*],['Ambiguous']" />
+		<Mapping from="[*],[U]" to="[Type],['Exonic']" />
+		<Mapping from="[+],[]" to="[*],['Intronic']" />
+		<Mapping from="[],[]" to="[*],['Intergenic']" />
+		<Mapping from="[*],[*]" to="[*],['Error']" />
+	</MultiFeatureMapping>
+
+
 	<AnnotationFeature id="Major" data="false" >
 		<MajorTranscripts g="genomic" flank="50" />
+		<? var referenceSequenceConversion; if (referenceSequenceConversion) { ?>
+		<ReferenceSequenceConversion referenceSequenceConversion="<? referenceSequenceConversion ?>" />
+		<? } ?>
 	</AnnotationFeature>
 	
 	<FeatureMapping id="Biotype" input="GeneId">
@@ -109,6 +132,15 @@
 	</FeatureStatisticOutput>
 
 
+	<FeatureStatisticOutput file="<?JS prefix ?>type.tsv" input="Type">
+		<Barplot aes="fill,x,y" position="fill">
+			<RotateLabels/>
+			<Title>Read types</Title>
+			<Description>The distribution of reads to Introns/Exons/... for each condition.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	
+	
 	<FeatureStatisticOutput file="<?JS prefix ?>biotype.tsv" input="Biotype,Genome">
 		<Barplot aes="x,fill,,y" position="dodge">
 			<RotateLabels/>

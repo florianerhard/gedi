@@ -24,7 +24,7 @@ import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
 
-public class NameAnnotation implements BinarySerializable, NameProvider {
+public class NameAnnotation implements BinarySerializable, NameProvider, Comparable<NameAnnotation> {
 	
 	private String name;
 	
@@ -43,6 +43,11 @@ public class NameAnnotation implements BinarySerializable, NameProvider {
 	@Override
 	public void deserialize(BinaryReader in) throws IOException {
 		name = in.getString();
+	}
+	
+	@Override
+	public int compareTo(NameAnnotation o) {
+		return getName().compareTo(o.getName());
 	}
 	
 	@Override

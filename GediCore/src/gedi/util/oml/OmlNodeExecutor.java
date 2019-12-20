@@ -17,6 +17,7 @@
  */
 package gedi.util.oml;
 
+
 import gedi.app.classpath.ClassPathCache;
 import gedi.util.GeneralUtils;
 import gedi.util.ReflectionUtils;
@@ -25,7 +26,6 @@ import gedi.util.parsing.ArrayParser;
 import gedi.util.parsing.Parser;
 import gedi.util.parsing.ParserCache;
 import gedi.util.parsing.StringParser;
-import gedi.util.properties.PropertyProvider;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -38,7 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import javafx.beans.property.Property;
 
 @SuppressWarnings({"unchecked","rawtypes"})
 public class OmlNodeExecutor {
@@ -98,8 +97,6 @@ public class OmlNodeExecutor {
 				caller = checkMethod(node,parent,"set"+name,attributes, children,context);
 			if (caller==null)
 				caller = checkMethod(node,parent,"add"+name,attributes, children,context);
-			if (caller==null)
-				caller = checkProperty(node,parent,name,attributes, children,context);
 			// check whether this is constructor node
 			if (caller==null)
 				caller = checkConstructor(node,parent,name,attributes, children,context);
@@ -214,22 +211,6 @@ public class OmlNodeExecutor {
 			return new MethodCaller(best, o instanceof Class?null:o, bestPara);
 		return null;
 	}
-	
-	private PropertyCaller checkProperty(OmlNode node, Object o, String methodName, LinkedHashMap<String, String> attributes, ArrayList<OmlNode> children, HashMap<String,Object> context) throws Exception {
-		if (o==null || !(o instanceof PropertyProvider) || attributes.size()!=1) return null;
-		
-		PropertyProvider p = (PropertyProvider)o;
-		
-		
-		if (p.getProperties().containsKey(methodName)) {
-			Property<Object> prop = p.getProperty(methodName);
-			Supplier[] para = determineSuppliers(node,o, new Class[] {p.getPropertyClass(methodName)},null, null,attributes,children, context);
-			if (para!=null)
-				return new PropertyCaller(prop, para[0]);
-		}
-		return null;
-	}
-	
 	
 	
 	private ConstructorCaller checkConstructor(OmlNode node, Object o, String className, LinkedHashMap<String, String> attributes, ArrayList<OmlNode> children, HashMap<String,Object> context) throws Exception {
@@ -580,22 +561,6 @@ public class OmlNodeExecutor {
 		
 	}
 	
-	private class PropertyCaller extends Caller {
-		private Property property;
-
-		public PropertyCaller(Property property, Supplier param) {
-			super(new Supplier[]{param});
-			this.property = property;
-		}
-
-		@Override
-		protected Object invoke(Object[] p) throws Exception {
-			OmlReader.log.log(Level.CONFIG,"Invoking setter "+property.getName()+" on "+property.getBean());
-			property.setValue(p[0]);
-			return null;
-		}
-		
-	}
 	
 	private class ConstructorCaller extends Caller {
 		private Constructor ctor;

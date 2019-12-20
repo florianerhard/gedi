@@ -26,6 +26,7 @@ import java.io.IOException;
 public class JoinedFeaturePosition extends AbstractFeaturePosition {
 
 	final static String prefix = "join(";
+	final static String prefix2 = "order(";
 	
 	
 	private boolean exact = true;
@@ -33,6 +34,9 @@ public class JoinedFeaturePosition extends AbstractFeaturePosition {
 	
 	public JoinedFeaturePosition(GenbankFeature feature, String descriptor) {
 		super(feature, descriptor);
+		
+		if (descriptor.startsWith(prefix2))
+			descriptor = prefix+descriptor.substring(prefix2.length());
 		
 		if (!descriptor.startsWith(prefix) || !descriptor.endsWith(")"))
 			throw new RuntimeException("does not match "+prefix+".*)!");

@@ -113,7 +113,6 @@ public class StorageSource<D> implements GenomicRegionDataSource<IntervalTree<Ge
 					storage.getRegionsIntersecting(reference, region, re);
 				
 			}
-			
 		return re;
 	}
 

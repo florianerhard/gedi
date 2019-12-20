@@ -21,8 +21,10 @@ import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.datastructure.tree.Trie;
 import gedi.util.io.text.HeaderLine;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -156,6 +158,25 @@ public class ParseUtils {
 		return re;
 	}
 
+	
+	public static <E> E parseEnumOrChoicesNameByPrefix(String name,
+			boolean ignoreCase, Class<E> enumClass) {
+		if (enumClass.isEnum()) return parseEnumOrChoicesNameByPrefix(name, ignoreCase, enumClass);
+		
+		if (ReflectionUtils.findAnyMethod(enumClass, "values")!=null) {
+			try {
+				E[] vals = ReflectionUtils.invokeStatic(enumClass, "values");
+				HashMap<String,E> map = new HashMap<>();
+				for (E v : vals) map.put(v.toString(), v);
+				return parseChoicesByPrefix(name, ignoreCase, map);
+			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				throw new RuntimeException("Could not get values from "+enumClass.getName(),e);
+			}
+		}
+		
+		throw new RuntimeException("Cannot parse values from "+enumClass.getName());
+	}
+	
 	/**
 	 * Parses by prefix; if name is null or the empty string, null is returned
 	 * @param name
@@ -182,6 +203,27 @@ public class ParseUtils {
 		for (E e : el) {
 			trie.put(ignoreCase?e.toString().toLowerCase():e.toString(),e);
 			trie.put(ignoreCase?((Enum)e).name().toLowerCase():((Enum)e).name(),e);
+		}
+		trie.remove("");
+		return trie;
+	}
+	
+	public static <E> E parseChoicesByPrefix(String name,
+			boolean ignoreCase, Map<String,E> choices) {
+		if (name==null || name.length()==0) return null;
+		
+		Trie<E> trie = getChoicesTrie(choices, ignoreCase);
+		
+		E direct = trie.get(ignoreCase?name.toLowerCase():name);
+		if (direct!=null) return direct;
+		return trie.getUniqueWithPrefix(ignoreCase?name.toLowerCase():name);
+	}
+	
+	public static <E> Trie<E> getChoicesTrie(Map<String,E> choices, boolean ignoreCase) {
+		
+		Trie<E> trie = new Trie<E>();
+		for (String n : choices.keySet()) {
+			trie.put(ignoreCase?n.toLowerCase():n,choices.get(n));
 		}
 		trie.remove("");
 		return trie;

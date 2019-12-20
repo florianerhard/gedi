@@ -17,7 +17,7 @@
  */
 package gedi.core.data.annotation;
 
-import gedi.core.reference.ReferenceSequence;
+import gedi.core.region.ArrayGenomicRegion;
 
 public interface ReferenceSequenceLengthProvider {
 
@@ -27,5 +27,9 @@ public interface ReferenceSequenceLengthProvider {
 	 * @return
 	 */
 	int getLength(String name);
+
+	default ArrayGenomicRegion getRegionOfReference(String name) {
+		return new ArrayGenomicRegion(0,getLength(name));
+	}
 	
 }

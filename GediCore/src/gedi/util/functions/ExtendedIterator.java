@@ -28,6 +28,7 @@ import gedi.util.FunctorUtils.BufferingIterator;
 import gedi.util.FunctorUtils.ChainedIterator;
 import gedi.util.FunctorUtils.DemultiplexIterator;
 import gedi.util.FunctorUtils.FilteredIterator;
+import gedi.util.FunctorUtils.FixedBlockIterator;
 import gedi.util.FunctorUtils.FuseIterator;
 import gedi.util.FunctorUtils.MergeIterator;
 import gedi.util.FunctorUtils.MultiplexIterator;
@@ -74,12 +75,14 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
@@ -91,6 +94,27 @@ import java.util.logging.Logger;
 
 public interface ExtendedIterator<T> extends Iterator<T> {
 
+	default StringIterator str() {
+		return new StringIterator() {
+			@Override
+			public boolean hasNext() {
+				return ExtendedIterator.this.hasNext();
+			}
+
+			@Override
+			public String next() {
+				return StringUtils.toString(ExtendedIterator.this.next(),null);
+			}
+			
+			@Override
+			public void remove() {
+				ExtendedIterator.this.remove();
+			}
+			
+		};
+		
+	}
+	
 	default ChainedIterator<T> chain(Iterator<T> other) {
 		return FunctorUtils.chainedIterator(this,other);
 	}
@@ -100,12 +124,16 @@ public interface ExtendedIterator<T> extends Iterator<T> {
     }
 	
 	default ExtendedIterator<T> checkOrder(Comparator<T> order) {
+		return checkOrder(order, ()->"");
+	}
+	default ExtendedIterator<T> checkOrder(Comparator<T> order, Supplier<String> msg) {
 		return new ExtendedIterator<T>() {
 			T last = null;
 			@Override
 			public T next() {
 				T re = ExtendedIterator.this.next();
-				if (last!=null && order.compare(last, re)>0) throw new RuntimeException("Not ordered: "+last+" > "+re);
+				if (last!=null && order.compare(last, re)>0) 
+					throw new RuntimeException("Not ordered: "+last+" > "+re+" "+msg.get());
 				last = re;
 				return re;
 			}
@@ -132,6 +160,15 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	default T first() {
 		if (hasNext()) return next();
 		return null;
+	}
+	
+	/**
+	 * Can contain null for two reasons: first is null, or there is no next!
+	 * @return
+	 */
+	default Optional<T> firstOptional() {
+		if (hasNext()) return Optional.ofNullable(next());
+		return Optional.empty();
 	}
 	
 	default T getUniqueResult(boolean throwOnMore, boolean throwOnNone) {
@@ -232,7 +269,13 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	}
 
 	default <O,S> ParallelizedIterator<T,O,S> parallelized(int threads, int blocksize, Supplier<S> stateMaker, BiFunction<ExtendedIterator<T>,S,ExtendedIterator<O>> sub) {
-		return new ParallelizedIterator<T, O,S>(this, threads, blocksize, null, stateMaker, sub);
+		if (threads<=0) threads=1;
+		return new ParallelizedIterator<T, O,S>(this, threads, blocksize, null, (i)->stateMaker.get(), sub);
+	}
+
+	default <O,S> ParallelizedIterator<T,O,S> parallelized(int threads, int blocksize, IntFunction<S> stateMaker, IntObjectConsumer<S> blockStateMaker, BiFunction<ExtendedIterator<T>,S,ExtendedIterator<O>> sub) {
+		if (threads<=0) threads=1;
+		return new ParallelizedIterator<T, O,S>(this, threads, blocksize, null, stateMaker, blockStateMaker, sub);
 	}
 
 	default <O> ExtendedIterator<O> checkParallelized(int threads, int blocksize, BiFunction<O,O,String> checker, Function<ExtendedIterator<T>,ExtendedIterator<O>> sub) {
@@ -277,7 +320,14 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	default <C> BlockIterator<T,C> block(Predicate<T> first, Supplier<C> blockSupplier, BiConsumer<C, T> adder) {
     	return FunctorUtils.blockIterator(this, first, blockSupplier, adder);
     }
-	
+
+	default FixedBlockIterator<T,ArrayList<T>> block(int n) {
+    	return FunctorUtils.blockIterator(this, n);
+    }
+	default <C> FixedBlockIterator<T,C> block(int n, Supplier<C> blockSupplier, BiConsumer<C, T> adder) {
+    	return FunctorUtils.blockIterator(this, n, blockSupplier, adder);
+    }
+
 	
 	default AlternatingIterator<T> alternating(ExtendedIterator<? extends T>... others) {
 		return FunctorUtils.alternating(this,others);
@@ -517,7 +567,7 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 		return concat("");
 	}
 	default String concat(String sep) {
-		return concat(sep,s->s.toString());
+		return concat(sep,s->StringUtils.toString(s));
 	}
 	
 	default String concat(String sep, Function<T,String> stringer) {
@@ -837,6 +887,10 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	default long count() {
 		return FunctorUtils.countIterator(this);
 	}
+	
+	default int countInt() {
+		return FunctorUtils.countIntIterator(this);
+	}
 
 	default void retainAll(Predicate<T> predicate) {
 		while (hasNext())
@@ -845,11 +899,26 @@ public interface ExtendedIterator<T> extends Iterator<T> {
 	}
 	
 	default HashMap<T,Integer> indexPosition() {
-		return indexPosition(t->t);
+		return indexPosition(new Function<T,T>() {
+			@Override
+			public T apply(T t) {
+				return t;
+			}
+		});
 	}
 
 	default <K> HashMap<K,Integer> indexPosition(Function<? super T,? extends K> key) {
 		HashMap<K,Integer> re = new HashMap<K, Integer>();
+		while (hasNext()) {
+			K k = key.apply(next());
+			if (!re.containsKey(k))
+				re.put(k,re.size());
+		}
+		return re;
+	}
+
+
+	default <K,M extends Map<K,Integer>> M  indexPosition(M re, Function<? super T,? extends K> key) {
 		while (hasNext()) {
 			K k = key.apply(next());
 			if (!re.containsKey(k))

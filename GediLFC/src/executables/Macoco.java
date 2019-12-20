@@ -34,9 +34,9 @@ public class Macoco {
 		MacocoParameterSet params = new MacocoParameterSet();
 		GediProgram pipeline = GediProgram.create("Macoco",
 				new CountEquivalenceClasses(params),
-				new EquivalenceClassesMaximumLikelihood(params)
-//				new EquivalenceClassesMacoco(params),
-//				new EquivalenceClassesEffectiveLengths(params)
+//				new EquivalenceClassesMaximumLikelihood(params)
+				new EquivalenceClassesMacoco(params),
+				new EquivalenceClassesEffectiveLengths(params)
 				);
 		GediProgram.run(pipeline, new CommandLineHandler("Macoco","Macoco computes maximal coverage consistent estimates of transcript abundances.",args));
 		

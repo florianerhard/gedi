@@ -22,6 +22,7 @@ import gedi.core.data.reads.AlignedReadsDataMerger;
 import gedi.core.data.reads.ConditionMappedAlignedReadsData;
 import gedi.core.data.reads.ContrastMapping;
 import gedi.core.data.reads.DefaultAlignedReadsData;
+import gedi.core.data.reads.ReadCountMode;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
@@ -92,7 +93,9 @@ public class AlignedReadsDataMergeMapper implements GenomicRegionDataMapper<Muta
 		Class<ImmutableReferenceGenomicRegion<AlignedReadsData>> cls = (Class)ImmutableReferenceGenomicRegion.class;
 		for (ImmutableReferenceGenomicRegion<AlignedReadsData>[] a : FunctorUtils.parallellIterator(its, comp, cls).loop()) {
 			ImmutableReferenceGenomicRegion<DefaultAlignedReadsData> r = merger.merge(a);
-			re.put(r.getRegion(), new ConditionMappedAlignedReadsData(r.getData(), contrast));
+			ConditionMappedAlignedReadsData mdata = new ConditionMappedAlignedReadsData(r.getData(), contrast);
+			if (mdata.getTotalCountOverall(ReadCountMode.All)>0)
+				re.put(r.getRegion(), mdata);
 		}
 			
 		

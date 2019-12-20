@@ -21,6 +21,7 @@ import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
 import gedi.core.region.feature.features.AbstractFeature;
 import gedi.riboseq.inference.orf.Orf;
+import gedi.riboseq.inference.orf.PriceOrf;
 
 import java.util.Set;
 
@@ -35,8 +36,8 @@ public class OrfTypeFeature extends AbstractFeature<String> {
 
 	@Override
 	protected void accept_internal(Set<String> values) {
-		Orf orf = (Orf) referenceRegion.getData();
-		values.add(orf.getOrfType().name());
+		PriceOrf orf = (PriceOrf) referenceRegion.getData();
+		values.add(orf.getType().name());
 	}
 
 	@Override

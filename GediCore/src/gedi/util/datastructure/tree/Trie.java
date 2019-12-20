@@ -18,14 +18,25 @@
 package gedi.util.datastructure.tree;
 
 
+import gedi.util.StringUtils;
+import gedi.util.datastructure.charsequence.CharDag;
+import gedi.util.datastructure.charsequence.CharDag.CharDagVisitor;
+import gedi.util.datastructure.charsequence.CharDag.PosLengthVariant;
+import gedi.util.datastructure.charsequence.CharDag.SequenceVariant;
+import gedi.util.datastructure.charsequence.CharIterator;
+import gedi.util.datastructure.charsequence.CharRingBuffer;
+import gedi.util.datastructure.collections.intcollections.IntArrayList;
+import gedi.util.datastructure.tree.BinaryTrie.AhoCorasickResult;
 import gedi.util.datastructure.tree.BinaryTrie.Node;
 import gedi.util.datastructure.tree.redblacktree.Interval;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.userInteraction.progress.Progress;
 
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,6 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.function.Consumer;
+import java.util.function.IntUnaryOperator;
 
 
 public class Trie<T> implements Map<String,T> {
@@ -62,7 +75,12 @@ public class Trie<T> implements Map<String,T> {
 		char c;
 		Object value;
 		
-		public Node(Node sibling, char c) {
+		Node suffixLink;
+		int nodeLevel;
+		Node additionalResult;
+		
+		public Node(int nodeLevel,Node sibling, char c) {
+			this.nodeLevel = nodeLevel;
 			this.sibling = sibling;
 			this.c = c;
 		}
@@ -76,7 +94,7 @@ public class Trie<T> implements Map<String,T> {
 		}
 
 		public Node addChild(char c) {
-			child = new Node(child,c);
+			child = new Node(nodeLevel+1,child,c);
 			return child;
 		}
 		
@@ -96,13 +114,13 @@ public class Trie<T> implements Map<String,T> {
 	}
 	
 	
-	private Node root = new Node(null,'\0');
+	private Node root = new Node(0,null,'\0');
 	private int size = 0;
 	private Object nullValue = new Object();
 	
 	@Override
 	public T put(String key, T value) {
-		suffixLinks = null;
+		ahoCorasickDirty = true;
 		Node n = root;
 		int i = 0;
 		for (Node t = n; t!=null && i<key.length(); ) {
@@ -141,7 +159,7 @@ public class Trie<T> implements Map<String,T> {
 	
 	@Override
 	public void clear() {
-		suffixLinks = null;
+		ahoCorasickDirty = true;
 		root.clear();
 		size=0;
 	}
@@ -196,8 +214,8 @@ public class Trie<T> implements Map<String,T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public T get(Object key) {
-		if (key instanceof String) {
-			String s = (String) key;
+		if (key instanceof CharSequence) {
+			CharSequence s = (CharSequence) key;
 			Node n = root;
 			int i = 0;
 			for (Node t = n; t!=null && i<s.length(); ) {
@@ -211,6 +229,19 @@ public class Trie<T> implements Map<String,T> {
 				return n.value==nullValue?null:(T) n.value;
 			return null;
 		}
+		if (key instanceof CharIterator) {
+			CharIterator s = (CharIterator) key;
+			Node n = root;
+			for (Node t = n; t!=null && s.hasNext(); ) {
+				t = n.findChild(s.nextChar());
+				if (t!=null) {
+					n = t;
+				}
+			}
+			if (!s.hasNext())
+				return n.value==nullValue?null:(T) n.value;
+			return null;
+		}	
 		return null;
 	}
 	
@@ -256,6 +287,9 @@ public class Trie<T> implements Map<String,T> {
 		}
 		if (i<s.length())
 			return re;
+		
+		if (n!=null && n.value!=null)
+			re.add(key);
 		
 		if (n!=null && n.child!=null) {
 			KeyIterator it = new KeyIterator(key,n);
@@ -353,7 +387,7 @@ public class Trie<T> implements Map<String,T> {
 				}
 				
 				size--;
-				suffixLinks = null;
+				ahoCorasickDirty = true;
 				return re;
 			}
 				
@@ -662,7 +696,8 @@ public class Trie<T> implements Map<String,T> {
 			if (start.value!=null) 
 				cur = start.value==nullValue?null:(T) start.value;
 			list = new NodeList(null,start.child);
-			sb.append(start.child.c);
+			if (start.child!=null)
+				sb.append(start.child.c);
 		}
 		
 		@Override
@@ -683,6 +718,7 @@ public class Trie<T> implements Map<String,T> {
 		@SuppressWarnings("unchecked")
 		private void lookAhead() {
 			if (cur==null) {
+				if (list.node==null)return; // happens only if trie is empty
 				do {
 					if (list.node.child!=null) {
 						list = new NodeList(list,list.node.child);
@@ -713,58 +749,60 @@ public class Trie<T> implements Map<String,T> {
 	}
 	
 	// Aho Corasick stuff
+	private boolean ahoCorasickDirty = false;
 	
-	private transient HashMap<Node,Node> suffixLinks;
-	private transient HashMap<Node,Integer> nodeLevel;
-	private transient HashMap<Node,LinkedList<Node>> additionalResults;
 	public synchronized void prepareAhoCorasick() {
-		if (suffixLinks!=null) return;
-		suffixLinks = new HashMap<Node, Node>();
-		nodeLevel = new HashMap<Trie.Node, Integer>();
-		additionalResults = new HashMap<Node, LinkedList<Node>>();
+		prepareAhoCorasick(null);
+	}
+	public synchronized void prepareAhoCorasick(Progress progress) {
+		if (!ahoCorasickDirty) return;
+		
+		if (progress!=null) 
+			progress.init().setCount(getNodeCount()).setDescription("Preparing Aho-Corasick");
+		
+		
 		LinkedList<Node> q  = new LinkedList<Node>();
-		nodeLevel.put(root, 0);
+		root.nodeLevel = 0;
+		root.suffixLink = root;
+		if (progress!=null) 
+			progress.incrementProgress();
+		
 		for (Node ch=root.child; ch!=null; ch=ch.sibling) {
-			suffixLinks.put(ch, root);
+			ch.suffixLink = root;
 			q.add(ch);
-			nodeLevel.put(ch, 1);
+			if (progress!=null) 
+				progress.incrementProgress();
 		}
 		while (!q.isEmpty()) {
 			Node r = q.removeFirst();
-			int rlevel = nodeLevel.get(r);
 			for (Node ch=r.child; ch!=null; ch=ch.sibling) {
-				nodeLevel.put(ch, rlevel+1);
 				q.add(ch);
-				Node v = acFailure(r);
+				Node v = r.suffixLink;
 				while (acGoto(v, ch.c)==null)
-					v = acFailure(v);
-				suffixLinks.put(ch, acGoto(v, ch.c));
-				LinkedList<Node> ar = additionalResults.get(ch);
-				if (ar==null) additionalResults.put(ch, ar=new LinkedList<Node>());
-				acOut(acFailure(ch), ar);
+					v = v.suffixLink;
+				ch.suffixLink = acGoto(v, ch.c);
+				
+				for (Node testSl = ch.suffixLink; testSl!=root; testSl = testSl.suffixLink)
+					if (testSl.value!=null) {
+						ch.additionalResult = testSl;
+						break;
+					}
+				if (progress!=null) 
+					progress.incrementProgress();
 			}	
 		}
-		Iterator<Node> it2 = additionalResults.keySet().iterator();
-		while (it2.hasNext()) 
-			if (additionalResults.get(it2.next()).size()==0)
-				it2.remove();
+		
+		if (progress!=null) 
+			progress.finish();
+		
+		ahoCorasickDirty = false;
+		
 	}
 	
 	private Node acGoto(Node q, char a) {
 		Node re = q.findChild(a);
 		if (re==null && q==root) return root;
 		return re;
-	}
-	
-	private Node acFailure(Node q) {
-		if (q==root) return root;
-		return suffixLinks.get(q);
-	}
-	
-	private void acOut(Node q, List<Node> l) {
-		if (q.value!=null) l.add(q);
-		if (additionalResults.containsKey(q))
-			l.addAll(additionalResults.get(q));
 	}
 	
 	
@@ -804,18 +842,23 @@ public class Trie<T> implements Map<String,T> {
 				Node n = values.removeFirst();
 				AhoCorasickResult<T> re = reUse?one:new AhoCorasickResult<T>();
 				re.end = index;
-				re.start = index-nodeLevel.get(n);
+				re.start = index-n.nodeLevel;
 				re.object = (T)n.value;
-				re.text = text;
+				re.key = text.subSequence(re.start, re.end);
 				return re;
 			}
 			
 			private void lookAhead() {
 				for (; values.size()==0 && index<text.length(); index++) {
-					while (acGoto(q, text.charAt(index))==null)
-						q = acFailure(q);
-					q = acGoto(q, text.charAt(index));
-					acOut(q, values);
+					char c = text.charAt(index);
+					Node nq;
+					while ((nq=acGoto(q, c))==null)
+						q = q.suffixLink;
+					q = nq;
+					if (nq.value!=null)
+						values.add(nq);
+					for (nq = nq.additionalResult; nq!=null; nq = nq.additionalResult)
+						values.add(nq);
 				}
 			}
 			
@@ -824,8 +867,334 @@ public class Trie<T> implements Map<String,T> {
 	
 	
 	
+	
+
+	public <C extends Collection<AhoCorasickResult<T>>> C ahoCorasick(CharIterator text, C re) {
+		Iterator<AhoCorasickResult<T>> it = iterateAhoCorasick(text, false);
+		while (it.hasNext())
+			re.add(it.next());
+		return re;
+	}
+	
+	public ArrayList<AhoCorasickResult<T>> ahoCorasick(CharIterator text) {
+		return ahoCorasick(text, new ArrayList<AhoCorasickResult<T>>());
+	}
+	
+	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final CharIterator text) {
+		return iterateAhoCorasick(text, false);
+	}
+	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final CharIterator text, final boolean reUse) {
+		if (text==null) return EI.empty();
+		
+		prepareAhoCorasick();
+		final AhoCorasickResult<T> one = reUse?new AhoCorasickResult<T>():null;
+		return new ExtendedIterator<AhoCorasickResult<T>>() {
+			Node q = root;
+			int index = 0;
+			LinkedList<Node> values = new LinkedList<Node>(); 
+			CharRingBuffer buff = new CharRingBuffer(1024);
+
+			@Override
+			public boolean hasNext() {
+				lookAhead();
+				return !values.isEmpty();
+			}
+
+			@Override
+			public AhoCorasickResult<T> next() {
+				lookAhead();
+				Node n = values.removeFirst();
+				AhoCorasickResult<T> re = reUse?one:new AhoCorasickResult<T>();
+				re.end = index;
+				re.start = index-n.nodeLevel;
+				re.object = (T)n.value;
+				re.key = buff.getLast(n.nodeLevel);
+				return re;
+			}
+			
+			private void lookAhead() {
+				for (; values.size()==0 && text.hasNext(); index++) {
+					char c = text.nextChar();
+					if (buff.capacity()<q.nodeLevel)
+						buff.resize(buff.capacity()*2);
+					buff.add(c);
+					Node nq;
+					while ((nq=acGoto(q, c))==null)
+						q = q.suffixLink;
+					q = nq;
+					if (nq.value!=null)
+						values.add(nq);
+					for (nq = nq.additionalResult; nq!=null; nq = nq.additionalResult)
+						values.add(nq);
+				}
+			}
+			
+		};
+	}
+	
+	
+	
+
+//	public <C extends Collection<AhoCorasickResult<T>>> C ahoCorasick(AlternativesCharIterator text, C re) {
+//		Iterator<AhoCorasickResult<T>> it = iterateAhoCorasick(text, false);
+//		while (it.hasNext())
+//			re.add(it.next());
+//		return re;
+//	}
+//	
+//	public ArrayList<AhoCorasickResult<T>> ahoCorasick(AlternativesCharIterator text) {
+//		return ahoCorasick(text, new ArrayList<AhoCorasickResult<T>>());
+//	}
+//	
+//	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final AlternativesCharIterator text) {
+//		return iterateAhoCorasick(text, false);
+//	}
+//	public ExtendedIterator<AhoCorasickResult<T>> iterateAhoCorasick(final AlternativesCharIterator text, final boolean reUse) {
+//		if (text==null) return EI.empty();
+//		
+//		prepareAhoCorasick();
+//		final AhoCorasickResult<T> one = reUse?new AhoCorasickResult<T>():null;
+//		return new ExtendedIterator<AhoCorasickResult<T>>() {
+//			ArrayList<NodeCharRingBuffer> ql = new ArrayList<>(Arrays.asList(new NodeCharRingBuffer(1024,root)));
+//			HashSet<NodeCharRingBuffer> qs = new HashSet<>();
+//			int index = 0;
+//			LinkedList<AhoCorasickResult<T>> values = new LinkedList<AhoCorasickResult<T>>(); 
+//
+//			@Override
+//			public boolean hasNext() {
+//				lookAhead();
+//				return !values.isEmpty();
+//			}
+//
+//			@Override
+//			public AhoCorasickResult<T> next() {
+//				lookAhead();
+//				return  values.removeFirst();
+//			}
+//			
+//			private AhoCorasickResult<T> createRes(NodeCharRingBuffer n) {
+//				AhoCorasickResult<T> re = reUse?one:new AhoCorasickResult<T>();
+//				re.end = index+1;
+//				re.start = n.correct(index+1-n.n.nodeLevel);
+//				re.object = (T)n.n.value;
+//				re.key = n.getLast(n.n.nodeLevel);
+//				return re;
+//			}
+//			
+//			private void lookAhead() {
+//				for (int n; values.size()==0 && (n=text.next())>0; index++) {
+//					for (int qi=0; qi<ql.size(); qi++) {
+//						NodeCharRingBuffer q = ql.get(qi);
+//						for (int ni=n-1; ni>=0; ni--) 
+//							qs.add(advance(ni==0?q:q.clone(),ni));
+//					}
+//					ql.clear();
+//					ql.addAll(qs);
+//					qs.clear();
+//				}
+//			}
+//			
+//
+//			private NodeCharRingBuffer advance(NodeCharRingBuffer q, int ni) {
+//				char[] cl = text.fill(ni);
+//				if (cl.length!=1)
+//					q.shift(index,cl.length-1);
+//				
+//				for (int ci=0; ci<cl.length; ci++) {
+//					char c = cl[ci];
+//					if (q.capacity()<q.n.nodeLevel)
+//						q.resize(q.capacity()*2);
+//					q.add(c);
+//					Node nq;
+//					while ((nq=acGoto(q.n, c))==null)
+//						q.n = q.n.suffixLink;
+//					Node re = nq;
+//					if (nq.value!=null)
+//						values.add(createRes(q.set(nq)));
+//					for (nq = nq.additionalResult; nq!=null; nq = nq.additionalResult)
+//						values.add(createRes(q.set(nq)));
+//					q.set(re);
+//				}
+//				q.prune(index-q.n.nodeLevel);
+//				return q;
+//			}
+//			
+//		};
+//	}
+	
+	public CharDagVisitor<AhoCorasickResult<T>> ahoCorasickVisitor() {
+		return ahoCorasickVisitor(null);
+	}
+	
+	public CharDagVisitor<AhoCorasickResult<T>> ahoCorasickVisitor(IntUnaryOperator lengthCorrection) {
+		prepareAhoCorasick();
+		return new AhoCorasickCharDagVisitor(lengthCorrection);
+	}
+	
+	private class AhoCorasickCharDagVisitor implements CharDagVisitor<AhoCorasickResult<T>> {
+		private NodeCharRingBuffer q;
+		private IntUnaryOperator lengthCorrection;
+		
+		public AhoCorasickCharDagVisitor(IntUnaryOperator lengthCorrection) {
+			q = new NodeCharRingBuffer(1024,root);
+			this.lengthCorrection = lengthCorrection==null?i->i:lengthCorrection;
+		}
+
+		public AhoCorasickCharDagVisitor(AhoCorasickCharDagVisitor p,IntUnaryOperator lengthCorrection) {
+			this.lengthCorrection = lengthCorrection;
+			this.q = p.q.clone();
+		}
+
+		
+		@Override
+		public String toString() {
+			return q.getLast(q.n.nodeLevel).toString()+" s"+StringUtils.toString(q.correction);
+		}
+
+		@Override
+		public void shift(int pos, int shift, SequenceVariant variant) {
+			q.shift(pos, shift,variant);
+		}
+		
+		@Override
+		public void prune(int pos) {
+			q.prune(pos-lengthCorrection.applyAsInt(q.n.nodeLevel));
+		}
+
+		@Override
+		public int compareTo(CharDagVisitor<AhoCorasickResult<T>> obj) {
+			AhoCorasickCharDagVisitor o = (AhoCorasickCharDagVisitor)obj;
+			int re = Integer.compare(System.identityHashCode(this.q.n), System.identityHashCode(o.q.n));
+			if (re==0) {
+				int len1 = this.q.correction.size();
+		        int len2 = o.q.correction.size();
+		        Iterator<PosLengthVariant> tid = this.q.correction.iterator();
+		        Iterator<PosLengthVariant> oit = o.q.correction.iterator();
+		        while (tid.hasNext() & oit.hasNext()) {
+		            PosLengthVariant c1 = tid.next();
+		            PosLengthVariant c2 = oit.next();
+		            re = c1.compareTo(c2);
+		            if (re!=0) {
+		                return re;
+		            }
+		        }
+		        re = len1 - len2;
+			}
+			return re;
+		}
+		
+		private AhoCorasickResult<T> createRes(NodeCharRingBuffer n, int pos) {
+			AhoCorasickResult<T> re = new AhoCorasickResult<T>();
+			re.end = pos+1;
+			int s = q.correct(pos+1-lengthCorrection.applyAsInt(n.n.nodeLevel));
+			int l = re.end-s;
+//			l = lengthCorrection.applyAsInt(l);
+			re.start = re.end-l;
+			re.object = (T)n.n.value;
+			re.key = n.getLast(n.n.nodeLevel);
+			return re;
+		}
+		
+
+		@Override
+		public Iterator<AhoCorasickResult<T>> accept(char c, int pos) {
+			if (q.capacity()<q.n.nodeLevel)
+				q.resize(q.capacity()*2);
+			q.add(c);
+			Node nq;
+			while ((nq=acGoto(q.n, c))==null)
+				q.n = q.n.suffixLink;
+			Node re = nq;
+			ArrayList<AhoCorasickResult<T>> values = new ArrayList<AhoCorasickResult<T>>(); 
+			if (nq.value!=null)
+				values.add(createRes(q.set(nq),pos));
+			for (nq = nq.additionalResult; nq!=null; nq = nq.additionalResult)
+				values.add(createRes(q.set(nq),pos));
+			q.set(re);
+			
+			return EI.wrap(values);
+		}
+
+		@Override
+		public CharDagVisitor<AhoCorasickResult<T>> branch() {
+			AhoCorasickCharDagVisitor re = new AhoCorasickCharDagVisitor(this, lengthCorrection);
+			return re;
+		}
+		
+		@Override
+		public Iterator<SequenceVariant> getVariants() {
+			return EI.wrap(q.correction).map(plv->plv.getVariant());
+		}
+		
+	}
+	
+	static class NodeCharRingBuffer extends CharRingBuffer {
+		private Node n;
+		private LinkedList<CharDag.PosLengthVariant> correction = new LinkedList<CharDag.PosLengthVariant>();
+		
+		public NodeCharRingBuffer(int len, Node n) {
+			super(len);
+			this.n = n;
+		}
+		
+		public void shift(int pos, int shift,SequenceVariant variant) {
+			if (correction.size()>0 && correction.getLast().getPos()==pos) {
+				correction.getLast().incrementLen(shift);
+			} else
+				correction.add(new CharDag.PosLengthVariant(pos,shift,variant));
+		}
+		
+		public void prune(int maxStart) {
+			Iterator<CharDag.PosLengthVariant> it = correction.iterator();
+			while (it.hasNext() && it.next().getPos()<=maxStart) {
+				it.remove();
+			}
+		}
+		
+		public int correct(int start) {
+			int re = start;
+			Iterator<CharDag.PosLengthVariant> it = correction.descendingIterator();
+			while (it.hasNext()) {
+				CharDag.PosLengthVariant n = it.next();
+				if (n.getPos()>=start)
+					re+=n.getLen();
+			}
+			return re;
+		}
+
+		public NodeCharRingBuffer set(Node n) {
+			this.n = n;
+			return this;
+		}
+		
+		public NodeCharRingBuffer clone() {
+			NodeCharRingBuffer re = new NodeCharRingBuffer(b.length,n);
+			System.arraycopy(b, 0, re.b, 0, b.length);
+			re.next = next;
+			re.n = n;
+			re.correction.addAll(correction);
+			return re;
+		}
+		
+		@Override
+		public int hashCode() {
+			return n.hashCode();
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if (!(obj instanceof NodeCharRingBuffer))
+				return false;
+			NodeCharRingBuffer o = (NodeCharRingBuffer)obj;
+			if(o.n!=n) 
+				return false;
+			return o.getLast(n.nodeLevel).equals(getLast(n.nodeLevel));
+		}
+		
+	}
+	
 	public static class AhoCorasickResult<T> implements Interval {
-		CharSequence text;
+		CharSequence key;
 		int start;
 		int end;
 		T object;
@@ -834,21 +1203,21 @@ public class Trie<T> implements Map<String,T> {
 			this.start = ori.start;
 			this.end =ori.end;
 			this.object = ori.object;
-			this.text = text;
+			this.key = ori.key;
 		}
 		
 		public int getEnd() {
 			return end;
 		}
 		public CharSequence getKey() {
-			return text.subSequence(start, end);
+			return key;
 		}
 		public T getValue() {
 			return object;
 		}
 		@Override
 		public String toString() {
-			return object+"@"+start+"-"+end;
+			return key+"->"+object+"@"+start+"-"+end;
 		}
 		public int getStart() {
 			return start;

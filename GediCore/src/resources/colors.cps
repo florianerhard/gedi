@@ -1,9 +1,9 @@
 .basecolors {
 	"styles": [
-			{ "name": "A", "fill": "#FF8888"},
-			{ "name": "C", "fill": "#88FF88"},
-			{ "name": "G", "fill": "#8888FF"},
-			{ "name": "T", "fill": "#FFDD88"}
+			{ "name": "A", "fill": "#ff6666"},
+			{ "name": "C", "fill": "#66ff66"},
+			{ "name": "G", "fill": "#66beff"},
+			{ "name": "T", "fill": "#ffb366"}
 		]
 }
 
@@ -141,6 +141,16 @@
 			{ "name": "M", "color": "#FFFFC0"},
 			{ "name": "R", "color": "red"},
 			{ "name": "K", "color": "red"},
+		{"name": "Frame0", "color": "#ffa940"},
+		{"name": "Frame1", "color": "#3d89de"},
+		{"name": "Frame2", "color": "#228653"}
+	]
+}
+
+.aminosimple {
+	"styles": [
+			{ "name": "*", "color": "black"},
+			{ "name": "M", "color": "#FFFFC0"},
 		{"name": "Frame0", "color": "#ffa940"},
 		{"name": "Frame1", "color": "#3d89de"},
 		{"name": "Frame2", "color": "#228653"}

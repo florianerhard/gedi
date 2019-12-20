@@ -66,15 +66,25 @@ public class FastaIndexFile extends LineOrientedFile {
 		this.ff = ff;
 		index = new HashMap<String, FastaIndexFile.FastaIndexEntry>();
 		long L = fastaFile.size();
+		
+		if (L==0) throw new IOException("Fasta file is empty: "+ff.getPath());
 
 		ArrayList<String> order = new ArrayList<String>();
-		fastaFile.get();
+		if(fastaFile.get()!='>') throw new IOException("Fasta file does not start with >: "+ff.getPath());
+		
 		while (fastaFile.position()<L) {
-			String id = headerParser.getId(">"+fastaFile.readLine());
+			String header = fastaFile.readLine();
+			if (header==null) header="";
+			String id = headerParser.getId(">"+header);
 			long start = fastaFile.position();
-			int lineWidth = fastaFile.readLine().length();
+			if (start==L) throw new IOException("Invalid entry in fasta file: "+id);
+			
+			String line = fastaFile.readLine();
+			if (line==null) throw new IOException("Empty sequence: "+id);
+			int lineWidth = line.length();
 			long end = start;
 			int first = fastaFile.position()<L?fastaFile.get():0;
+			if (fastaFile.position()==L) throw new IOException("Your fasta file appears to be truncated: "+ff.getPath());
 			while (fastaFile.position()<L && first!='>') {
 				if (first=='>') break;
 				if (first=='\n'||first=='\r') {
@@ -118,9 +128,11 @@ public class FastaIndexFile extends LineOrientedFile {
 
 
 	private int skipLine(PageFile fastaFile) throws IOException {
+		long L = fastaFile.size();
 		boolean eol = false;
 		int l = 0;
 		while (!eol) {
+			if (fastaFile.position()==L) throw new IOException("Your fasta file appears to be truncated: "+ff.getPath());
 			int r = fastaFile.get();
 			switch (r) {
 			case -1:

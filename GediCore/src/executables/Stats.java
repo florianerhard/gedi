@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import gedi.app.Gedi;
@@ -44,7 +45,9 @@ import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.ParseUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.dataframe.DataFrame;
+import gedi.util.datastructure.tree.Trie;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.io.text.LineOrientedFile;
@@ -92,6 +95,7 @@ public class Stats {
 		System.err.println(" -count\t\t\tOnly count reads; implies ignoreReadVariations!");
 		System.err.println(" -interactive\t\t\tDisplay all plots progressively in a graphical window");
 		System.err.println(" -noplots\t\t\tDo not generate any plots!");
+		System.err.println(" -test\t\t\tOnly the first 100k reads!");
 		System.err.println(" -prefix <prefix>\t\t\tPrefix for output files (default: report/<filename>.)");
 		System.err.println(" -out [<oml>]\t\tWrite current pipeline to oml file (and do not process storage)");
 		System.err.println("");
@@ -164,9 +168,11 @@ public class Stats {
 		boolean ignoreVariations = false;
 		boolean count = false;
 		boolean noplots = false;
+		boolean mergeCond = false;
 		Downsampling downsampling  = Downsampling.values()[0];
 		ReadCountMode mode = ReadCountMode.Weight;
 		String loc = null;
+		int test = 0;
 		
 		for (int i=0; i<args.length; i++) {
 			
@@ -232,6 +238,13 @@ public class Stats {
 			}
 			else if (args[i].equals("-noplots")) {
 				noplots = true;
+			}
+			else if (args[i].equals("-mergeCond")) {
+				mergeCond = true;
+				te.set("labels", new String[] {"Merged"});
+			}
+			else if (args[i].equals("-test")) {
+				test = checkIntParam(args, ++i);
 			}
 			else if (args[i].equals("-downsampling")) {
 				downsampling = ParseUtils.parseEnumNameByPrefix(checkParam(args,++i),true,Downsampling.class);
@@ -329,14 +342,21 @@ public class Stats {
 					.castFiltered(FeatureStatisticOutput.class)
 					.forEachRemaining(f->f.getPlots().clear());
 		}
+		int utest = test;
 		
+		
+		Trie<Integer> condIndex = EI.wrap(storage.getMetaDataConditions()).indexPosition(new Trie<Integer>(),t->t);
 		if (storage.getRandomRecord() instanceof AlignedReadsData) {
 			log.info("Using read mode: "+mode);
 			GenomicRegionStorage<? extends AlignedReadsData> s = (GenomicRegionStorage<? extends AlignedReadsData>) storage;
 			GenomicRegionFeatureProgram<? extends AlignedReadsData> p = program;
 			Downsampling udownsampling = downsampling;
 			ReadCountMode umode = ignoreVariations?ReadCountMode.Weight:mode;
-			p.setDataToCounts((ard,b)->udownsampling.downsample(ard.getCountsForDistinct(b, 0, umode)));
+			
+			if (mergeCond)
+				p.setDataToCounts((ard,b)->NumericArray.wrap(ard.getTotalCountOverall(umode)));
+			else
+				p.setDataToCounts((ard,b)->udownsampling.downsample(ard.getCountsForDistinct(b, 0, umode)));
 			
 			program.begin();
 			progress.init();
@@ -344,12 +364,12 @@ public class Stats {
 			
 			MutableReferenceGenomicRegion<AlignedReadsData> mut = new MutableReferenceGenomicRegion<AlignedReadsData>();
 			if (ignoreVariations)
-				for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).loop()) {
+				for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).iff(utest!=0, ei->ei.head(utest)).loop()) {
 					program.accept(mut.set(r.getReference(),r.getRegion(),new IgnoreVariationsAlignedReadsData(r.getData(),mode)));
 					progress.incrementProgress();
 				}
 			else
-				for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).loop()) {
+				for (ImmutableReferenceGenomicRegion<? extends AlignedReadsData> r : s.ei(loc).iff(utest!=0, ei->ei.head(utest)).loop()) {
 					for (int d=0; d<r.getData().getDistinctSequences(); d++) {
 						program.accept(mut.set(r.getReference(),r.getRegion(),new SelectDistinctSequenceAlignedReadsData(r.getData(),d)));
 					}
@@ -379,7 +399,7 @@ public class Stats {
 			program.begin();
 			progress.init();
 			progress.setCount((int) storage.size());
-			storage.ei(loc).progress(progress, (int)storage.size(), r->r.toLocationStringRemovedIntrons()).forEachRemaining(program);
+			storage.ei(loc).iff(utest!=0, ei->ei.head(utest)).progress(progress, (int)storage.size(), r->r.toLocationStringRemovedIntrons()).forEachRemaining(program);
 			progress.finish();
 			program.end();
 		}
@@ -402,7 +422,7 @@ public class Stats {
 							StringUtils.removeHeader(f.getTitle(),storage.getName()+"."), 
 							f.getDescription(),
 							new File(f.getImageFile()).getName(),
-							findSecondaryPlots(new File(f.getImageFile())),
+							findSecondaryPlots(new File(f.getImageFile()), condIndex),
 							new File(f.getScriptFile()).getName(),
 							new File(f.getCsvFile()).getName()
 							)
@@ -430,12 +450,19 @@ public class Stats {
 		}
 	}
 	
-	private static SecondaryPlot[] findSecondaryPlots(File main) {
+	private static SecondaryPlot[] findSecondaryPlots(File main, Map<String, Integer> condIndex) {
 		String pref = FileUtils.getNameWithoutExtension(main)+".";
 		String ext = "."+FileUtils.getExtension(main);
 		try {
 			SecondaryPlot[] re = EI.fileNames(main.getParent())
 					.filter(f->f.startsWith(pref) && f.endsWith(ext) && !f.equals(main.getName()))
+					.sort((a,b)->{
+						a=a.substring(pref.length(), a.length()-ext.length());
+						b=b.substring(pref.length(), b.length()-ext.length());
+						if (!condIndex.containsKey(a) || !condIndex.containsKey(b)) 
+							return 0;
+						return Integer.compare(condIndex.get(a), condIndex.get(b));
+					})
 					.map(f->new SecondaryPlot(f.substring(pref.length(),f.length()-ext.length()), f))
 					.toArray(SecondaryPlot.class);
 			if (re.length==0) return null;

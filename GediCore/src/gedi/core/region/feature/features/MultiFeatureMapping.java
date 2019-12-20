@@ -20,20 +20,28 @@ package gedi.core.region.feature.features;
 import gedi.core.region.feature.GenomicRegionFeature;
 import gedi.core.region.feature.GenomicRegionFeatureDescription;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
+import gedi.util.functions.EI;
+import gedi.util.functions.ExtendedIterator;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 
 @GenomicRegionFeatureDescription(fromType=String.class,toType=Void.class)
 public class MultiFeatureMapping extends AbstractFeature<Void> {
 
 	private ArrayList<Predicate<Set<String>>[]> predicates = new ArrayList<Predicate<Set<String>>[]>();
-	private ArrayList<Consumer<Set<String>>[]> actions = new ArrayList<Consumer<Set<String>>[]>();
+	private ArrayList<BiConsumer<MultiFeatureMapping,Set<Object>>[]> actions = new ArrayList<BiConsumer<MultiFeatureMapping,Set<Object>>[]>();
 
+	private boolean applyAll = false;
+	
 	/**
 	 * from Syntax:
 	 * Example: ['Human'],['rRNA'],[*]
@@ -55,23 +63,32 @@ public class MultiFeatureMapping extends AbstractFeature<Void> {
 //		String[] t = StringUtils.splitAtUnquoted(to, ',');	
 	
 		Predicate<Set<String>>[] p = GenomicRegionFeature.parseSetConditions(from);
-		Consumer<Set<String>>[] a = new Consumer[t.length];
+		BiConsumer<MultiFeatureMapping,Set<Object>>[] a = new BiConsumer[t.length];
 		
-				
 		
 		
 		for (int i=0; i<t.length; i++) {
 			if (!t[i].startsWith("[") || !t[i].endsWith("]")) throw new RuntimeException("Entries must be enclosed in []");
 			String ff = t[i].substring(1, t[i].length()-1).trim();
 			if (ff.equals("*")) {
-				a[i] = s->{};
-			} else {
-				HashSet<String> ts = new HashSet<String>();
+				a[i] = (f,s)->{};
+			}
+			else {
+				
+				HashSet<Function<MultiFeatureMapping,ExtendedIterator<Object>>> ts = new HashSet<>();
+				
 				for (String e : MaskedCharSequence.maskQuotes(ff, ' ').splitAndUnmask(';') ) {//StringUtils.splitAtUnquoted(ff,';')) {
-					if (!e.startsWith("'") || !e.endsWith("'")) throw new RuntimeException("Entries must be quoted!");
-					ts.add(e.substring(1, e.length()-1));
+					if (!e.startsWith("'") || !e.endsWith("'")) {
+						ts.add((f)->EI.wrap(f.getInput(e)));
+					} else {
+						ts.add((f)->EI.singleton(e.substring(1, e.length()-1)));
+					}
 				}
-				a[i] = s->{s.clear(); s.addAll(ts);};
+				a[i] = (f,s)->{
+						s.clear(); 
+						for (Function<MultiFeatureMapping,ExtendedIterator<Object>> tss : ts) 
+							tss.apply(f).toCollection(s);
+						};
 			}
 			 
 		}
@@ -87,7 +104,12 @@ public class MultiFeatureMapping extends AbstractFeature<Void> {
 		re.copyProperties(this);
 		re.predicates = predicates;
 		re.actions = actions;
+		re.applyAll = applyAll;
 		return re;
+	}
+	
+	public void setApplyAll() {
+		this.applyAll = true;
 	}
 	
 	
@@ -103,9 +125,11 @@ public class MultiFeatureMapping extends AbstractFeature<Void> {
 				}
 			
 			if (allmatch) {
-				Consumer<Set<String>>[] a = actions.get(i);
+				BiConsumer<MultiFeatureMapping,Set<Object>>[] a = actions.get(i);
 				for (int j=0; j<a.length; j++)
-					a[j].accept(getInput(j));
+					a[j].accept(this,getInput(j));
+				if (!applyAll)
+					return;
 			}
 		}
 		

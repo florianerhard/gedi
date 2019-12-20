@@ -129,6 +129,8 @@ public class FastqFilter {
 		int len = 18;
 		String ld = null;
 		ArrayGenomicRegion extract = null;
+		int[] umi = null;
+		
 		
 		int i;
 		for (i=0; i<args.length; i++) {
@@ -145,6 +147,16 @@ public class FastqFilter {
 			}
 			else if (args[i].equals("-smartseq")) {
 				smartseq = true;
+			}
+			else if (args[i].equals("-umi")) {
+				try {
+					umi = ArrayUtils.parseIntArray(checkParam(args, ++i),',');
+					if (umi.length==1) umi = new int[] {umi[0],0,umi[0],0};
+					else if (umi.length==2) umi = new int[] {umi[0],umi[1],umi[0],umi[1]};
+					else if (umi.length!=4) throw new RuntimeException();
+				} catch (Throwable t) {
+					throw new UsageException("umi format: umi-length[,spacer-length[,umi-read2-length,spacer-read2-length][");
+				}
 			}
 			else if (args[i].equals("-extract")) {
 				extract = GenomicRegion.parse(checkParam(args, ++i));
@@ -186,7 +198,8 @@ public class FastqFilter {
 		int n = 0;
 		LineIterator it = new LineOrientedFile(inp).lineIterator();
 		if (inp2==null) {
-			
+			if (umi!=null) 
+				len = len+umi[0]+umi[1];
 			while (it.hasNext()) {
 				it.next();
 				String seq = it.next();
@@ -204,17 +217,28 @@ public class FastqFilter {
 					seq = seq.substring(trim, seq.length()-pa);
 					q = q.substring(trim, q.length()-pa);
 				}
-				histo.add(seq.length());
 				if (seq.length()>=len) {
-					out1.writeLine("@"+n++);
+					out1.write("@");
+					out1.write(n+++"");
+					if (umi!=null) {
+						out1.write("#");
+						out1.write(seq.substring(0,umi[0]));
+						seq=seq.substring(umi[0]+umi[1]);
+						q=q.substring(umi[0]+umi[1]);
+					}
+					out1.writeLine();
 					out1.writeLine(seq);
 					out1.writeLine("+");
 					out1.writeLine(q);
 				}
+				histo.add(seq.length());
 			}
 			out1.close();
 		}
 		else {
+			char[] aumi = umi!=null?new char[1+umi[0]+umi[2]]:new char[1];
+			aumi[0]='#';
+			
 			LineIterator it2 = new LineOrientedFile(inp2).lineIterator();
 			while (it.hasNext() && it2.hasNext()) {
 				it.next();					it2.next();
@@ -233,11 +257,28 @@ public class FastqFilter {
 					seq2 = SequenceUtils.extractSequence(extract, seq2);
 				}
 				if (seq1.length()+seq2.length()>=len) {
-					out1.writeLine("@"+n);
+					
+					if (umi!=null) {
+						seq1.getChars(0, umi[0], aumi, 1);
+						seq2.getChars(0, umi[3], aumi, 1+umi[0]);
+						seq1=seq1.substring(umi[0]+umi[1]);
+						q1=q1.substring(umi[0]+umi[1]);
+						seq2=seq2.substring(umi[2]+umi[3]);
+						q2=q2.substring(umi[2]+umi[3]);
+					}
+					
+					out1.write("@");
+					out1.write(n+"");
+					if (umi!=null) out1.write(aumi);
+					out1.writeLine();
 					out1.writeLine(seq1);
 					out1.writeLine("+");
 					out1.writeLine(q1);
-					out2.writeLine("@"+n++);
+					
+					out2.write("@");
+					out2.write(n+++"");
+					if (umi!=null) out1.write(aumi);
+					out2.writeLine();
 					out2.writeLine(seq2);
 					out2.writeLine("+");
 					out2.writeLine(q2);
@@ -269,6 +310,7 @@ public class FastqFilter {
 			FileUtils.writeAllText(DynamicObject.from("plots",new Object[] {pr}).toJson(), new File(FileUtils.getExtensionSibling(ld,"report.json")));
 		}
 	}
+
 
 
 	private static int countPolyA(String seq) {

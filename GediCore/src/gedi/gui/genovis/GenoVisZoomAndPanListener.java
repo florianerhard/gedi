@@ -239,8 +239,8 @@ public class GenoVisZoomAndPanListener implements MouseListener, MouseMotionList
 		long total = 0;
 		for (int i=0; i<reg.length; i++)
 			total += reg[i].getTotalLength();
-		long newTotal = total-right;
-
+		long newTotal = Math.max(1,total-right);
+		
 		long pos = 0;
 		for (int i=0; i<refs.length; i++) {
 			if (pos+reg[i].getTotalLength()>newTotal) {

@@ -110,7 +110,7 @@ public class AnnotateRegionsTrack extends PackRegionTrack<NameProvider> {
 			public void accept(
 					VisualizationTrackPickInfo<ReferenceGenomicRegion<NameProvider>> t) {
 				
-				if (t==null) return;
+				if (t==null || t.getReference()==null) return;
 				ReferenceSequence ref = t.getReference().toStrand(fixedStrand);
 				if (t.getType()==TrackEventType.Down && isLocationChangeAllowed()) {
 					
@@ -126,7 +126,7 @@ public class AnnotateRegionsTrack extends PackRegionTrack<NameProvider> {
 					} else if (t.getData()!=null && t.getData().getRegion()!=null) {
 						annot = t.getData().toMutable().toStrand(fixedStrand);
 						drag = true;
-						startbp = t.getData().induce(t.getBp());
+						startbp = t.getData().getRegion().induce(t.getBp());
 					} else {
 						annot = new MutableReferenceGenomicRegion<NameProvider>();
 						annot.set(ref, new ArrayGenomicRegion(t.getBp(),t.getBp()),factory.apply("NEW",0.0));

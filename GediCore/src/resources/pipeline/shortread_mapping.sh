@@ -31,7 +31,6 @@ output.setExecutable(true);
 var srrPat = Pattern.compile("SRR\\d+");
 
 var id = name;
-var tokens = tokens?tokens:[];
 
 
 var adapter;
@@ -40,6 +39,8 @@ var mode;
 var files;
 var barcodes;
 var saved = js.saveState();
+
+var tokens = tokens?tokens:[];
 for each (var d in datasets) {
 	js.injectObject(d);
 	if (d.hasOwnProperty("gsm")) {
@@ -48,12 +49,13 @@ for each (var d in datasets) {
 		var json2 = DynamicObject.parseJson(jsson);
 		var arr = json2.get(".esearchresult.idlist").asArray();
 		if (arr.length!=1) throw new RuntimeException("Did not get a unique id for "+d.gsm+": "+json2);
+		Thread.sleep(1000);
 		var xml = new LineIterator(new URL("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id="+arr[0].asString()+"&rettype=docsum").openStream())
 			.concat("");
 		var srrs = EI.wrap(srrPat.matcher(xml)).sort().toArray(String.class);
 		log.info("SRA entry: Name: "+d.name+" gsm: "+d.gsm+" id: "+arr[0].asString()+" SRR: "+Arrays.toString(srrs));
 		mode="SRR";
-		files=srrs.concat(" ");
+		files=EI.wrap(srrs).concat(" ");
 		adapter=d.hasOwnProperty("adapter")?d.adapter:adapter;
 		trimmed=false;
 		
@@ -72,9 +74,8 @@ for each (var d in datasets) {
 		adapter=d.hasOwnProperty("adapter")?d.adapter:adapter;
 		trimmed=d.hasOwnProperty("trimmed")?d.trimmed:trimmed;
 	}
-
 	processTemplate("shortread_mapping1.sh",output.file.getParent()+"/"+name+".bash");
-	
+
 	if (tokens.length>=maxpar) {
 		prerunner(name,tokens);
 		tokens=[];

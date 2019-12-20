@@ -60,6 +60,12 @@ public class RollingStatistics implements BinarySerializable {
 		return this;
 	}
 	
+	public RollingStatistics merge(RollingStatistics other) {
+		this.cov.addAll(other.cov);
+		this.val.addAll(other.val);
+		return this;
+	}
+	
 	public void add(double covariate, double value) {
 		cov.add(covariate);
 		val.add(value);

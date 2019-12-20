@@ -84,7 +84,7 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 		return getReference().getStrand()==Strand.Minus?getRegion().map(region.reverse(getRegion().getTotalLength())):getRegion().map(region);
 	}
 	default GenomicRegion mapMaybeOutSide(GenomicRegion region) {
-		return getReference().getStrand()==Strand.Minus?getRegion().mapMaybeOutside(region.reverse(getRegion().getTotalLength())):getRegion().map(region);
+		return getReference().getStrand()==Strand.Minus?getRegion().mapMaybeOutside(region.reverse(getRegion().getTotalLength())):getRegion().mapMaybeOutside(region);
 	}
 	
 	default <T> ImmutableReferenceGenomicRegion<T> map(ReferenceGenomicRegion<T> region) {
@@ -125,6 +125,30 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 	
 	
 	/**
+	 * If the 5' end of region is downstream of the 3' end of this.
+	 * @param region
+	 * @return
+	 */
+	default boolean isDownstream(GenomicRegion region) {
+		if (getReference().getStrand()==Strand.Minus) {
+			return getRegion().getStart()>region.getStop();
+		}
+		return getRegion().getStop()<region.getStart();
+	}
+
+	/**
+	 * If the 3' end of region is upstream of the 5' end of this.
+	 * @param region
+	 * @return
+	 */
+	default boolean isUpstream(GenomicRegion region) {
+		if (getReference().getStrand()==Strand.Minus) {
+			return getRegion().getStop()<region.getStart();
+		}
+		return getRegion().getStart()>region.getStop();
+	}
+
+	/**
 	 * If the 5' end of region is downstream of the 5' end of this.
 	 * @param region
 	 * @return
@@ -135,7 +159,7 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 		}
 		return getRegion().getStart()<region.getStart();
 	}
-	
+
 	/**
 	 * If the 5' end of region is upstream of the 5' end of this.
 	 * @param region
@@ -173,6 +197,24 @@ public interface ReferenceGenomicRegion<D> extends Comparable<ReferenceGenomicRe
 		return getRegion().getEnd()>region.getEnd();
 	}
 	
+	default ImmutableReferenceGenomicRegion<D> getUpstream(int len) {
+		GenomicRegion reg;
+		if (getReference().getStrand()==Strand.Minus) 
+			reg=new ArrayGenomicRegion(getRegion().getEnd(),getRegion().getEnd()+len);
+		else
+			reg=new ArrayGenomicRegion(getRegion().getStart()-len,getRegion().getStart());
+		return new ImmutableReferenceGenomicRegion<>(getReference(), reg,getData());
+	}
+	
+	default ImmutableReferenceGenomicRegion<D> getDownstream(int len) {
+		GenomicRegion reg;
+		if (getReference().getStrand()==Strand.Minus)
+			reg=new ArrayGenomicRegion(getRegion().getStart()-len,getRegion().getStart());
+		else
+			reg=new ArrayGenomicRegion(getRegion().getEnd(),getRegion().getEnd()+len);
+			
+		return new ImmutableReferenceGenomicRegion<>(getReference(), reg,getData());
+	}
 	
 	
 	default int hashCode2() {

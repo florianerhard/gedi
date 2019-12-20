@@ -335,16 +335,16 @@ public class JS {
 	public String prepareSource(String src) throws ScriptException {
 		String re = src;
 		if (interpolateStrings) {
-			MutableMonad<ScriptException> ex = new MutableMonad<ScriptException>();
+//			MutableMonad<ScriptException> ex = new MutableMonad<ScriptException>();
 			re = StringUtils.replaceVariablesInQuotes(re,name->{
 				try {
-					return StringUtils.toString(eval(name));
+					return StringUtils.toString(eval(name,false));
 				} catch (ScriptException e) {
-					ex.Item=e;
+//					ex.Item=e;
 					return null;
 				}
 			});
-			if (ex.Item!=null) throw ex.Item;
+//			if (ex.Item!=null) throw ex.Item;
 		}
 		re = replaceClassesPackages(re);
 		
@@ -372,20 +372,26 @@ public class JS {
 	}
 	
 	public <T> T eval(String src) throws ScriptException {
+		return eval(src,true);
+	}
+	
+	public <T> T eval(String src, boolean savedump) throws ScriptException {
 		src = src.replace("_\n", "\n");
 		try {
 			return (T) engine.eval(src);
 		} catch (Throwable e) {
-			try {
-				Map<String, Object> vars = getVariables(true);
-				StringBuilder sb = new StringBuilder();
-				for (String k : vars.keySet())
-					sb.append(k).append(": ").append(StringUtils.toString(vars.get(k))).append("\n");
-				FileUtils.writeAllText(sb.toString(), new File("dumb.table"));
-				FileUtils.writeAllText(src, new File("dumb.js"));
-			} catch (IOException e1) {
+			if (savedump) {
+				try {
+					Map<String, Object> vars = getVariables(true);
+					StringBuilder sb = new StringBuilder();
+					for (String k : vars.keySet())
+						sb.append(k).append(": ").append(StringUtils.toString(vars.get(k))).append("\n");
+					FileUtils.writeAllText(sb.toString(), new File("dump.table"));
+					FileUtils.writeAllText(src, new File("dump.js"));
+				} catch (IOException e1) {
+				}
 			}
-			throw new RuntimeException("Could not execute JS, dumb.js saved!",e);
+			throw e;
 		}
 	}
 	

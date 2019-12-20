@@ -17,6 +17,7 @@
  */
 package gedi.core.region;
 
+import gedi.core.data.annotation.NameAnnotation;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
@@ -82,6 +83,9 @@ public class ImmutableReferenceGenomicRegion<D> implements ReferenceGenomicRegio
 	}
 
 	public static <D> ImmutableReferenceGenomicRegion<D> parse(String pos) {
+		int ind = pos.indexOf('\t');
+		if (ind>=0)
+			return parse(pos.substring(0, ind),(D) new NameAnnotation(pos.substring(ind+1)));
 		return parse(pos,null);
 	}
 		
@@ -121,6 +125,7 @@ public class ImmutableReferenceGenomicRegion<D> implements ReferenceGenomicRegio
 		}
 		return parse(pos,data);
 	}
+
 	
 	
 	

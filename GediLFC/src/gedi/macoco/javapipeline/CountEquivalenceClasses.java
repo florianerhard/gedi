@@ -31,19 +31,25 @@ import gedi.core.data.reads.AlignedReadsData;
 import gedi.core.data.reads.ReadCountMode;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Strandness;
+import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.core.region.feature.special.Downsampling;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
 import gedi.lfc.localtest.LocalCoverageTest;
+import gedi.util.ArrayUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
+import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
+import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.functions.ParallelizedIterator;
 import gedi.util.io.text.LineOrientedFile;
 import gedi.util.io.text.LineWriter;
+import gedi.util.math.stat.RandomNumbers;
 import gedi.util.math.stat.counting.Counter;
+import gedi.util.mutable.MutableTriple;
 import gedi.util.program.GediProgram;
 import gedi.util.program.GediProgramContext;
 
@@ -57,6 +63,8 @@ public class CountEquivalenceClasses extends GediProgram {
 		addInput(params.reads);
 		addInput(params.mrnas);
 		addInput(params.strandness);
+		addInput(params.seed);
+		addInput(params.down);
 		
 		addInput(params.prefix);
 		
@@ -73,8 +81,8 @@ public class CountEquivalenceClasses extends GediProgram {
 		GenomicRegionStorage<AlignedReadsData> reads = getParameter(2);
 		GenomicRegionStorage<NameAnnotation> mRNAs = getParameter(3);
 		Strandness strand = getParameter(4);
-				
-		context.getLog().info("Counting reads for equivalence classes...");
+		long seed = getLongParameter(5);
+		Downsampling down = getParameter(6);
 		
 		MemoryIntervalTreeStorage<Transcript> trans;
 		if (mRNAs==null) {
@@ -106,8 +114,9 @@ public class CountEquivalenceClasses extends GediProgram {
 			throw new RuntimeException("Illegal Strandness!");
 		}
 		
+		context.getLog().info("Counting reads for equivalence classes (first pass)...");
 		
-		
+		// first pass: count potentially wrong ecs (internal exon not sequenced in between read pair)
 		ParallelizedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>, Integer, EquivalenceClassCounter> para = reads.ei()
 					.progress(context.getProgress(), (int)reads.size(), r->r.toLocationString())
 					.parallelized(nthreads, 1024, 
@@ -126,9 +135,72 @@ public class CountEquivalenceClasses extends GediProgram {
 		}));
 		para.drain();
 		
-		EquivalenceClassCounter c = para.getState(0);
+		EquivalenceClassCounter firstpass = para.getState(0);
 		for (int i=1; i<para.getNthreads(); i++)
-			c.merge(para.getState(i));
+			firstpass.merge(para.getState(i));
+		
+		
+		context.getLog().info("Counting reads for equivalence classes (second pass)...");
+		
+		// second pass: assign each read to a random transcript (according to implied length and expression value)
+		ParallelizedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>, Integer, MutableTriple<EquivalenceClassCounter, RandomNumbers, DoubleArrayList>> para2 = reads.ei()
+				.progress(context.getProgress(), (int)reads.size(), r->r.toLocationString())
+				.parallelized(nthreads, 1024, 
+						(index)->new MutableTriple<>(
+								new EquivalenceClassCounter(map),
+								null,
+								new DoubleArrayList(1000)),
+						(b,triple)->{triple.Item2=new RandomNumbers(b*13+seed);},
+						(ei,triple)->ei.map(read->{
+			EquivalenceClassCounter count = triple.Item1;
+			RandomNumbers rnd = triple.Item2;
+			DoubleArrayList buffer = triple.Item3;
+			
+			NumericArray na = EI.seq(0, read.getData().getNumConditions()).mapToDouble(c->rnd.getBinom(read.getData().getTotalCountForConditionInt(c, ReadCountMode.All), read.getData().getWeight(0))).toNumericArray(); 
+			for (int c=0; c<read.getData().getNumConditions(); c++) {
+				if (na.sum()>0) {
+					na = down.downsample(na);
+					
+					// probabilistically select transcript
+					for (ImmutableReferenceGenomicRegion<Transcript> tr : transSupp.apply(read).loop()) {
+						if (read.getData().isConsistentlyContained(read, tr, 0)) {
+							double lp = firstpass.getLengthFreq(Math.abs(tr.induce(read.getRegion().getStart())-tr.induce(read.getRegion().getStop()))+1,c);
+							double ep = firstpass.getExpression(tr,c);
+							buffer.add(lp*ep);
+						}
+					}
+					if (buffer.size()>0) {
+						buffer.cumSum(1);
+						int selected = rnd.getCategorial(buffer);
+						GenomicRegion selReg = null;
+						for (ImmutableReferenceGenomicRegion<Transcript> tr : transSupp.apply(read).loop()) {
+							if (read.getData().isConsistentlyContained(read, tr, 0) && selected--==0) {
+								selReg = tr.getRegion().intersect(read.getRegion().removeIntrons());
+								break;							
+							}
+						}
+						count.length(selReg.getTotalLength(),na);							
+						for (ImmutableReferenceGenomicRegion<Transcript> tr : transSupp.apply(read).loop()) {
+							if (tr.getRegion().containsUnspliced(selReg)) {
+								count.found(tr);
+							}
+						}
+						count.finish(na);
+						buffer.clear();
+					}
+				}
+				
+			}
+			return 1;
+		}));
+		para2.drain();
+		
+		EquivalenceClassCounter c = para2.getState(0).Item1;
+		for (int i=1; i<para2.getNthreads(); i++)
+			c.merge(para2.getState(i).Item1);
+		
+		
+		
 		
 		context.getLog().info("Writing tables...");
 		
@@ -182,10 +254,33 @@ public class CountEquivalenceClasses extends GediProgram {
 		private HashMap<String,Integer> toIndex;
 		private IntArrayList found = new IntArrayList();
 		private HashMap<IntArrayList,NumericArray> counter = new HashMap<>();
+		
+		private HashMap<Integer,NumericArray> perTransCounter = null;
 		private HashMap<Integer,NumericArray> lengths = new HashMap<>();
 		
 		public EquivalenceClassCounter(HashMap<String,Integer> toIndex) {
 			this.toIndex = toIndex;
+		}
+
+		public double getExpression(ImmutableReferenceGenomicRegion<Transcript> tr, int c) {
+			if (perTransCounter==null) {
+				perTransCounter = new HashMap<Integer, NumericArray>();
+				for (IntArrayList e : counter.keySet()) {
+					NumericArray na = counter.get(e);
+					e.iterator().forEachRemaining(tri->{
+						perTransCounter.computeIfAbsent(tri, x->NumericArray.createMemory(na.length(), na.getType())).add(na);
+					});
+				}
+			}
+			NumericArray n = perTransCounter.get(toIndex.get(tr.getData().getTranscriptId()));
+			if (n==null) return 0;
+			return n.getDouble(c);
+		}
+
+		public double getLengthFreq(int len, int cond) {
+			NumericArray n = lengths.get(len);
+			if (n==null) return 0;
+			return n.getDouble(cond);
 		}
 
 		public void length(int s1, int s2, AlignedReadsData read, int d) {
@@ -198,6 +293,15 @@ public class CountEquivalenceClasses extends GediProgram {
 			}
 			read.addCountsForDistinct(d, a, ReadCountMode.Weight);
 		}
+		
+		public void length(int l, NumericArray na) {
+			NumericArray a = lengths.get(l);
+			if (a==null) {
+				a = NumericArray.createMemory(na.length(), NumericArrayType.Double);
+				lengths.put(l, a);
+			}
+			a.add(na);
+		}
 
 		public void finish(AlignedReadsData read, int d) {
 			found.sort();
@@ -209,7 +313,18 @@ public class CountEquivalenceClasses extends GediProgram {
 			read.addCountsForDistinct(d, a, ReadCountMode.Weight);
 			found.clear();
 		}
-
+		
+		public void finish(NumericArray na) {
+			found.sort();
+			NumericArray a = counter.get(found);
+			if (a==null) {
+				a = NumericArray.createMemory(na.length(), NumericArrayType.Double);
+				counter.put(found.clone(), a);
+			}
+			a.add(na);
+			found.clear();
+		}
+		
 		public void found(ImmutableReferenceGenomicRegion<Transcript> tr) {
 			found.add(toIndex.get(tr.getData().getTranscriptId()));
 		}

@@ -19,6 +19,7 @@ package gedi.util.io.text;
 
 import gedi.util.FunctorUtils;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.functions.StringIterator;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -30,7 +31,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 
-public class LineIterator implements ExtendedIterator<String>, AutoCloseable {
+public class LineIterator implements StringIterator, AutoCloseable {
 
 	private String nextLine = null;
 	private LineReader lr;

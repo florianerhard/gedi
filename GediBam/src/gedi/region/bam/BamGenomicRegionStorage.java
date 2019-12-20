@@ -28,6 +28,7 @@ import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.reference.Strandness;
+import gedi.core.region.ArrayGenomicRegion;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
@@ -38,6 +39,7 @@ import gedi.util.FileUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.FunctorUtils.MergeIterator;
 import gedi.util.FunctorUtils.PeekIterator;
+import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.StringUtils;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
@@ -71,8 +73,11 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 
@@ -109,6 +114,9 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	private boolean ignoreVariations = false;
 	private boolean removeMultiMapping = false;
 	private boolean ignoreProperPair = false;
+	
+	private BiFunction<SAMRecord, SAMRecord, String> barcode;
+	private Predicate<SAMRecord> barcodeChecker;
 	
 	
 //	private boolean joinMates = false;
@@ -186,6 +194,8 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 		}
 		ArrayUtils.cumSumInPlace(cumNumCond, 1);
 
+		int lcs = fileNames.length>1?StringUtils.getLongestCommonSuffix(fileNames):0;
+		
 		// search for metadata
 		ArrayList<DynamicObject> mc = new ArrayList<DynamicObject>();
 		for (String f : fileNames) {
@@ -199,7 +209,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 			else {
 				StringBuilder json = new StringBuilder().append("{\"conditions\" : [ ")
 							.append("\t{ \"name\" : \"")
-							.append(FileUtils.getNameWithoutExtension(f))
+							.append(getNameFromBam(f.substring(0,f.length()-lcs)))
 							.append("\"}\n");
 				mc.add(DynamicObject.parseJson(json.append("]}").toString()));
 			}
@@ -209,14 +219,24 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 		StringBuilder sb = new StringBuilder();
 		for (String f : fileNames){
 			if (sb.length()>0) sb.append("_");
-			sb.append(FileUtils.getNameWithoutExtension(f));
+			sb.append(getNameFromBam(f));
 		}
 		name = sb.toString();
+		
+		if (new HashSet<>(Arrays.asList(getMetaDataConditions())).size()<getMetaDataConditions().length) {
+			throw new RuntimeException("Did not read in bam file names properly: "+EI.wrap(getMetaDataConditions()).concat(",")+"(The logic here is: remove the common suffix from the paths, and, if 'Aligned' is part of the path, take only the part before it!)");
+		}
 		
 		setStrandness(Strandness.Sense);
 	}
 	
 	
+	private String getNameFromBam(String f) {
+		String n =FileUtils.getNameWithoutExtension(f);
+		int idx = n.indexOf("Aligned");
+		if (idx>0) n = n.substring(0,idx);
+		return n;
+	}
 //	private int[] readlengths = null;
 //	public int[] getReadLengths() {
 //		if (readlengths==null) {
@@ -236,6 +256,49 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 //		}
 //		return readlengths;
 //	}
+	
+	public void setBarcode(BiFunction<SAMRecord, SAMRecord, String> barcode) {
+		this.barcode = barcode;
+	}
+	
+	public void setBarcode(String... attributes) {
+		this.barcode = (r1, r2)->{
+			StringBuilder sb = new StringBuilder();
+			for (String a : attributes) {
+				if (r1!=null)
+					sb.append(StringUtils.removeFooter(r1.getStringAttribute(a),"-1"));
+				if (r2!=null)
+					sb.append(StringUtils.removeFooter(r2.getStringAttribute(a),"-1"));
+			}
+			return sb.toString();
+		};
+		
+		this.barcodeChecker = (read)->{
+			for (String a : attributes) {
+				if (read!=null && read.getStringAttribute(a)==null)
+					return false;
+			}
+			return true;
+		};
+	}
+	
+	public void setUmi() {
+		this.barcode = (r1, r2)->{
+			return StringUtils.splitField(r1.getReadName(), '#', 1);
+		};
+		
+		this.barcodeChecker = (read)->{
+			return read.getReadName().contains("#");
+		};
+		
+		setMinimalAlignmentQuality(255);
+	}
+	
+	public void set10x() {
+		setBarcode("CB","UB");
+		setMinimalAlignmentQuality(255);
+//		setIgnoreVariations(true);
+	}
 	
 	public void check(Genomic g, LineWriter inconsistent) {
 		this.bamChecker = new BamChecker(g, inconsistent);
@@ -301,6 +364,13 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 		return this;
 	}
 	
+	public BamGenomicRegionStorage detectVariations() {
+		SAMRecordIterator it = files[0].iterator();
+		SAMRecord r = it.next();
+		it.close();
+		return setIgnoreVariations(r.getStringAttribute("XV")==null && r.getStringAttribute("MD")==null);
+	}
+	
 	public BamGenomicRegionStorage setIgnoreVariations(boolean ignore) {
 		this.ignoreVariations = ignore;
 		return this;
@@ -336,6 +406,10 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	public BamGenomicRegionStorage setMinimalAlignmentQuality(int minaqual) {
 		this.minaqual  = minaqual;
 		return this;
+	}
+	
+	public int getMinimalAlignmentQuality() {
+		return minaqual;
 	}
 	
 	public BamGenomicRegionStorage setIgnoreProperPair(boolean ignoreProperPair) {
@@ -1027,6 +1101,9 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 	//							a -> BamUtils.isValidStrand(ref.getStrand(),a)):raw[i];
 						// for pairedEnd: handle that differently!
 						
+						if (barcodeChecker!=null)
+							filtered = FunctorUtils.filteredIterator(filtered, barcodeChecker);
+						
 						if (minaqual>0)
 							filtered = FunctorUtils.filteredIterator(filtered,
 								a -> a.getMappingQuality()>=minaqual);
@@ -1173,7 +1250,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 							SAMRecord first = ll.r.getFirstOfPairFlag()?ll.r:null;
 							SAMRecord second = ll.r.getFirstOfPairFlag()?null:ll.r;
 							if (BamUtils.isValidStrand(ref.getStrand(), strandness[ll.file], first,second)) {
-								FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(ll.r,null,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,keepReadNames);
+								FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(ll.r,null,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,keepReadNames,barcode);
 								if (!map.containsKey(fac)) map.put(fac,fac);
 								else fac = map.get(fac);
 								
@@ -1232,15 +1309,15 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 				return;
 			
 			if (!ignoreVariations && bamChecker!=null) {
-				FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,cumNumCond,ignoreVariations,keepReadNames);
+				FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,cumNumCond,ignoreVariations,keepReadNames, barcode);
 				fac.add(rec, file);
 				bamChecker.check(rec,new ImmutableReferenceGenomicRegion<>(ref, fac,fac.create()));
 			}
 
-			FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,cumNumCond,ignoreVariations,keepReadNames);
+			FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,cumNumCond,ignoreVariations,keepReadNames,barcode);
 			if (!map.containsKey(fac)) map.put(fac,fac);
 			else fac = map.get(fac);
-
+			
 			fac.add(rec, file);
 		}
 		
@@ -1272,7 +1349,7 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 				
 			
 			if (!ignoreVariations && bamChecker!=null) {
-				FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,mate,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,keepReadNames);
+				FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,mate,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,keepReadNames, barcode);
 				
 				if (fac.isConsistent()) {
 					fac.add(rec, mate, file);
@@ -1281,9 +1358,19 @@ public class BamGenomicRegionStorage implements GenomicRegionStorage<AlignedRead
 					bamChecker.addInconsistent(rec,mate);
 			}
 			
-			FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,mate,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,keepReadNames);
+			FactoryGenomicRegion fac = BamUtils.getFactoryGenomicRegion(rec,mate,cumNumCond, pairedEndHandling==PairedEndHandling.JoinMates,false,ignoreVariations,keepReadNames, barcode);
 //			System.out.println("use it as "+fac.toRegionString());
-			if (!fac.isConsistent()) return;
+			if (!fac.isConsistent()) {
+//				System.out.println(rec.getSAMString());
+//				System.out.println(mate.getSAMString());
+//				IntArrayList coords1 = BamUtils.getGenomicRegionCoordinates(rec);
+//				IntArrayList coords2 = BamUtils.getGenomicRegionCoordinates(mate);
+//				GenomicRegion re1 = new ArrayGenomicRegion(coords1);
+//				GenomicRegion re2 = new ArrayGenomicRegion(coords2);
+//				System.out.println(re1+" "+re2+" "+re1.union(re2));
+//				System.out.println();
+				return;
+			}
 
 			if (!map.containsKey(fac)) map.put(fac,fac);
 			else fac = map.get(fac);

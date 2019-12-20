@@ -62,7 +62,7 @@ public class SamToRegion<O> implements Function<SAMRecord,ReferenceGenomicRegion
 			O d = data.apply(ard, r);
 			return new ImmutableReferenceGenomicRegion<O>(Chromosome.UNMAPPED, new ArrayGenomicRegion(0,r.getReadLength()),d);
 		}
-		FactoryGenomicRegion region = BamUtils.getFactoryGenomicRegion(r, c, false, true);
+		FactoryGenomicRegion region = BamUtils.getFactoryGenomicRegion(r, c, false, true, null);
 		region.add(r,0);
 		DefaultAlignedReadsData ard = region.create();
 		O d = data.apply(ard, r);

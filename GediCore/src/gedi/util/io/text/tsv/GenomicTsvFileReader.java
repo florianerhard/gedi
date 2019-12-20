@@ -29,6 +29,7 @@ import gedi.util.FunctorUtils.MappedIterator;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.tree.redblacktree.IntervalCoordinateSystem;
 import gedi.util.datastructure.tree.redblacktree.IntervalTree;
+import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
 import gedi.util.functions.TriConsumer;
 import gedi.util.io.text.HeaderLine;
@@ -344,7 +345,7 @@ public class GenomicTsvFileReader<D>  extends BaseTsvFileReader<D>{
 	}
 
 	protected Iterator<String> createIterator() throws IOException {
-		return new LineOrientedFile(path).lineIterator();
+		return EI.lines(path);
 	}
 
 	

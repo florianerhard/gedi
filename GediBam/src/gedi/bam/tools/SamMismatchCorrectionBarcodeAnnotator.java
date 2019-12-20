@@ -293,7 +293,7 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 							if (ArrayUtils.sum(c)>0) {
 								s.setAttribute("XR",""+StringUtils.concat(",",count.get(s)[mode]));
 								
-								FactoryGenomicRegion reg = BamUtils.getFactoryGenomicRegion(s, cumNumCond, false, false);
+								FactoryGenomicRegion reg = BamUtils.getFactoryGenomicRegion(s, cumNumCond, false, false,null);
 								reg.add(s,0);
 								
 								programs[mode].accept(rgr .set(BamUtils.getReference(s),reg,reg.create()));
@@ -347,7 +347,7 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 	public ReferenceGenomicRegion<AlignedReadsData> transform(ReferenceGenomicRegion<AlignedReadsData> r) {
 		try {
 			AlignedReadsData data = r.getData();
-
+			
 			HashMap<DnaSequence,IntArrayList> bcToIndices = data.getDistinctSequences()>1?new HashMap<DnaSequence, IntArrayList>():null;
 			ArrayList<CountDnaSequence> barcodeList = new ArrayList<CountDnaSequence>();
 			IntArrayList distinctList = new IntArrayList();
@@ -402,7 +402,6 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 					}
 				}
 			// keep iff expected<observed count!
-			
 			
 			// count per condition: collapse, corrected, reads
 			int[][][] count = new int[3][data.getDistinctSequences()][cumNumCond[0]];
@@ -468,7 +467,8 @@ public class SamMismatchCorrectionBarcodeAnnotator implements UnaryOperator<Iter
 				}
 				if (fac.getDistinctSequences()==0)
 					return null;
-				return new ImmutableReferenceGenomicRegion<AlignedReadsData>(r.getReference(), r.getRegion(), fac.create());
+				ImmutableReferenceGenomicRegion<AlignedReadsData> re = new ImmutableReferenceGenomicRegion<AlignedReadsData>(r.getReference(), r.getRegion(), fac.create());
+				return re;
 			}
 			return r;
 		} catch (IOException e) {

@@ -17,17 +17,18 @@
  */
 package gedi.core.region.feature.output;
 
+
 import gedi.core.region.feature.GenomicRegionFeatureProgram;
 import gedi.util.ArrayUtils;
 import gedi.util.FileUtils;
 import gedi.util.io.text.LineOrientedFile;
-import gedi.util.r.RConnect;
 import gedi.util.r.RRunner;
 import gedi.util.userInteraction.results.ImageResult;
 import gedi.util.userInteraction.results.Result;
 import gedi.util.userInteraction.results.ResultConsumer;
 import gedi.util.userInteraction.results.ResultProducer;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -36,8 +37,9 @@ import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.imageio.ImageIO;
+
 import executables.Template;
-import javafx.scene.image.Image;
 
 /**
  * spaces in facets do not work in ggplot2 1.0.1 (will work in a future release)
@@ -126,7 +128,7 @@ public class Barplot implements ResultProducer {
 		int cols = needsMelt?inputs.length+2:inputs.length+1;
 		if (!needsMelt && aes.length==cols+1) {
 			// remove the entry before the last from aes
-			aes = ArrayUtils.removeItemFromArray(aes, aes.length-2);
+			aes = ArrayUtils.removeIndexFromArray(aes, aes.length-2);
 			needsMelt = false;
 		}
 		if (aes.length!=cols) throw new RuntimeException("Cannot plot, given aestetics have wrong length (id="+name+" aes="+aes.length+", expected="+cols+")");
@@ -271,10 +273,10 @@ public class Barplot implements ResultProducer {
 	public Result getCurrentResult() {
 		return new ImageResult() {
 			@Override
-			public Image getImage() {
+			public BufferedImage getImage() {
 				try {
-					return new Image(new File(pfile).toURI().toURL().toString());
-				} catch (MalformedURLException e) {
+					return ImageIO.read(new File(pfile));
+				} catch (IOException e) {
 					return null;
 				}
 			}

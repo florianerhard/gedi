@@ -408,5 +408,9 @@ public class PageFileView implements BinaryReader, LineReader {
 	@Override
 	public void close() {
 	}
-	
+
+	@Override
+	public BinaryReader view(long start, long end) {
+		return new PageFileView(file,this.start+start,this.start+end);
+	}
 }

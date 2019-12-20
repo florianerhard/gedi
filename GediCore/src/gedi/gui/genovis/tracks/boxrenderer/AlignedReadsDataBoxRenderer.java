@@ -22,12 +22,16 @@ import gedi.core.data.reads.ReadCountMode;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.ArrayUtils;
 import gedi.util.SequenceUtils;
 import gedi.util.gui.PixelBasepairMapper;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Shape;
+import java.awt.geom.GeneralPath;
 import java.awt.geom.Rectangle2D;
 
 public class AlignedReadsDataBoxRenderer extends BoxRenderer<AlignedReadsData> {
@@ -64,7 +68,21 @@ public class AlignedReadsDataBoxRenderer extends BoxRenderer<AlignedReadsData> {
 			AlignedReadsData data, double xOffset, double y, double h) {
 		
 
-		GenomicRegion re = super.renderBox(g2, locationMapper, reference, strand, region, data, xOffset, y, h);
+		GenomicRegion re;
+		
+		if (data.hasGeometry()) {
+			
+			GenomicRegion r1 = data.extractRead1(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand), region), 0).getRegion();
+			GenomicRegion r2 = data.extractRead2(new ImmutableReferenceGenomicRegion<>(reference.toStrand(strand), region), 0).getRegion();
+			
+			setBackground(r->Color.GRAY);
+			re = super.renderBox(g2, locationMapper, reference, strand, r1.union(r2), data, xOffset, y, h);
+			setBackground(r->Color.BLACK);
+			super.renderBox(g2, locationMapper, reference, strand, r1.intersect(r2), data, xOffset, y, h);
+			
+			
+		} else
+			re = super.renderBox(g2, locationMapper, reference, strand, region, data, xOffset, y, h);
 		
 		for (int d=0; d<data.getDistinctSequences(); d++) {
 			double th = 0;
@@ -87,7 +105,14 @@ public class AlignedReadsDataBoxRenderer extends BoxRenderer<AlignedReadsData> {
 						double e = locationMapper.bpToPixel(reference,data.positionToGenomic(data.getMismatchPos(d, v),reference.toStrand(strand),region)+1);
 						
 						g2.setPaint(SequenceUtils.getNucleotideColorizer().apply(data.getMismatchRead(d, v).charAt(0)));
-						Rectangle2D tile = new Rectangle2D.Double(xOffset+s, y, e-s, th-1);
+						Shape tile = new Rectangle2D.Double(xOffset+s, y, e-s, th-1);
+						
+						if (data.hasGeometry() && data.isPositionInOverlap(d, data.getMismatchPos(d, v))) {
+							if (data.isVariationFromSecondRead(d, v))
+								tile = getLowerTriangle((Rectangle2D)tile);
+							else
+								tile = getUpperTriangle((Rectangle2D)tile);
+						}
 						g2.draw(tile);
 						g2.fill(tile);
 					}
@@ -96,6 +121,24 @@ public class AlignedReadsDataBoxRenderer extends BoxRenderer<AlignedReadsData> {
 			}
 		}
 		
+		return re;
+	}
+
+	private Shape getUpperTriangle(Rectangle2D tile) {
+		GeneralPath re = new GeneralPath();
+		re.moveTo(tile.getX(), tile.getY());
+		re.lineTo(tile.getMaxX(), tile.getY());
+		re.lineTo(tile.getX(), tile.getMaxY());
+		re.closePath();
+		return re;
+	}
+
+	private Shape getLowerTriangle(Rectangle2D tile) {
+		GeneralPath re = new GeneralPath();
+		re.moveTo(tile.getMaxX(), tile.getY());
+		re.lineTo(tile.getMaxX(), tile.getMaxY());
+		re.lineTo(tile.getX(), tile.getMaxY());
+		re.closePath();
 		return re;
 	}
 

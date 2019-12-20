@@ -3,7 +3,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry exported="true" kind="lib" path="lib/colt.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/concurrent.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/commons-compress-1.5.jar" sourcepath="lib/commons-compress-1.5-sources.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/commons-cli-1.2.jar" sourcepath="lib/commons-cli-1.2-sources.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/javax.json-1.0.4.jar" sourcepath="/home/users/erhard/java/lib/jsonp/jsonp~git/impl/src/main/java"/>
 	<classpathentry exported="true" kind="lib" path="lib/R.jar"/>
@@ -23,6 +22,12 @@
 	<classpathentry exported="true" kind="lib" path="lib/smile-graph-1.3.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/smile-math-1.3.1.jar" sourcepath="lib/smile-math-1.3.1-sources.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-simple-1.7.21.jar"/>
+	<classpathentry kind="lib" path="lib/commons-compress-1.18.jar" sourcepath="lib/commons-compress-1.18-sources.jar"/>
+	<classpathentry kind="lib" path="lib/fst-2.43.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-core-2.5.3.jar"/>
+	<classpathentry kind="lib" path="lib/jansi.jar"/>
+	<classpathentry kind="lib" path="lib/jericho-html-3.4.jar"/>
+	<classpathentry kind="lib" path="lib/objenesis-2.1.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="src" path="/cglib"/>
 	<classpathentry exported="true" kind="lib" path="lib/hamcrest-all-1.3.jar"/>

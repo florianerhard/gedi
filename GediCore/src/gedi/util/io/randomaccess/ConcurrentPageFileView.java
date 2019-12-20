@@ -363,7 +363,8 @@ public class ConcurrentPageFileView implements BinaryReader, LineReader {
 
 
 	private int getOffset(long pos) {
-		if (pos<0||pos>=end-start) throw new IndexOutOfBoundsException(pos+"<0 or >="+(end-start));
+		if (pos<0||pos>=end-start) 
+			throw new IndexOutOfBoundsException(pos+"<0 or >="+(end-start));
 		return (int) ((start+pos) % file.pageSize);
 	}
 
@@ -384,6 +385,11 @@ public class ConcurrentPageFileView implements BinaryReader, LineReader {
 
 	@Override
 	public void close() {
+	}
+
+	@Override
+	public BinaryReader view(long start, long end) {
+		return new ConcurrentPageFileView(file,this.start+start,this.start+end);
 	}
 
 }

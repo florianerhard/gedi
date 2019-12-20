@@ -31,6 +31,7 @@ import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.randomaccess.ConcurrentPageFile;
 import gedi.util.io.randomaccess.PageFileWriter;
 import gedi.util.io.text.LineOrientedFile;
+import gedi.util.mutable.MutableLong;
 import gedi.util.userInteraction.progress.ConsoleProgress;
 import gedi.util.userInteraction.progress.Progress;
 
@@ -290,6 +291,10 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 		readHeader();
 	}
 	
+	
+	private static final long SEC = 1_000_000_000L;
+	private static final long TIME_TO_DISK = 10*SEC; // 40 sec
+	
 	@Override
 	public void fill(Iterator<? extends ReferenceGenomicRegion<D>> it, final Progress progress)  {
 		if (file!=null) throw new RuntimeException("File "+file+" already exists!");
@@ -302,10 +307,10 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 			
 //			System.out.println("Building cit");
 			int re=0;
-			ReferenceSequence last = null;
-			int count = 0;
+//			ReferenceSequence last = null;
+			HashMap<ReferenceSequence,MutableLong> lastTs = new HashMap<>();
+			long lastCheck = System.nanoTime();
 			
-					
 			while (it.hasNext()) {
 				ReferenceGenomicRegion<D> rgr = it.next();
 				if (globalInfo==null) {
@@ -316,17 +321,31 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 					globalInfo = globalInfo.merge(DynamicObject.from("compress", compression));
 				}
 				
+				long ts = System.nanoTime();
+				lastTs.computeIfAbsent(rgr.getReference(), x->new MutableLong()).N=ts;
 				
-				if (rgr.getReference().equals(last)) count++;
-				else if (last!=null) {
-//					if (count>1000) {
-//						System.out.println("Writing temp file for "+last);
-						references.get(last).toDisk();
-//					}
-					count=0;
+				if (ts-lastCheck>SEC) {
+					Iterator<ReferenceSequence> kit = lastTs.keySet().iterator();
+					while (kit.hasNext()) {
+						ReferenceSequence r = kit.next();
+						long last = lastTs.get(r).N;
+						if (ts-last>TIME_TO_DISK) {
+							kit.remove();
+							references.get(r).toDisk();
+						}
+					}
 				}
 				
-				last = rgr.getReference();
+//				if (rgr.getReference().equals(last)) count++;
+//				else if (last!=null) {
+////					if (count>1000) {
+////						System.out.println("Writing temp file for "+last);
+//						references.get(last).toDisk();
+////					}
+//					count=0;
+//				}
+//				
+//				last = rgr.getReference();
 				
 				InternalCenteredDiskIntervalTreeBuilder<D> builder = references.get(rgr.getReference());
 				if (builder==null) references.put(rgr.getReference(), builder = new InternalCenteredDiskIntervalTreeBuilder<D>(new File(path).getAbsoluteFile().getParent(),new File(path).getName()+"."+rgr.getReference().toPlusMinusString(),globalInfo));
@@ -380,6 +399,7 @@ public class CenteredDiskIntervalTreeStorage<D>  implements GenomicRegionStorage
 				out.putLong(offset[i+1]);
 			}
 			out.close();
+			
 //			System.out.println("Finished!");
 			file = new ConcurrentPageFile(path);
 			readHeader();

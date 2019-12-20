@@ -106,7 +106,7 @@ public class MemoryByteArray extends ByteArray {
         while (from< to) {
         	byte tmp = a[from];
     		a[from++] = a[to];
-    		a[to++] = tmp;
+    		a[to--] = tmp;
         }
         return this;
 	}

@@ -17,7 +17,6 @@
  */
 package gedi.util.io.text.tsv.formats;
 
-import gedi.core.data.table.GediNamingPolicy;
 import gedi.core.data.table.Table;
 import gedi.core.data.table.TableType;
 import gedi.core.data.table.Tables;
@@ -43,8 +42,6 @@ import gedi.util.userInteraction.progress.Progress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-
-import net.sf.cglib.beans.BeanGenerator;
 
 @SuppressWarnings("unchecked")
 public class CsvReader {
@@ -105,41 +102,41 @@ public class CsvReader {
 		});
 	}
 	
-	public <T> ExtendedIterator<T> iterateObjects() {
-		return iterateObjects(createClass());
-	}
+//	public <T> ExtendedIterator<T> iterateObjects() {
+//		return iterateObjects(createClass());
+//	}
 	
 	public HeaderLine getHeader() {
 		return header;
 	}
 	
-	private Class createClass() {
-		int cols = parsers.length;
-		BeanGenerator gen = new BeanGenerator();
-		gen.setNamingPolicy(new GediNamingPolicy(StringUtils.toJavaIdentifier(name)));
-		for (int i=0; i<cols; i++) {
-			String lab = StringUtils.toJavaIdentifier(header.get(i));
-			gen.addProperty(lab, ReflectionUtils.toPrimitveClass(parsers[i].getParsedType()));
-		}
-		return (Class) gen.createClass();
-	}
+//	private Class createClass() {
+//		int cols = parsers.length;
+//		net.sf.cglib.beans.BeanGenerator gen = new net.sf.cglib.beans.BeanGenerator();
+//		gen.setNamingPolicy(new gedi.core.data.table.GediNamingPolicy(StringUtils.toJavaIdentifier(name)));
+//		for (int i=0; i<cols; i++) {
+//			String lab = StringUtils.toJavaIdentifier(header.get(i));
+//			gen.addProperty(lab, ReflectionUtils.toPrimitveClass(parsers[i].getParsedType()));
+//		}
+//		return (Class) gen.createClass();
+//	}
 
 	public <T> ExtendedIterator<T> iterateObjects(Class<T> cls) {
 		return iterateUnparsed().map(l->Orm.fromFunctor(cls, (fi)->fi>=parsers.length?null:parsers[fi].apply(l[fi])));
 	}
 
-	public <T> Table<T> readTable() {
-		Class<?> cls = createClass();
-		String creator = getClass().getSimpleName();
-		int version = Tables.getInstance().getMostRecentVersion(TableType.Temporary,name)+1;
-		Table tab = Tables.getInstance().create(TableType.Temporary,Tables.getInstance().buildMeta(name, creator, version, "", cls));
-		
-		tab.beginAddBatch();
-		iterateObjects(cls).forEachRemaining(o->tab.add(o));
-		tab.endAddBatch();
-		
-		return tab;
-	}
+//	public <T> Table<T> readTable() {
+//		Class<?> cls = createClass();
+//		String creator = getClass().getSimpleName();
+//		int version = Tables.getInstance().getMostRecentVersion(TableType.Temporary,name)+1;
+//		Table tab = Tables.getInstance().create(TableType.Temporary,Tables.getInstance().buildMeta(name, creator, version, "", cls));
+//		
+//		tab.beginAddBatch();
+//		iterateObjects(cls).forEachRemaining(o->tab.add(o));
+//		tab.endAddBatch();
+//		
+//		return tab;
+//	}
 	
 	public DataFrame readDataFrame() {
 		Collection[] lists = readLists();

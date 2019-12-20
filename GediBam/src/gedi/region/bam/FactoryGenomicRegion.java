@@ -25,6 +25,7 @@ import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import htsjdk.samtools.SAMRecord;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
 
 public class FactoryGenomicRegion extends ArrayGenomicRegion implements MissingInformationIntronInformation {
 
@@ -44,20 +45,20 @@ public class FactoryGenomicRegion extends ArrayGenomicRegion implements MissingI
 	 * @param pairedEndIntron
 	 * @param missingEnd
 	 */
-	public FactoryGenomicRegion(int[] coords, int[] cumNumCond, boolean consistent, boolean ignoreVariation, boolean needReadNames, int pairedEndIntron, int missingEnd, boolean join) {
+	public FactoryGenomicRegion(int[] coords, int[] cumNumCond, boolean consistent, boolean ignoreVariation, boolean needReadNames, int pairedEndIntron, int missingEnd, boolean join, BiFunction<SAMRecord, SAMRecord, String> barcode) {
 		super(coords);
 		this.pairedEndIntron = pairedEndIntron;
 		if (pairedEndIntron+1>=getNumParts())
 			throw new RuntimeException();
-		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames,join);
+		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames,join, barcode);
 		factory.start();
 		this.consistent = consistent;
 		this.missingEnd = missingEnd;
 	}
 	
-	public FactoryGenomicRegion(IntArrayList coords, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, boolean join) {
+	public FactoryGenomicRegion(IntArrayList coords, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, boolean join, BiFunction<SAMRecord, SAMRecord, String> barcode) {
 		super(coords);
-		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames, join);
+		factory = new BamAlignedReadDataFactory(this,cumNumCond,ignoreVariation,needReadNames, join, barcode);
 		factory.start();
 	}
 	
@@ -81,6 +82,8 @@ public class FactoryGenomicRegion extends ArrayGenomicRegion implements MissingI
 	}
 	
 	public DefaultAlignedReadsData create() {
+		if (factory.barcodeFun!=null)
+			return factory.createBarcode();
 		return factory.create();
 	}
 	

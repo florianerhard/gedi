@@ -34,6 +34,11 @@ public class HeaderLine implements ToIntFunction<String>, Function<String,Intege
 	private String[] fields;
 	private String sep;
 	
+	public HeaderLine() {
+	}
+	
+	
+	
 	public HeaderLine(String line) {
 		this(line,'\t');
 	}
@@ -47,6 +52,23 @@ public class HeaderLine implements ToIntFunction<String>, Function<String,Intege
 	}
 	
 	public HeaderLine(String[] fields) {
+		set(fields);
+	}
+	
+	
+	public void set(String line) {
+		set(line,'\t');
+	}
+	
+	public void set(String line, String sep) {
+		set(StringUtils.split(line, sep));
+	}
+	
+	public void set(String line, char sep) {
+		set(StringUtils.split(line, sep));
+	}
+	
+	public void set(String[] fields) {
 		header = ArrayUtils.createIndexMap(this.fields = fields);
 		this.sep = "\t";
 	}
@@ -71,6 +93,11 @@ public class HeaderLine implements ToIntFunction<String>, Function<String,Intege
 	public void addAlternative(String presentField, String alternative) {
 		if (!hasField(presentField)) throw new IllegalArgumentException(presentField+" not found in header!");
 		header.put(alternative, header.get(presentField));
+	}
+	
+	public int get(String field, int defaultValue) {
+		if (!header.containsKey(field)) return defaultValue;
+		return header.get(field);
 	}
 	
 	public int get(String field) {

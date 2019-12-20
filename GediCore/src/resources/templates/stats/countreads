@@ -1,24 +1,50 @@
 <GenomicRegionFeaturePipeline>
 	<Labels l="<?JS print(EI.wrap(labels).concat(',')) ?>" />
 
+	
 	<AnnotationFeature id="Transcript" data="false" >
 		<Transcripts g="genomic" flank="50" />
+		<? var referenceSequenceConversion; if (referenceSequenceConversion) { ?>
+		<ReferenceSequenceConversion referenceSequenceConversion="<? referenceSequenceConversion ?>" />
+		<? } ?>
 	</AnnotationFeature>
 	<ContainedFeature id="ContainedTranscript" input="Transcript" />
 	<MapFeature id="GeneId" input="ContainedTranscript">
 		<Field n='data' />
 		<Field n='geneId' />
 	</MapFeature>
-	<MapFeature id="TranscriptIdFolded" input="ContainedTranscript">
+	<MapFeature id="EquivalenceClass" input="ContainedTranscript">
 		<Field n='data' />
 		<Field n='transcriptId' />
 	</MapFeature>
-	<UnfoldFeature id="TranscriptId" input="TranscriptIdFolded" />
+	<UnfoldFeature id="TranscriptId" input="EquivalenceClass" />
 	
+	<AnnotationFeature id="Gene" data="true" >
+		<Genes g="genomic" />
+		<? var referenceSequenceConversion; if (referenceSequenceConversion) { ?>
+		<ReferenceSequenceConversion referenceSequenceConversion="<? referenceSequenceConversion ?>" />
+		<? } ?>
+		<Contains/>
+	</AnnotationFeature>
+	<MapFeature id="Type" input="GeneId" />
+	<MultiFeatureMapping input="Gene,Type">
+		<Mapping from="[*],[N]" to="[*],['Ambiguous']" />
+		<Mapping from="[*],[U]" to="[Type],['Exonic']" />
+		<Mapping from="[+],[]" to="[*],['Intronic']" />
+		<Mapping from="[],[]" to="[*],['Intergenic']" />
+		<Mapping from="[*],[*]" to="[*],['Error']" />
+	</MultiFeatureMapping>
+
+
 	<FeatureStatisticOutput file="<?JS prefix ?>genes.tsv" input="GeneId">
 		<Condition inputs="GeneId" cond="[U]" />
 	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>exon_intron.tsv" input="Gene,Type">
+		<Condition inputs="Gene,Type" cond="[U],[*]" />
+	</FeatureStatisticOutput>
 	<FeatureStatisticOutput file="<?JS prefix ?>transcripts.tsv" input="TranscriptId">
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>equivalenceclasses.tsv" input="EquivalenceClass">
 	</FeatureStatisticOutput>
 
 	<ClusterReads file="<?JS prefix ?>clusters.tsv">

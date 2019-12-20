@@ -36,15 +36,21 @@ import gedi.core.region.feature.index.WriteJunctionCit;
 import gedi.core.region.feature.output.FeatureListOutput;
 import gedi.core.region.feature.output.FeatureStatisticOutput;
 import gedi.util.ArrayUtils;
+import gedi.util.FileUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
+import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.userInteraction.progress.ConsoleProgress;
 import gedi.util.userInteraction.progress.NoProgress;
 import gedi.util.userInteraction.progress.Progress;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -60,6 +66,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	private Supplier<CharSequence> descr;
 	
 	private boolean normalize = false;
+	private String normalizeName = "";
 	private ContrastMapping contrasts;
 	private NumericArray rezSizeFactors; // must be for the contrast mapped conditions!
 	private String[] conditions;
@@ -109,7 +116,39 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 		if (conditions.length>0) 
 			re2.conditions = conditions;
 		
+		
 		return re2;
+	}
+	
+	public static AlignedReadsDataToFeatureProgram getCoverageProgramsPerCondition(String coverageRmq, String junctionCoverage, boolean normalize, String...conditions) {
+		GenomicRegionFeatureProgram<AlignedReadsData> re = new GenomicRegionFeatureProgram<>();
+		if (coverageRmq!=null) {
+			for (String c : conditions) {
+				WriteCoverageRmq f = new WriteCoverageRmq(FileUtils.getFullNameWithoutExtension(coverageRmq)+"."+c+"."+FileUtils.getExtension(coverageRmq),c);
+				f.setId("coverage."+c);
+				re.add(f);
+			}
+		}
+		if (junctionCoverage!=null) {
+			for (String c : conditions) {
+				WriteJunctionCit f = new WriteJunctionCit(FileUtils.getFullNameWithoutExtension(junctionCoverage)+"."+c+"."+FileUtils.getExtension(junctionCoverage),c);
+				f.setId("junction."+c);
+				re.add(f);
+			}
+		}
+		re.setThreads(0);
+		AlignedReadsDataToFeatureProgram re2 = new AlignedReadsDataToFeatureProgram(re);
+		re2.normalize = normalize;
+		if (conditions.length>0) 
+			re2.conditions = conditions;
+		
+		
+		return re2;
+	}
+	
+	public AlignedReadsDataToFeatureProgram setNormalizeName(String normalizeName) {
+		this.normalizeName = normalizeName;
+		return this;
 	}
 
 
@@ -176,6 +215,7 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 	}
 	
 	public void processStorage(GenomicRegionStorage<AlignedReadsData> storage) {
+		program.setLabelsFromStorage(storage);
 		program.setDataToCounts((ard,b)->{
 			if (contrasts!=null) ard = new ConditionMappedAlignedReadsData(ard, contrasts);
 			NumericArray re = ard.getCountsForDistinct(b, 0, readCountMode);
@@ -184,18 +224,21 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 		});//ard.addCount(0, b, true));
 		
 		if (normalize) {
-			rezSizeFactors = NumericArray.wrap(storage.getMetaDataTotals());
+			rezSizeFactors = NumericArray.wrap(storage.getMetaDataTotals(normalizeName));
 			double med = rezSizeFactors.evaluate(NumericArrayFunction.Median);
 			for (int i=0; i<rezSizeFactors.length(); i++)
 				rezSizeFactors.setDouble(i, med/rezSizeFactors.getDouble(i));
 		}
+		HashSet<String> conditionSet = new HashSet<>(Arrays.asList(storage.getMetaDataConditions()));
 		
 		if (conditions!=null && contrasts==null) {
+			conditionSet.clear();
 			HashMap<String, Integer> index = ArrayUtils.createIndexMap(storage.getMetaDataConditions());
 			
 			NumericArray mappedRezSizeFactors = NumericArray.createMemory(conditions.length, NumericArrayType.Double);
 			contrasts = new ContrastMapping();
 			for (int i=0; i<conditions.length; i++) {
+				conditionSet.add(conditions[i]);
 				contrasts.addMapping(index.get(conditions[i]), i, conditions[i]);
 				if (rezSizeFactors!=null)
 					mappedRezSizeFactors.setDouble(i, rezSizeFactors.getDouble(index.get(conditions[i])));
@@ -204,12 +247,32 @@ public class AlignedReadsDataToFeatureProgram implements Consumer<ReferenceGenom
 				rezSizeFactors = mappedRezSizeFactors;
 		}
 		
+		
+		for (WriteCoverageRmq cov : program.getFeatures().castFiltered(WriteCoverageRmq.class).loop()) {
+			if (cov!=null)
+				try {
+					FileUtils.writeAllText(
+							DynamicObject.from("conditions", DynamicObject.from(
+										EI.wrap(storage.getMetaData().getEntry("conditions").asArray())
+											.filter(dyn->(cov.getCondition()==null || cov.getCondition().equals(dyn.getEntry("name").asString())) && conditionSet.contains(dyn.getEntry("name").asString()))
+											.iff(normalize, ei->ei.map(dyn->dyn.removeEntries(en->en.startsWith("total"))))
+											.toArray()
+										)).toJson(),
+							new File(cov.getPath()+".metadata.json")
+							);
+				} catch (IOException e) {
+					throw new RuntimeException("Could not write metadata!");
+				}
+		}
+
+		
 		program.begin();
 		progress.init();
 		progress.setCount((int) storage.size());
 		storage.ei().forEachRemaining(this);
 		progress.finish();
 		program.end();
+		
 
 	}
 	

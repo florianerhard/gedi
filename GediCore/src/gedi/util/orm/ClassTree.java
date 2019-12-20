@@ -321,11 +321,26 @@ public class ClassTree<T> implements BinarySerializable {
 			}
 			return offset;
 		}
+		
 		// normal class with primitives and pointers
+		byte[] buff = checkPutSize(buffer,offset,primitiveRegion.getTotalLength());
 		for (int i=0; i<primitiveRegion.getNumParts(); i++) {
-			unsafe.copyMemory(o, primitiveRegion.getStart(i), checkPutSize(buffer,offset,primitiveRegion.getLength(i)), offset, primitiveRegion.getLength(i));
-			offset+=primitiveRegion.getLength(i);
+			for (int w=0; w<primitiveRegion.getLength(i); w+=Long.BYTES)
+				if (w+Long.BYTES<=primitiveRegion.getLength(i)) {
+					unsafe.putLong(buff, offset, unsafe.getLong(o,(long)primitiveRegion.getStart(i)+w));
+					offset+=Long.BYTES;
+				} else if (w+Integer.BYTES<=primitiveRegion.getLength(i)) {
+					unsafe.putInt(buff, offset, unsafe.getInt(o,(long)primitiveRegion.getStart(i)+w));
+					offset+=Integer.BYTES;
+				} else
+					throw new RuntimeException();
 		}
+		
+		// incompatible with openjdk 11 
+//		for (int i=0; i<primitiveRegion.getNumParts(); i++) {
+//			unsafe.copyMemory(o, primitiveRegion.getStart(i), checkPutSize(buffer,offset,primitiveRegion.getLength(i)), offset, primitiveRegion.getLength(i));
+//			offset+=primitiveRegion.getLength(i);
+//		}
 		for (int i=0; i<start.length; i++) {
 			if (end[i]-start[i]==0)
 				offset = children[i].toBuffer(unsafe.getObject(o, start[i]),buffer,offset);

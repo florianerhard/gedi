@@ -28,13 +28,19 @@ public class GediProgramContext {
 	private Logger log;
 	private Supplier<Progress> progress;
 	private boolean dry;
+	private GediParameterSet params;
 	
-	public GediProgramContext(Logger log, Supplier<Progress> progress, boolean dry) {
+	public GediProgramContext(Logger log, Supplier<Progress> progress, boolean dry, GediParameterSet params) {
 		this.log = log;
 		this.progress = progress;
 		this.dry = dry;
+		this.params = params;
 	}
 
+	public <T extends GediParameterSet> T getParams() {
+		return (T) params;
+	}
+	
 	public Logger getLog() {
 		return log;
 	}
@@ -46,4 +52,14 @@ public class GediProgramContext {
 	public boolean isDryRun() {
 		return dry;
 	}
+	
+	public void logf(String format, Object...args) {
+		getLog().info(String.format(format, args));
+	}
+	
+	public void errorf(String format, Object...args) {
+		getLog().severe(String.format(format, args));
+	}
+	
+	
 }

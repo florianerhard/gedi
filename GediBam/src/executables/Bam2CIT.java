@@ -20,7 +20,10 @@ package executables;
 import gedi.app.Gedi;
 import gedi.app.extension.ExtensionContext;
 import gedi.core.data.reads.AlignedReadsData;
+import gedi.core.data.reads.BarcodeMapping;
+import gedi.core.data.reads.BarcodedAlignedReadsData;
 import gedi.core.data.reads.DefaultAlignedReadsData;
+import gedi.core.data.reads.ReadCountMode;
 import gedi.core.genomic.Genomic;
 import gedi.core.reference.Strandness;
 import gedi.core.region.GenomicRegionStorage;
@@ -29,8 +32,11 @@ import gedi.core.region.GenomicRegionStorageExtensionPoint;
 import gedi.core.region.ImmutableReferenceGenomicRegion;
 import gedi.region.bam.BamGenomicRegionStorage;
 import gedi.region.bam.BamGenomicRegionStorage.PairedEndHandling;
+import gedi.util.FileUtils;
 import gedi.util.ParseUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
+import gedi.util.datastructure.array.NumericArray.NumericArrayType;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -69,11 +75,14 @@ public class Bam2CIT {
 			System.exit(1);
 		}
 		
+		boolean is10x = false;
+		boolean isUmi = false;
+		String bcm = null;
 		boolean progress = false;
 		boolean keepIds = false;
-		boolean compress = true;
+		boolean compress = false;
 		boolean var = true;
-		boolean delM = true;
+		boolean keepMito = false;
 		boolean nosec = false;
 		boolean unspec = false;
 		boolean anti = false;
@@ -97,8 +106,8 @@ public class Bam2CIT {
 				head = checkIntParam(args,++i);
 			else if (args[i].equals("-pe"))
 				peh = ParseUtils.parseEnumNameByPrefix(checkParam(args,++i),true,PairedEndHandling.class);
-			else if (args[i].equals("-nocompress"))
-				compress = false;
+			else if (args[i].equals("-compress"))
+				compress = true;
 			else if (args[i].equals("-novar"))
 				var = false;
 			else if (args[i].equals("-nosec"))
@@ -106,11 +115,22 @@ public class Bam2CIT {
 			else if (args[i].equals("-strandunspecific"))
 				unspec = true;
 			else if (args[i].equals("-anti"))
-				anti = true;
-			else if (args[i].equals("-delM"))
-				delM = true;
+					anti = true;
+			else if (args[i].equals("-")){}
+			else if (args[i].equals("-10x")) {
+				is10x = true;
+				if (i<args.length-1 && !args[i+1].startsWith("-")){
+					bcm = checkParam(args, ++i);
+				}
+			} 
+			else if (args[i].equals("-umi")) 
+				isUmi = true;
+			else if (args[i].equals("-keepMito"))
+				keepMito = true;
 			else if (args[i].equals("-join"))
 				join = true;
+			else if (args[i].startsWith("-"))
+				throw new IllegalArgumentException("Parameter "+args[i]+" unknown!");
 			else {
 				out = args[i++];
 				args = Arrays.copyOfRange(args, i, args.length);
@@ -139,16 +159,64 @@ public class Bam2CIT {
 			storage.setJoinMates(true);
 		
 		storage.setKeepReadNames(keepIds);
+		Class<?> dataClass = DefaultAlignedReadsData.class;
+		
+		if (isUmi) {
+			storage.setUmi();
+			dataClass = BarcodedAlignedReadsData.class;
+		}
+		
+		if (is10x) {
+			storage.set10x();
+			dataClass = BarcodedAlignedReadsData.class;
+			
+			File[] bcs = EI.wrap(args)
+				.map(bam->new File(new File(new File(bam).getAbsoluteFile().getParentFile(),"filtered_feature_bc_matrix"), "barcodes.tsv.gz")).toArray(File.class);
+			
+			if (EI.wrap(bcs).filter(f->f.exists()).count()==bcs.length) {
+				System.err.println("Creating barcodes file!");
+			
+				String[] conds = storage.getMetaDataConditions();
+				try (LineWriter wr = new LineOrientedFile(FileUtils.getExtensionSibling(out, ".barcodes.tsv")).write()) {
+					wr.writeLine("Condition\tBarcode");
+					for (int c=0; c<conds.length; c++) {
+						for (String bc : EI.lines(bcs[c]).map(bc->StringUtils.removeFooter(bc, "-1")).loop()) 
+							wr.writef("%s\t%s\n",conds[c],bc);
+					}
+				}
+				
+				
+			}
+			else {
+				System.err.println("Do not create barcodes file, not all filtered_feature_bc_matrix found!");
+			}
+			
+		}
 		
 		Gedi.startup(false);
 		@SuppressWarnings("rawtypes")
-		GenomicRegionStorage outStorage = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(Boolean.class, compress).add(String.class, out).add(Class.class, DefaultAlignedReadsData.class), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
+		GenomicRegionStorage outStorage = GenomicRegionStorageExtensionPoint.getInstance().get(new ExtensionContext().add(Boolean.class, compress).add(String.class, out).add(Class.class, dataClass), GenomicRegionStorageCapabilities.Disk, GenomicRegionStorageCapabilities.Fill);
+		int numCond = storage.getRandomRecord().getNumConditions();
+		NumericArray mitocount = NumericArray.createMemory(numCond, NumericArrayType.Double);
 		
-		if (head>0 || delM) {
+		if (head>0 || !keepMito || bcm!=null) {
 			ExtendedIterator<ImmutableReferenceGenomicRegion<AlignedReadsData>> it = storage.ei();
-			if (progress) it = it.progress();
 			if (head>0) it = it.head(head);
-			if (delM) it = it.filter(r->!r.getReference().isMitochondrial());
+			if (!keepMito) it = it.filter(r->{
+				boolean mito = r.getReference().isMitochondrial();
+				if (mito) r.getData().addTotalCountsForConditions(mitocount, ReadCountMode.Weight);
+				return !mito;
+			});
+			
+			if (bcm!=null) {
+				BarcodeMapping bc = new BarcodeMapping(storage.getMetaDataConditions(), bcm);
+				it = it.map(r->{
+					AlignedReadsData d = BarcodedAlignedReadsData.map((BarcodedAlignedReadsData)r.getData(), bc);
+					if (d.getTotalCountOverall(ReadCountMode.All)==0) return null;
+					return new ImmutableReferenceGenomicRegion<>(r.getReference(), r.getRegion(),d);
+				}).removeNulls();
+			}
+			if (progress) it = it.progress();
 			
 			outStorage.fill(it);
 		} else {
@@ -172,10 +240,22 @@ public class Bam2CIT {
 					));
 		outStorage.setMetaData(meta);
 		
+		if (!keepMito) {
+			System.out.println("Condition\tMitochondrial");
+			String[] conds = storage.getMetaDataConditions();
+			for (int c=0; c<conds.length; c++) {
+				System.out.print(conds[c]);
+				System.out.println("\t"+mitocount.getDouble(c));
+			}
+			System.out.println();
+		}
+		System.out.println("--------------------");
+		System.out.println("Total\t"+mitocount.sum());
+		
 	}
 
 	private static void usage() {
-		System.out.println("Bam2CIT [-p] [-id] [-nocompress] [-novar] [-nosec] <output> <file1> <file2> ... \n\n -p shows progress\n -id add ids to CIT");
+		System.out.println("Bam2CIT [-p] [-id] [-nocompress] [-keepMito] [-novar] [-nosec] [-10x] <output> <file1> <file2> ... \n\n -p shows progress\n -id add ids to CIT");
 	}
 	
 }

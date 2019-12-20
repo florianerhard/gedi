@@ -409,6 +409,9 @@ public class DoubleArrayList extends AbstractDoubleCollection {
 	}
 
 
+	public int getCapacity() {
+		return doubleArray.length;
+	}
 
 
 }

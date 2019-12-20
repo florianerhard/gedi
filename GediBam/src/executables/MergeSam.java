@@ -144,7 +144,7 @@ public class MergeSam {
 		boolean correctMc = false;
 		HashMap<String, Object> param = JS.parseParameter(args, false);
 		String prioPipeline = null;
-		boolean removeNonStandard = true;
+		boolean removeNonStandard = false;
 		boolean unmapped = false;
 		
 		int i;
@@ -157,8 +157,8 @@ public class MergeSam {
 			else if (args[i].equals("-p")) {
 				progress=new ConsoleProgress();
 			}
-			else if (args[i].equals("-nonstandard")) {
-				removeNonStandard = false;
+			else if (args[i].equals("-removenonstandard")) {
+				removeNonStandard = true;
 			}
 			else if (args[i].equals("-prio")) {
 				prioPipeline = checkParam(args, ++i);

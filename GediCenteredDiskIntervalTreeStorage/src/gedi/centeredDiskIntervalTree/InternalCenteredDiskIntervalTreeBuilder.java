@@ -25,6 +25,8 @@ import gedi.util.io.randomaccess.PageFileWriter;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.function.Supplier;
 
 public class InternalCenteredDiskIntervalTreeBuilder<D> extends CenteredDiskIntervalTreeBuilder<D> {
 
@@ -32,6 +34,9 @@ public class InternalCenteredDiskIntervalTreeBuilder<D> extends CenteredDiskInte
 	
 	private PageFileWriter data;
 	
+	private ArrayList<String> tmps = new ArrayList<String>();
+	private Supplier<PageFileWriter> dataer;
+	private long offset = 0;
 	
 	public InternalCenteredDiskIntervalTreeBuilder(String prefix, DynamicObject globalInfo) throws IOException {
 		this(System.getProperty("java.io.tmpdir"),prefix, globalInfo);
@@ -40,18 +45,33 @@ public class InternalCenteredDiskIntervalTreeBuilder<D> extends CenteredDiskInte
 	
 	public InternalCenteredDiskIntervalTreeBuilder(String tmpFolder, String prefix, DynamicObject globalInfo) throws IOException {
 		super(true,MAGIC,prefix,tmpFolder);
-		data = new PageFileWriter(File.createTempFile(prefix+"."+MAGIC, ".data", new File(tmpFolder)).getPath());
-		data.getContext().setGlobalInfo(globalInfo);
+		dataer = ()->{
+			try {
+				PageFileWriter re = new PageFileWriter(File.createTempFile(prefix+"."+MAGIC, ".data", new File(tmpFolder)).getPath());
+				re.getContext().setGlobalInfo(globalInfo);
+				tmps.add(re.getPath());
+				return re;
+			} catch (IOException e) {
+				throw new RuntimeException("Could not create tmp file!",e);
+			}
+		};
 	}
 	
 	@Override
 	public void toDisk() throws IOException {
 		super.toDisk();
-		data.truncate();
+		if (data!=null) {
+			offset+=data.position();
+			data.close();
+			data = null;
+		}
 	}
 	
 	public void add(GenomicRegion region, D data) throws IOException {
-		long ptr = this.data.position();
+		if (this.data==null)
+			this.data = dataer.get();
+		
+		long ptr = this.data.position()+offset;
 		if (region.getBoundary(0)>Integer.MAX_VALUE/2 || region.getBoundary(0)<0)
 			return;
 		
@@ -67,18 +87,22 @@ public class InternalCenteredDiskIntervalTreeBuilder<D> extends CenteredDiskInte
 	}
 	
 	public InternalCenteredDiskIntervalTreeBuilder<D> build(PageFileWriter out) throws IOException {
-		data.close();
+		if (data!=null) {
+			data.close();
+			data = null;
+		}
 		
 		super.build(out);
 		
-		PageFile datain = new PageFile(this.data);
-		while (!datain.eof()) {
-			out.put(datain.get());
-		}
-		
-		datain.close();
+		for (String path : tmps) {
+			PageFile datain = new PageFile(path);
+			while (!datain.eof()) {
+				out.put(datain.get());
+			}
+			datain.close();
 //		System.err.println("deleting "+data.getPath());
-		new File(data.getPath()).delete();
+			new File(path).delete();
+		}
 		
 		return this;
 	}

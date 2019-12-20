@@ -25,6 +25,8 @@ public interface BinaryReader {
 
 	long position() throws IOException;
 	long position(long position) throws IOException;
+	
+	BinaryReader view(long start, long end);
 
 	short getShort() throws IOException;
 
@@ -134,6 +136,13 @@ public interface BinaryReader {
 				((long)getByte())<<8 |
 				getByte();
 	}
-
+	long size();
+	default long getStart() {
+		return 0;
+	}
+	default long getEnd() {
+		return size();
+	}
+	default void close(){}
 
 }

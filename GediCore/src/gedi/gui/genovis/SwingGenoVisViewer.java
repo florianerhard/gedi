@@ -670,6 +670,27 @@ public class SwingGenoVisViewer extends JPanel implements GenoVisViewer, Scrolla
 		render((Graphics2D) g);
 	}
 	
+	public void screenshot(String pathOrFormat) throws IOException {
+		if (pathOrFormat!=null) {
+			
+			String path;
+			String format;
+			if (pathOrFormat.contains(".")) {
+				path = pathOrFormat;
+				format = FileUtils.getExtension(pathOrFormat);
+			} else {
+				format = pathOrFormat;
+				path = getGenomicLocationAsString().replace(':', '-')+"."+format;
+			}
+			List<ExportFileType> exp = ExportFileType.getExportFileTypes(format);
+			if (exp.isEmpty()) throw new IOException("Unknown file format: "+format);
+			
+			exp.get(0).exportToFile(new File(path), this, this, new Properties(), null);
+		}
+		else
+			new ExportDialog().showExportDialog(this, "Save view as ...", this, getGenomicLocationAsString()+".png");
+	}
+	
 	public BufferedImage getImage() {
 		double height = 0;
 		for (VisualizationTrack<?,?> t : tracks) {

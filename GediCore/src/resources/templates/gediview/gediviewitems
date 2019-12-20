@@ -8,6 +8,7 @@ varin("readmode","How to count multimappers (default: weight",false);
 varin("mbppp","Maximal bp per pixel (Default: Infinity)",false);
 varin("nolog","Use logscale",false);
 varin("nonorm","Use logscale",false);
+varin("bigreads","Shop reads (with magnification)",false);
 ?>
 <?JS
 var background = background?background:"#ffffff";
@@ -15,6 +16,10 @@ var readmode = readmode?readmode:ReadCountMode.Weight;
 var mbppp = mbppp?mbppp:1000;
 var nonorm;
 var nolog;
+var bigreads;
+var bigreadsset=bigreads;
+if (!bigreads) bigreads=1;
+if (bigreads===true) bigreads = 5;
 ?>
 		
 	<AlignedReadsDataMergeMapper id="+.<?JS id ?>.data" input="<?JS print(EI.wrap(input).map(function(inp) "+."+inp+".data").concat(",")) ?>" numConditions="<?JS print(EI.wrap(numConditions).concat(",")) ?>" >
@@ -42,6 +47,9 @@ var nolog;
 	<AlignedReadsDataToMismatchesMapper id="+.<?JS id ?>.mismatches" input="+.<?JS id ?>.data">	
 		<ReadCountMode m="<?JS readmode ?>" />
 	</AlignedReadsDataToMismatchesMapper>
+	<AlignedReadsDataTo3pSoftclipMapper id="+.<?JS id ?>.softclip3p" input="+.<?JS id ?>.data">	
+		<ReadCountMode m="<?JS readmode ?>" />
+	</AlignedReadsDataTo3pSoftclipMapper>
 
 	<AlignedReadsDataToCoverageMapper id="-.<?JS id ?>.coveragenn" input="-.<?JS id ?>.data">
 		<ReadCountMode m="<?JS readmode ?>" />
@@ -55,6 +63,33 @@ var nolog;
 	<AlignedReadsDataToMismatchesMapper id="-.<?JS id ?>.mismatches" input="-.<?JS id ?>.data" >	
 			<ReadCountMode m="<?JS readmode ?>" />
 	</AlignedReadsDataToMismatchesMapper>
+	<AlignedReadsDataTo3pSoftclipMapper id="-.<?JS id ?>.softclip3p" input="-.<?JS id ?>.data">	
+		<ReadCountMode m="<?JS readmode ?>" />
+	</AlignedReadsDataTo3pSoftclipMapper>
+	
+	<AlignedReadsDataToPositionMapper input="+.<?JS id ?>.data" id="+.<?JS id ?>.5pnn">
+		<ReadCountMode m="<?JS readmode ?>" />
+		<ReferencePosition p="Start" />
+	</AlignedReadsDataToPositionMapper>
+	<NumericNormalize id="+.<?JS id ?>.5p" input="+.<?JS id ?>.5pnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
+	<AlignedReadsDataToPositionMapper input="-.<?JS id ?>.data" id="-.<?JS id ?>.5pnn">
+		<ReadCountMode m="<?JS readmode ?>" />
+		<ReferencePosition p="Stop" />
+	</AlignedReadsDataToPositionMapper>
+	<NumericNormalize id="-.<?JS id ?>.5p" input="-.<?JS id ?>.5pnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
+
+
+	<AlignedReadsDataToPositionMapper input="+.<?JS id ?>.data" id="+.<?JS id ?>.3pnn">
+		<ReadCountMode m="<?JS readmode ?>" />
+		<ReferencePosition p="Stop" />
+	</AlignedReadsDataToPositionMapper>
+	<NumericNormalize id="+.<?JS id ?>.3p" input="+.<?JS id ?>.3pnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
+	<AlignedReadsDataToPositionMapper input="-.<?JS id ?>.data" id="-.<?JS id ?>.3pnn">
+		<ReadCountMode m="<?JS readmode ?>" />
+		<ReferencePosition p="Start" />
+	</AlignedReadsDataToPositionMapper>
+	<NumericNormalize id="-.<?JS id ?>.3p" input="-.<?JS id ?>.3pnn" totals="<?JS print(EI.wrap(totals).concat(",")); ?>" />
+	
 	
 	<NumericMerge input="+.<?JS id ?>.coveragenn,+.<?JS id ?>.mismatches" id="+.<?JS id ?>.mismatchfrac">
 		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
@@ -63,6 +98,16 @@ var nolog;
 		<Compute js="data.slice(data.length()-4,data.length()).copy().applyInPlace(function(d) d/data.slice(0,data.length()-4).sum())" />
 	</NumericMerge>
 	
+	
+	
+	<StackedBoxesTrack id="+.<?JS id ?>.Normalized.5p" class="<?JS id ?>" input="+.<?JS id ?>.5p">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+	</StackedBoxesTrack>
+	<StackedBoxesTrack id="+.<?JS id ?>.Normalized.3p" class="<?JS id ?>" input="+.<?JS id ?>.3p">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+	</StackedBoxesTrack>
 	
 	<NumericTrackGroup id="+.<?JS id ?>.Normalized.Data" class="<?JS id ?>">
 		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
@@ -79,6 +124,23 @@ var nolog;
 		<? if (nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 	
+	<StackedBoxesTrack id="+.<?JS id ?>.Unnormalized.5p" class="<?JS id ?>" input="+.<?JS id ?>.5pnn">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+	</StackedBoxesTrack>
+		
+	<ScaleLimitLinker id="+.<?JS id ?>.Unnormalized.3p.linker" />
+	<StackedBoxesTrack id="+.<?JS id ?>.Unnormalized.3p" class="<?JS id ?>" input="+.<?JS id ?>.3pnn">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<LimitLinker linker="+.<?JS id ?>.Unnormalized.3p.linker" />
+	</StackedBoxesTrack>
+		<StackedBoxesTrack input="+.<?JS id ?>.softclip3p" id="+.<?JS id ?>.Softclip.Softclip 3'" class="basecolors">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<LimitLinker linker="+.<?JS id ?>.Unnormalized.3p.linker" />
+	</StackedBoxesTrack>
+		
 	<NumericTrackGroup id="+.<?JS id ?>.Unnormalized.Data" class="<?JS id ?>">
 		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="+.<?JS id ?>.junctionsnn" id="+.<?JS id ?>.Unnormalized.Junctions" class="<?JS id ?>" >
@@ -93,6 +155,7 @@ var nolog;
 		</LinesTrack>
 		<? if (!nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
+
 
 	<NumericTrackGroup id="+.<?JS id ?>.Mismatches.Group" class="<?JS id ?>">
 		<StackedLinesTrack input="+.<?JS id ?>.coveragenn" id="+.<?JS id ?>.Mismatches.Coverage" class="<?JS id ?>" >
@@ -115,19 +178,29 @@ var nolog;
 		
 
 	<PackRegionTrack input="+.<?JS id ?>.data" id="+.<?JS id ?>.Reads"  >
-		<Hspace space="0" />
-		<Vspace space="0" />
+		<Hspace space="1" />
+		<Vspace space="<? print(bigreads>1?1:0) ?>" />
 		<Background c="#e5efff" />
 		<Strand strand="+"/>
 		<BoxRenderer>
-			<AlignedReadsDataBoxRenderer />
+			<AlignedReadsDataBoxRenderer>
+				<Factor f="<? print(bigreads) ?>"/>
+			</AlignedReadsDataBoxRenderer>
 		</BoxRenderer>
 		<ViewDoubleClick />
-		<Hidden h="true" />
+		<Hidden h="<? print(bigreadsset?'false':'true') ?>" />
 		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 	</PackRegionTrack>
+
 	
-	
+	<StackedBoxesTrack id="-.<?JS id ?>.Normalized.5p" class="<?JS id ?>" input="-.<?JS id ?>.5p">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+	</StackedBoxesTrack>
+	<StackedBoxesTrack id="-.<?JS id ?>.Normalized.3p" class="<?JS id ?>" input="-.<?JS id ?>.3p">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+	</StackedBoxesTrack>
 	
 	<NumericTrackGroup id="-.<?JS id ?>.Normalized.Data" class="<?JS id ?>">
 		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
@@ -144,6 +217,24 @@ var nolog;
 		<? if (nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
 	
+	<StackedBoxesTrack id="-.<?JS id ?>.Unnormalized.5p" class="<?JS id ?>" input="-.<?JS id ?>.5pnn">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+	</StackedBoxesTrack>
+
+	<ScaleLimitLinker id="-.<?JS id ?>.Unnormalized.3p.linker" />
+	<StackedBoxesTrack id="-.<?JS id ?>.Unnormalized.3p" class="<?JS id ?>" input="-.<?JS id ?>.3pnn">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<LimitLinker linker="-.<?JS id ?>.Unnormalized.3p.linker" />
+	</StackedBoxesTrack>
+	<StackedBoxesTrack input="-.<?JS id ?>.softclip3p" id="-.<?JS id ?>.Softclip.Softclip 3'" class="basecolors">
+		<Hidden h="true" />
+		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
+		<LimitLinker linker="-.<?JS id ?>.Unnormalized.3p.linker" />
+	</StackedBoxesTrack>
+
+	
 	<NumericTrackGroup id="-.<?JS id ?>.Unnormalized.Data" class="<?JS id ?>">
 		<? if (!nolog) { ?><LogScale base="10" /><? } ?>
 		<RegionLinesTrack input="-.<?JS id ?>.junctionsnn" id="-.<?JS id ?>.Unnormalized.Junctions" class="<?JS id ?>" >
@@ -158,6 +249,7 @@ var nolog;
 		</LinesTrack>
 		<? if (!nonorm) { ?><Hidden h="true" /><? } ?>
 	</NumericTrackGroup>
+
 
 	<NumericTrackGroup id="-.<?JS id ?>.Mismatches.Group" class="<?JS id ?>">
 		<StackedLinesTrack input="-.<?JS id ?>.coveragenn" id="-.<?JS id ?>.Mismatches.Coverage" class="<?JS id ?>" >
@@ -178,16 +270,19 @@ var nolog;
 		<Hidden h="true" />
 	</StackedBoxesTrack>
 		
-		
+	
 	<PackRegionTrack input="-.<?JS id ?>.data" id="-.<?JS id ?>.Reads"  >
-		<Hspace space="0" />
-		<Vspace space="0" />
+		<Hspace space="1" />
+		<Vspace space="<? print(bigreads>1?1:0) ?>" />
 		<Background c="#e5efff" />
 		<Strand strand="-"/>
 		<BoxRenderer>
-			<AlignedReadsDataBoxRenderer />
+			<AlignedReadsDataBoxRenderer>
+				<Factor f="<? print(bigreads) ?>" />
+			</AlignedReadsDataBoxRenderer>
 		</BoxRenderer>
 		<ViewDoubleClick />
-		<Hidden h="true" />
+		<Hidden h="<? print(bigreadsset?'false':'true') ?>" />
 		<MaxBasePairsPerPixel v="<?JS print(mbppp) ?>"/>
 	</PackRegionTrack>
+	

@@ -21,6 +21,7 @@ import gedi.util.ArrayUtils;
 import gedi.util.FunctorUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
+import gedi.util.functions.ExtendedIterator;
 import gedi.util.math.stat.RandomNumbers;
 
 import java.lang.reflect.Array;
@@ -69,6 +70,10 @@ public class MarkovChain<T> {
 		}
 	}
 
+	public void setRandom(RandomNumbers stoch) {
+		this.stoch = stoch;
+	}
+	
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
@@ -151,12 +156,12 @@ public class MarkovChain<T> {
 		}
 		return r;
 	}
-	public Iterator<T> iterate() {
+	public ExtendedIterator<T> iterate() {
 		return iterate(-1);
 	}
 	
-	public Iterator<T> iterate(final int n) {
-		return new Iterator<T>() {
+	public ExtendedIterator<T> iterate(final int n) {
+		return new ExtendedIterator<T>() {
 			int i=n;
 			int last = -1;
 			@Override

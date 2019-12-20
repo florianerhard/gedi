@@ -148,7 +148,7 @@ public class EquivalenceClassInfo {
 			int p = ArrayUtils.find(E[i], name);
 			if (p>=0) {
 				if (E[i].length==1) return null;
-				String[] rE = ArrayUtils.removeItemFromArray(E[i], p);
+				String[] rE = ArrayUtils.removeIndexFromArray(E[i], p);
 				Integer ind = index.get(Arrays.asList(rE));
 				if (ind==null) {
 					index.put(Arrays.asList(rE), nE.size());

@@ -103,7 +103,7 @@ public class MergeCIT {
 				EI.wrap(storages)
 					.map(s->s.ei()
 							.iff(skip.size()>0, ei->ei.filter(rgr->!skip.contains(rgr.getReference().getName())))
-							.checkOrder((Comparator)FunctorUtils.naturalComparator()))
+							.checkOrder((Comparator)FunctorUtils.naturalComparator(),()->s.getPath()))
 					.toArray(new ExtendedIterator[0]);
 		
 		int[] conditions = EI.wrap(storages).mapToInt(s->s.getRandomRecord().getNumConditions()).toIntArray();

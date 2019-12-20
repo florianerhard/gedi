@@ -17,21 +17,21 @@
  */
 package gedi.core.data.reads;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.TreeSet;
+import java.util.function.UnaryOperator;
+
+import cern.colt.bitvector.BitVector;
 import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.datastructure.collections.doublecollections.DoubleArrayList;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.TreeSet;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
-
-import cern.colt.bitvector.BitVector;
+import gedi.util.sequence.DnaSequence;
 
 public class AlignedReadsDataFactory {
 
@@ -39,6 +39,9 @@ public class AlignedReadsDataFactory {
 	protected int conditions;
 	
 	protected ArrayList<int[]> count = new ArrayList<int[]>();
+	protected ArrayList<int[]> nonzeros;
+	protected IntArrayList nextcount;
+	
 //	protected ArrayList<IntArrayList> var = new ArrayList<IntArrayList>();
 //	protected ArrayList<ArrayList<CharSequence>> indels = new ArrayList<ArrayList<CharSequence>>();
 	protected ArrayList<TreeSet<VarIndel>> var = new ArrayList<TreeSet<VarIndel>>();
@@ -47,10 +50,21 @@ public class AlignedReadsDataFactory {
 	protected IntArrayList geometry = new IntArrayList();
 	protected IntArrayList ids = new IntArrayList();
 //	protected ArrayList ids = new ArrayList();
+	
+	protected ArrayList<ArrayList<DnaSequence>[]> barcodes = new ArrayList<ArrayList<DnaSequence>[]>();
 
 	public AlignedReadsDataFactory(int conditions) {
-		this.conditions = conditions;
+		this(conditions,conditions>5);
 	}
+	public AlignedReadsDataFactory(int conditions, boolean sparse) {
+		this.conditions = conditions;
+		if (sparse) {
+			nonzeros = new ArrayList<int[]>();
+			nextcount = new IntArrayList();
+		}
+	}
+	
+	
 	
 	public static void removeId(DefaultAlignedReadsData ard) {
 		ard.ids = null;
@@ -59,11 +73,16 @@ public class AlignedReadsDataFactory {
 	public AlignedReadsDataFactory start() {
 		currentDistinct=-1;
 		count.clear();
+		if (isSparse()) {
+			nonzeros.clear();
+			nextcount.clear();
+		}
 		var.clear();
 		multiplicity.clear();
 		weights.clear();
 		geometry.clear();
 		ids.clear();
+		barcodes.clear();
 		return this;
 	}
 	public int getDistinctSequences() {
@@ -74,11 +93,15 @@ public class AlignedReadsDataFactory {
 		setMultiplicity(1);
 		
 		this.count.add(new int[conditions]);
+		if (isSparse()) {
+			this.nonzeros.add(new int[conditions]);
+			this.nextcount.add(0);
+		}
 		this.var.add(new TreeSet<VarIndel>());
+		this.barcodes.add(new ArrayList[conditions]);
 		
 		return this;
 	}
-	
 	private void checkDistinct() {
 		if (currentDistinct<0) throw new RuntimeException("Call newDistinctSequence first!");
 	}
@@ -123,29 +146,87 @@ public class AlignedReadsDataFactory {
 	
 	public AlignedReadsDataFactory setCount(int[] count) {
 		checkDistinct();
-		System.arraycopy(count, 0, this.count.get(currentDistinct), 0, conditions);
+		if (isSparse()) {
+			for (int i=0; i<count.length; i++)
+				if (count[i]>0)
+					setCount(i,count[i]);
+		} 
+		else 
+			System.arraycopy(count, 0, this.count.get(currentDistinct), 0, conditions);
 		return this;
 	}
 	
 	public AlignedReadsDataFactory setCount(int condition, int count) {
 		checkDistinct();
-		this.count.get(currentDistinct)[condition]=count;
+		if (isSparse()) {
+			int c = Arrays.binarySearch(nonzeros.get(currentDistinct),0,nextcount.getInt(currentDistinct),condition);
+			if (c>=0) {
+				if (count==0) {
+					this.nextcount.decrement(currentDistinct);
+					this.count.get(currentDistinct)[c] = this.count.get(currentDistinct)[this.nextcount.getInt(currentDistinct)];
+					this.nonzeros.get(currentDistinct)[c] = this.nonzeros.get(currentDistinct)[this.nextcount.getInt(currentDistinct)];
+				} else {
+					this.count.get(currentDistinct)[c] =  count;
+				}
+			} else {
+				if (count>0) {
+					this.count.get(currentDistinct)[this.nextcount.getInt(currentDistinct)] =  count;
+					this.nonzeros.get(currentDistinct)[this.nextcount.getInt(currentDistinct)] =  condition;
+					this.nextcount.increment(currentDistinct);
+				}
+			}
+		} else {
+			this.count.get(currentDistinct)[condition]=count;
+		}
 		return this;
 	}
 	
 	public AlignedReadsDataFactory incrementCount(int condition, int count) {
+		if (count==0) return this;
+		
 		checkDistinct();
-		this.count.get(currentDistinct)[condition]+=count;
+		if (isSparse()) {
+			int c = Arrays.binarySearch(nonzeros.get(currentDistinct),0,nextcount.getInt(currentDistinct),condition);
+			if (c>=0) {
+				this.count.get(currentDistinct)[c] +=  count;
+			} else {
+				this.count.get(currentDistinct)[this.nextcount.getInt(currentDistinct)] +=  count;
+				this.nonzeros.get(currentDistinct)[this.nextcount.getInt(currentDistinct)] =  condition;
+				this.nextcount.increment(currentDistinct);
+			}
+		} else {
+			this.count.get(currentDistinct)[condition]+=count;
+		}
 		return this;
 	}
+	
 	
 	public AlignedReadsDataFactory incrementCount(NumericArray a) {
 		checkDistinct();
 		for (int i=0; i<getNumConditions(); i++)
-			this.count.get(currentDistinct)[i]+=a.getInt(i);
+			incrementCount(i,a.getInt(i));
 		return this;
 	}
 	
+	public AlignedReadsDataFactory addBarcode(int condition, String barcode) {
+		checkDistinct();
+		if (isSparse()) {
+			int c = Arrays.binarySearch(nonzeros.get(currentDistinct),0,nextcount.getInt(currentDistinct),condition);
+			if (c<0) throw new RuntimeException("Could not find index!");
+			condition = c;
+		}			
+		if (this.barcodes.get(currentDistinct)[condition]==null)
+			this.barcodes.get(currentDistinct)[condition]=new ArrayList<>();
+		this.barcodes.get(currentDistinct)[condition].add(new DnaSequence(barcode));
+		return this;
+	}
+	
+	public AlignedReadsDataFactory setBarcodes(ArrayList<DnaSequence>[] barcodes) {
+		checkDistinct();
+		this.barcodes.set(currentDistinct,barcodes);
+		return this;
+	}
+
 	public AlignedReadsDataFactory setId(int distinct,int id) {
 		checkDistinct(distinct);
 		ids.set(distinct, id);
@@ -204,21 +285,78 @@ public class AlignedReadsDataFactory {
 	
 	public AlignedReadsDataFactory setCount(int distinct,int[] count) {
 		checkDistinct(distinct);
-		System.arraycopy(count, 0, this.count.get(distinct), 0, conditions);
+		if (isSparse()) {
+			for (int i=0; i<count.length; i++)
+				if (count[i]>0)
+					setCount(distinct,i,count[i]);
+		} 
+		else 
+			System.arraycopy(count, 0, this.count.get(distinct), 0, conditions);
 		return this;
 	}
 	
 	public AlignedReadsDataFactory setCount(int distinct,int condition, int count) {
 		checkDistinct(distinct);
-		this.count.get(distinct)[condition]=count;
+		
+		
+		if (isSparse()) {
+			
+			int c = Arrays.binarySearch(nonzeros.get(distinct),0,nextcount.getInt(distinct),condition);
+			if (c>=0) {
+				if (count==0) {
+					this.nextcount.decrement(distinct);
+					this.count.get(distinct)[c] = this.count.get(distinct)[this.nextcount.getInt(distinct)];
+					this.nonzeros.get(distinct)[c] = this.nonzeros.get(distinct)[this.nextcount.getInt(distinct)];
+				} else {
+					this.count.get(distinct)[c] =  count;
+				}
+			} else {
+				if (count>0) {
+					this.count.get(distinct)[this.nextcount.getInt(distinct)] =  count;
+					this.nonzeros.get(distinct)[this.nextcount.getInt(distinct)] =  condition;
+					this.nextcount.increment(distinct);
+				}
+			}
+			
+		} else {
+			this.count.get(distinct)[condition]=count;
+		}
 		return this;
 	}
 	
 	public AlignedReadsDataFactory incrementCount(int distinct,int condition, int count) {
+		if (count==0) return this;
+		
 		checkDistinct(distinct);
-		this.count.get(distinct)[condition]+=count;
+		if (isSparse()) {
+			int c = Arrays.binarySearch(nonzeros.get(distinct),0,nextcount.getInt(distinct),condition);
+			if (c>=0) {
+				this.count.get(distinct)[c] +=  count;
+			} else {
+				this.count.get(distinct)[this.nextcount.getInt(distinct)] +=  count;
+				this.nonzeros.get(distinct)[this.nextcount.getInt(distinct)] =  condition;
+				this.nextcount.increment(distinct);
+			}
+		} else {
+			this.count.get(distinct)[condition]+=count;
+		}
 		return this;
 	}
+	
+	public AlignedReadsDataFactory addBarcode(int distinct, int condition, String barcode) {
+		checkDistinct(distinct);
+		if (isSparse()) {
+			int c = Arrays.binarySearch(nonzeros.get(currentDistinct),0,nextcount.getInt(currentDistinct),condition);
+			if (c<0) throw new RuntimeException("Could not find index!");
+			condition = c;
+		}		
+		
+		if (this.barcodes.get(distinct)[condition]==null)
+			this.barcodes.get(distinct)[condition]=new ArrayList<>();
+		this.barcodes.get(distinct)[condition].add(new DnaSequence(barcode));
+		return this;
+	}
+
 	
 	public AlignedReadsDataFactory addMismatch(int pos, char genomic, char read, boolean isFromSecondRead) {
 		getCurrentVariationBuffer().add(createMismatch(pos, genomic, read,isFromSecondRead));
@@ -387,12 +525,46 @@ public class AlignedReadsDataFactory {
 	}
 	
 	public void makeDistinct() {
+		if (isSparse()) sortCounts();
+		
 		HashMap<TreeSet<VarIndel>,Integer> h = new HashMap<TreeSet<VarIndel>,Integer>();
 		for (int i=0; i<var.size(); i++) {
 			Integer idx = h.get(var.get(i));
 			if (idx==null) h.put(var.get(i), i);
 			else {
-				ArrayUtils.add(count.get(idx), count.get(i));
+				if (!isSparse()) {
+					ArrayUtils.add(count.get(idx), count.get(i));
+				} else {
+					IntArrayList cc = new IntArrayList();
+					IntArrayList cn = new IntArrayList();
+					int idxi = 0;
+					int ii = 0;
+					while (idxi<nextcount.getInt(idx) && ii<nextcount.getInt(i)) {
+						if (nonzeros.get(idx)[idxi]==nonzeros.get(i)[ii]) { 
+							cn.add(nonzeros.get(idx)[idxi]);
+							cc.add(count.get(idx)[idxi++]+count.get(i)[ii++]);
+						}
+						else if (nonzeros.get(idx)[idxi]<nonzeros.get(i)[ii]){
+							cn.add(nonzeros.get(idx)[idxi]);
+							cc.add(count.get(idx)[idxi++]);
+						}
+						else {
+							cn.add(nonzeros.get(i)[ii]);
+							cc.add(count.get(i)[ii++]);
+						}
+					}
+					while (idxi<nextcount.getInt(idx)) {
+						cn.add(nonzeros.get(idx)[idxi]);
+						cc.add(count.get(idx)[idxi++]);
+					}
+					while (ii<nextcount.getInt(i)) {
+						cn.add(nonzeros.get(i)[ii]);
+						cc.add(count.get(i)[ii++]);
+					}
+					count.set(idx,cc.toIntArray());
+					nonzeros.set(idx, cn.toIntArray());
+					nextcount.set(idx,cc.size());
+				}
 				if (ids.size()>0)
 					ids.set(idx, Math.min(ids.getInt(idx),ids.getInt(i)));
 			}
@@ -405,16 +577,30 @@ public class AlignedReadsDataFactory {
 			keep.putQuick(i, true);
 		
 		count = restrict(count,keep);
+		if (isSparse()) {
+			nonzeros = restrict(nonzeros,keep);
+			nextcount = restrict(nextcount,keep);
+		}
 		var = restrict(var,keep);
 		multiplicity = restrict(multiplicity,keep);
 		weights = restrict(weights,keep);
 		geometry = restrict(geometry,keep);
 		ids = restrict(ids,keep);
+		barcodes = restrict(barcodes,keep);
 		
 		currentDistinct = count.size()-1;
 	}
 	
 	
+	private void sortCounts() {
+		for (int d=0; d<count.size(); d++) {
+			int[] c = count.get(d);
+			int[] n = nonzeros.get(d);
+			ArrayUtils.parallelSort(n, c, 0, nextcount.getInt(d));
+			count.set(d, c);
+			nonzeros.set(d, n);
+		}
+	}
 	private <T> ArrayList<T> restrict(ArrayList<T> l, BitVector keep) {
 		ArrayList<T> re = new ArrayList<T>();
 		for (int i=0; i<l.size(); i++)
@@ -439,6 +625,7 @@ public class AlignedReadsDataFactory {
 	
 	public static DefaultAlignedReadsData createSimple(int[] count) {
 		DefaultAlignedReadsData re = new DefaultAlignedReadsData();
+		re.conditions = 1;
 		re.count = new int[][] {count};
 		re.var = new short[1][0];
 		re.indels = new CharSequence[1][0];
@@ -446,9 +633,13 @@ public class AlignedReadsDataFactory {
 		return re;
 	}
 
-	public DefaultAlignedReadsData create() {
-		DefaultAlignedReadsData re = new DefaultAlignedReadsData();
-		re.count = convInt(count);
+	private DefaultAlignedReadsData fill(DefaultAlignedReadsData re) {
+		re.conditions = getNumConditions();
+		if (isSparse())
+			sortCounts();
+		re.count = convInt(count,nextcount);
+		if (isSparse()) 
+			re.nonzeros = convInt(nonzeros,nextcount);
 		re.var = convShort(var);
 		re.indels = convS(var);
 		re.multiplicity = multiplicity.toIntArray();
@@ -469,10 +660,43 @@ public class AlignedReadsDataFactory {
 		
 		return re;
 	}
+
+	public DefaultAlignedReadsData create() {
+		return fill(new DefaultAlignedReadsData());
+	}
+	
+	public BarcodedAlignedReadsData createBarcode() {
+		return createBarcode(new BarcodedAlignedReadsData());
+	}
+	public BarcodedAlignedReadsData createBarcode(BarcodedAlignedReadsData re) {
+		fill(re);
+		
+		if (isSparse()) {
+			re.barcodes  = new DnaSequence[currentDistinct+1][][];
+			for (int d=0; d<re.barcodes.length; d++){
+				re.barcodes[d] = new DnaSequence[re.nonzeros[d].length][];
+				for (int c=0; c<re.getNonzeroCountIndicesForDistinct(d).length; c++) {
+					re.barcodes[d][c] = barcodes.get(d)[c].toArray(new DnaSequence[0]);
+					if (re.barcodes[d][c].length!=re.count[d][c])
+						throw new RuntimeException("Barcodes and counts do not match!");
+				}
+			}
+		} else {
+			re.barcodes  = new DnaSequence[currentDistinct+1][conditions][];
+			for (int d=0; d<re.barcodes.length; d++){
+				for (int c=0; c<re.barcodes[d].length; c++) {
+					re.barcodes[d][c] = barcodes.get(d)[c]==null?new DnaSequence[0]:barcodes.get(d)[c].toArray(new DnaSequence[0]);
+					if (re.barcodes[d][c].length!=re.count[d][c])
+						throw new RuntimeException("Barcodes and counts do not match!");
+				}
+			}
+		}
+		return re;
+	}
 	
 	public AlignedReadsData createDigital() {
 		DigitalAlignedReadsData re = new DigitalAlignedReadsData();
-		if (count.size()!=1 || var.get(0).size()>0) throw new RuntimeException();
+		if (isSparse() || count.size()!=1 || var.get(0).size()>0) throw new RuntimeException();
 		
 		re.count = new BitVector(count.get(0).length);
 		for (int i=0; i<re.count.size(); i++)
@@ -498,6 +722,19 @@ public class AlignedReadsDataFactory {
 			re[i] = a.get(i).clone();
 		return re;
 	}
+	
+	private int[][] convInt(ArrayList<int[]> a, IntArrayList nextInd) {
+		int[][] re = new int[currentDistinct+1][];
+		for (int i=0; i<re.length; i++) {
+			if (nextInd==null)
+				re[i] = a.get(i).clone();
+			else {
+				re[i] = new int[nextInd.getInt(i)];
+				System.arraycopy(a.get(i), 0, re[i], 0, nextInd.getInt(i));
+			}
+		}
+		return re;
+	}
 
 	private short[][] convShort(ArrayList<TreeSet<VarIndel>> var) {
 		short[][] re = new short[currentDistinct+1][];
@@ -515,15 +752,56 @@ public class AlignedReadsDataFactory {
 		return conditions;
 	}
 
-	/**
-	 * 
-	 * @param ard
-	 * @param distinct take the distinct from ard!
-	 */
-	public AlignedReadsDataFactory add(AlignedReadsData ard, int distinct) {
+	
+	public AlignedReadsDataFactory add(BarcodedAlignedReadsData ard, BarcodeMapping mapping) {
+		for (int distinct=0; distinct<ard.getDistinctSequences(); distinct++) 
+			add(ard,distinct,mapping);
+		return this;
+	}
+	
+	public boolean isSparse() {
+		return nonzeros!=null;
+	}
+	
+	public AlignedReadsDataFactory add(BarcodedAlignedReadsData ard, int distinct, BarcodeMapping mapping) {
+		
+		if (!isSparse()) throw new RuntimeException("Can only run in sparse mode!");
+		
+		IntArrayList collect = new IntArrayList();
+		for (int i=0; i<ard.getNumConditions(); i++) {
+			for (DnaSequence b : ard.getBarcodes(distinct, i)) {
+				String str = b.toString();
+				String cell = str.substring(0,mapping.getPrefixLength());
+				int index = mapping.getIndex(i, cell);
+				if (index!=-1) {
+					collect.add(index);
+				}
+			}
+		}
+		if (collect.isEmpty()) return this;
+		
 		newDistinctSequence();
-		for (int i=0; i<ard.getNumConditions(); i++)
-			setCount(i, ard.getCount(distinct, i));
+		collect.sort();
+		int s = 0;
+		for (int i=0; i<collect.size(); i++) {
+			if (collect.getInt(s)!=collect.getInt(i)) {
+				setCount(collect.getInt(s),i-s);
+				s = i;
+			}
+		}
+		setCount(collect.getInt(s),collect.size()-s);
+		
+		for (int i=0; i<ard.getNumConditions(); i++) {
+			for (DnaSequence b : ard.getBarcodes(distinct, i)) {
+				String str = b.toString();
+				String cell = str.substring(0,mapping.getPrefixLength());
+				int index = mapping.getIndex(i, cell);
+				if (index!=-1) {
+					addBarcode(index, str.substring(mapping.getPrefixLength()));
+				}
+			}
+		}
+		
 		setMultiplicity(ard.getMultiplicity(distinct));
 		for (int i=0; i<ard.getVariationCount(distinct); i++)
 			addVariation(ard.getVariation(distinct, i));
@@ -533,6 +811,50 @@ public class AlignedReadsDataFactory {
 			setWeight(ard.getWeight(distinct));
 		if (ard.hasGeometry())
 			setGeometry(ard.getGeometryBeforeOverlap(distinct), ard.getGeometryOverlap(distinct), ard.getGeometryAfterOverlap(distinct));
+		
+		
+		return this;
+	}
+	
+	
+	public AlignedReadsDataFactory add(AlignedReadsData ard) {
+		for (int d=0; d<ard.getDistinctSequences(); d++)
+			add(ard,d);
+		return this;
+	}
+	
+	/**
+	 * 
+	 * @param ard
+	 * @param distinct take the distinct from ard!
+	 */
+	public AlignedReadsDataFactory add(AlignedReadsData ard, int distinct) {
+		newDistinctSequence();
+		
+		if (ard.hasNonzeroInformation()) {
+			for (int i:ard.getNonzeroCountIndicesForDistinct(distinct))
+				setCount(i, ard.getCount(distinct, i));
+		}
+		else {
+			for (int i=0; i<ard.getNumConditions(); i++)
+				if (ard.getCount(distinct, i)>0)
+					setCount(i, ard.getCount(distinct, i));
+		}
+		setMultiplicity(ard.getMultiplicity(distinct));
+		for (int i=0; i<ard.getVariationCount(distinct); i++)
+			addVariation(ard.getVariation(distinct, i));
+		if (ard.hasId())
+			setId(ard.getId(distinct));
+		if (ard.hasWeights())
+			setWeight(ard.getWeight(distinct));
+		if (ard.hasGeometry())
+			setGeometry(ard.getGeometryBeforeOverlap(distinct), ard.getGeometryOverlap(distinct), ard.getGeometryAfterOverlap(distinct));
+		if (ard instanceof BarcodedAlignedReadsData) {
+			BarcodedAlignedReadsData bc = (BarcodedAlignedReadsData)ard;
+			for (int i=0; i<ard.getNumConditions(); i++)
+				for (int b=0; b<ard.getCount(distinct, i); b++)
+					addBarcode(i, bc.getBarcodes(distinct, i)[b].toString());
+		}
 		return this;
 	}
 	
@@ -543,8 +865,15 @@ public class AlignedReadsDataFactory {
 	 */
 	public AlignedReadsDataFactory add(AlignedReadsData ard, int distinct, UnaryOperator<AlignedReadsVariation> varPred) {
 		newDistinctSequence();
-		for (int i=0; i<ard.getNumConditions(); i++)
-			setCount(i, ard.getCount(distinct, i));
+		if (ard.hasNonzeroInformation()) {
+			for (int i:ard.getNonzeroCountIndicesForDistinct(distinct))
+				setCount(i, ard.getCount(distinct, i));
+		}
+		else {
+			for (int i=0; i<ard.getNumConditions(); i++)
+				if (ard.getCount(distinct, i)>0)
+					setCount(i, ard.getCount(distinct, i));
+		}
 		setMultiplicity(ard.getMultiplicity(distinct));
 		for (int i=0; i<ard.getVariationCount(distinct); i++) {
 			AlignedReadsVariation vari = ard.getVariation(distinct, i);
@@ -558,6 +887,12 @@ public class AlignedReadsDataFactory {
 			setWeight(ard.getWeight(distinct));
 		if (ard.hasGeometry())
 			setGeometry(ard.getGeometryBeforeOverlap(distinct), ard.getGeometryOverlap(distinct), ard.getGeometryAfterOverlap(distinct));
+		if (ard instanceof BarcodedAlignedReadsData) {
+			BarcodedAlignedReadsData bc = (BarcodedAlignedReadsData)ard;
+			for (int i=0; i<ard.getNumConditions(); i++)
+				for (int b=0; b<ard.getCount(distinct, i); b++)
+					addBarcode(i, bc.getBarcodes(distinct, i)[b].toString());
+		}
 		return this;
 	}
 

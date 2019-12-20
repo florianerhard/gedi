@@ -54,7 +54,7 @@ public class GediParameterSpec {
 			for (String cat : parameters.keySet()) {
 				int index = ArrayUtils.find(parameters.get(cat), p->p.getName().equals(param.getName()));
 				if (index>=0)
-					parameters.put(cat, ArrayUtils.removeItemFromArray(parameters.get(cat), index));
+					parameters.put(cat, ArrayUtils.removeIndexFromArray(parameters.get(cat), index));
 			}
 			index.remove(param.getName());
 			list.remove(param);
@@ -199,7 +199,7 @@ public class GediParameterSpec {
 	public void writeParameterFile(File file) throws IOException {
 		LineWriter out = new LineOrientedFile(file.getPath()).write();
 		for (GediParameter p : list) 
-			out.writef("%s\t%s\n", p.getName(),StringUtils.toString(p.get()));
+			out.writef("%s\t%s\n", p.getName(),p.getStringDescriptor());
 		out.close();
 	}
 }

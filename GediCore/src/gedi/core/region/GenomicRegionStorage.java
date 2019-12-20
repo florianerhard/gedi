@@ -24,8 +24,10 @@ import gedi.core.reference.Chromosome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.reference.Strand;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
+import gedi.core.workspace.loader.WorkspaceItemLoaderExtensionPoint;
 import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
+import gedi.util.datastructure.array.NumericArray;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -33,6 +35,8 @@ import gedi.util.functions.MappedSpliterator;
 import gedi.util.functions.SpliteratorArraySpliterator;
 import gedi.util.userInteraction.progress.Progress;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -259,15 +263,19 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 		if (location==null)
 			return ei();
 		location = StringUtils.trim(location);
+		
+		if (location.contains(";"))
+			return EI.split(location, ';').unfold(loc->ei(loc));
+		if (location.contains(","))
+			return EI.split(location, ',').unfold(loc->ei(loc));
+		
 		if (!location.contains(":")) {
 			Chromosome ref = Chromosome.obtain(location);
 			if (getReferenceSequences().contains(ref) || !ref.getStrand().equals(Strand.Independent))
 				return ei(ref);
 			return ei(ref.toPlusStrand()).chain(ei(ref.toMinusStrand()));
 		}
-		if (!location.contains(",") && !location.contains(";"))
-			return ei(ImmutableReferenceGenomicRegion.parse(location));
-		return EI.split(location, ';').unfold(loc->ei(loc));
+		return ei(ImmutableReferenceGenomicRegion.parse(location));
 	}
 	
 	default ExtendedIterator<ImmutableReferenceGenomicRegion<D>> ei(String...location) {
@@ -409,6 +417,13 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 				conditions[c] = c+"";
 			return conditions;
 		}
+		if (getMetaData().isNull() && getRandomRecord() instanceof NumericArray) {
+			int numCond = ((NumericArray) getRandomRecord()).length();
+			String[] conditions = new String[numCond];
+			for (int c=0; c<conditions.length; c++)
+				conditions[c] = c+"";
+			return conditions;
+		}
 		return new String[0];
 	}
 	
@@ -424,6 +439,7 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 	}
 	
 	default double[] getMetaDataTotals(String genome) {
+		if (genome==null || genome.equals("")) return getMetaDataTotals();
 		if (getMetaData().hasProperty("conditions")) {
 			int numCond = getMetaData().getEntry("conditions").asArray().length;
 			double[] totals = new double[numCond];
@@ -432,6 +448,15 @@ public interface GenomicRegionStorage<D> extends ReferenceSequencesProvider {
 			return totals;
 		}
 		return null;
+	}
+
+	public static <T> GenomicRegionStorage<T> load(String s) {
+		try {
+			Path p = Paths.get(s);
+			return (GenomicRegionStorage<T>) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p);
+		} catch (Exception e) {
+			throw new RuntimeException("Could not load storage!",e);
+		}
 	}
 	
 }

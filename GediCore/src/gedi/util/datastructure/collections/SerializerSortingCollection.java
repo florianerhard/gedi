@@ -18,6 +18,7 @@
 package gedi.util.datastructure.collections;
 
 import gedi.app.extension.GlobalInfoProvider;
+import gedi.util.StringUtils;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
@@ -49,6 +50,10 @@ public class SerializerSortingCollection<T> implements Collection<T>, Closeable 
 	private Comparator<? super T> comp;
 	private int size;
 	
+	private PageFileWriter memEstimator;
+	
+	private int elements = -1;
+	
 	private BinarySerializer<T> serializer;
 	
 	public SerializerSortingCollection(BinarySerializer<T> serializer, Comparator<? super T> comp, int memoryCapacity) {
@@ -56,12 +61,37 @@ public class SerializerSortingCollection<T> implements Collection<T>, Closeable 
 		this.comp = comp;
 		this.memoryCapacity = memoryCapacity;
 		mem = new ArrayList<T>(memoryCapacity);
+		
+		try {
+			memEstimator = new PageFileWriter(Files.createTempFile("serializercollectionsizeEst", ".tmp").toString());
+			serializer.beginSerialize(memEstimator);
+		} catch (IOException e) {
+			throw new RuntimeException("Cannot create memory estimator file!",e);
+		}
 	}
 	
 	
 	public boolean add(T e) {
 		size++;
-		if (mem.size()>=memoryCapacity) 
+		if (elements==-1) {
+			try {
+				serializer.serialize(memEstimator, e);
+				if (memEstimator.position()>memoryCapacity) {
+					elements = size;
+					serializer.endSerialize(memEstimator);
+					memEstimator.close();
+					
+					new File(memEstimator.getPath()).delete();
+					memEstimator = null;
+					spillToDisk();
+					//System.out.println("Approximately "+elements+" elements result in "+StringUtils.getHumanReadableMemory(memoryCapacity));
+				}
+			} catch (IOException e1) {
+				throw new RuntimeException("Cannot close memory estimator file!",e1);
+			}
+		}
+		
+		else if (mem.size()>=elements) 
 			spillToDisk();
 		mem.add(e);
 		return true;
@@ -70,6 +100,16 @@ public class SerializerSortingCollection<T> implements Collection<T>, Closeable 
 	
 	public ExtendedIterator<T> iterator() {
 		if (buf==null) {
+			try {
+				serializer.endSerialize(memEstimator);
+				memEstimator.close();
+				
+				new File(memEstimator.getPath()).delete();
+				memEstimator = null;
+			} catch (IOException e1) {
+				throw new RuntimeException("Cannot close memory estimator file!",e1);
+			}
+			
 			Collections.sort(mem, comp);
 			return EI.wrap(mem);
 		}

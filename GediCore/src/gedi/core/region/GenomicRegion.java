@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import gedi.core.data.reads.AlignedReadsData;
+import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.datastructure.tree.redblacktree.Interval;
@@ -34,6 +35,27 @@ public interface GenomicRegion extends Interval, Comparable<GenomicRegion>, Iter
 	int getNumParts();
 	int getStart(int part);
 	int getEnd(int part);
+	
+	
+	default String toString2() {
+		return toString("|");
+	}
+	default int hashCode2() {
+        int result = 1;
+        for (int i=0; i<getNumParts(); i++) {
+        	result = (31 * result + getStart(i)) ^ result;
+        	result = (31 * result + getEnd(i)) ^ result;
+        }
+        return result;
+	}
+	
+	default boolean equals2(Object obj) {
+		if (!(obj instanceof GenomicRegion))
+			return false;
+		GenomicRegion c = (GenomicRegion) obj;
+		
+		return compareTo(c)==0;
+	}
 	
 	default int getStart() {
 		return getStart(0);

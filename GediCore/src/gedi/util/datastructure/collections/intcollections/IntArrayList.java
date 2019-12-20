@@ -402,4 +402,8 @@ public class IntArrayList extends AbstractIntCollection {
 		return intArray;
 	}
 	
+	public int getCapacity() {
+		return intArray.length;
+	}
+	
 }

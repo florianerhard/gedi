@@ -194,7 +194,7 @@ public class PageFile implements BinaryReader, LineReader, AutoCloseable {
 		return position();
 	}
 	
-	public void close() throws IOException {
+	public void close() {
 		for (int i=0; i<buffers.length; i++) {
 			if (buffers[i]!=null) {
 				WeakReference<MappedByteBuffer> r = new WeakReference<MappedByteBuffer>((MappedByteBuffer) buffers[i]);
@@ -202,8 +202,12 @@ public class PageFile implements BinaryReader, LineReader, AutoCloseable {
 				FileUtils.unmap(r);
 			}
 		}
-		channel.close();
-		file.close();
+		try {
+			channel.close();
+			file.close();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 //		System.err.println("fininshed reading "+getPath());
 	}
 

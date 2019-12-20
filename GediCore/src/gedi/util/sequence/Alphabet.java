@@ -231,7 +231,7 @@ public class Alphabet {
 	private static Alphabet amino;
 	public static Alphabet getProtein() {
 		if (amino==null)
-			amino = new Alphabet(EI.wrap(SequenceUtils.code.values()).unique(false).concat("").toCharArray());
+			amino = new Alphabet(EI.wrap(SequenceUtils.code.values()).filter(s->!s.equals("*")).unique(false).concat("").toCharArray());
 		return amino;
 	}
 	

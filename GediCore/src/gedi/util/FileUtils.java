@@ -456,18 +456,28 @@ public class FileUtils {
 	}
 	
 	public static void writeBitVector(BitVector bits,
-			BinaryWriter out) throws IOException {
-		out.putInt(bits.size());
+			BinaryWriter out, boolean size) throws IOException {
+		if (size) out.putInt(bits.size());
 		for (int b=0; b<bits.size(); b+=8)
 			out.putByte((int)bits.getLongFromTo(b, Math.min(b+7,bits.size()-1)));
 	}
 
+	public static void writeBitVector(BitVector bits,
+			BinaryWriter out) throws IOException {
+		writeBitVector(bits, out,true);
+	}
+
+	
 	public static void readBitVector(BitVector bits,
-			BinaryReader in) throws IOException {
-		int size = in.getInt();
+			BinaryReader in, int size) throws IOException {
 		bits.setSize(size);
 		for (int b=0; b<bits.size(); b+=8)
 			bits.putLongFromTo(in.getByte(), b, Math.min(b+7,bits.size()-1));
+	}
+	
+	public static void readBitVector(BitVector bits,
+			BinaryReader in) throws IOException {
+		readBitVector(bits, in, in.getInt());
 	}
 	
 	

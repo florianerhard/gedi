@@ -39,6 +39,8 @@ public interface AlignedReadsVariation extends Comparable<AlignedReadsVariation>
 	CharSequence getReferenceSequence();
 	CharSequence getReadSequence();
 	
+	AlignedReadsVariation reposition(int newPos);
+	
 	default int compareTo(AlignedReadsVariation o) {
 		int re = getPosition()-o.getPosition();
 		if (re!=0) return re;

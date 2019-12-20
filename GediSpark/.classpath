@@ -21,5 +21,6 @@
 	<classpathentry kind="lib" path="lib/websocket-common-9.4.6.v20170531.jar"/>
 	<classpathentry kind="lib" path="lib/websocket-server-9.4.6.v20170531.jar"/>
 	<classpathentry kind="lib" path="lib/websocket-servlet-9.4.6.v20170531.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GediCenteredDiskIntervalTreeStorage"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

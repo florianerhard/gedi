@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 public class BamUtils {
@@ -116,14 +117,14 @@ public class BamUtils {
 		return re;
 	}
 	
-	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames) {
-		return getFactoryGenomicRegion(r, cumNumCond, ignoreVariation, needReadNames, -1);
+	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, BiFunction<SAMRecord, SAMRecord, String> barcode) {
+		return getFactoryGenomicRegion(r, cumNumCond, ignoreVariation, needReadNames, -1, barcode);
 	}
 		
 		
-	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, int minIntronLength) {
+	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, int minIntronLength, BiFunction<SAMRecord, SAMRecord, String> barcode) {
 		IntArrayList coords = minIntronLength>=0?getGenomicRegionCoordinatesByBlocks(r, minIntronLength):getGenomicRegionCoordinates(r);
-		FactoryGenomicRegion re = new FactoryGenomicRegion(coords, cumNumCond,ignoreVariation,needReadNames,false);
+		FactoryGenomicRegion re = new FactoryGenomicRegion(coords, cumNumCond,ignoreVariation,needReadNames,false,barcode);
 		re.setUseBlocks(minIntronLength);
 		return re;
 	}
@@ -136,15 +137,15 @@ public class BamUtils {
 	 * @param join
 	 * @return
 	 */
-	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r1, SAMRecord r2, int[] cumNumCoord, boolean join, boolean throwOnNonconsistent, boolean ignoreVariation, boolean needReadNames) {
-		return getFactoryGenomicRegion(r1, r2, cumNumCoord, join, throwOnNonconsistent, ignoreVariation, needReadNames, -1);
+	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r1, SAMRecord r2, int[] cumNumCoord, boolean join, boolean throwOnNonconsistent, boolean ignoreVariation, boolean needReadNames, BiFunction<SAMRecord, SAMRecord, String> barcode) {
+		return getFactoryGenomicRegion(r1, r2, cumNumCoord, join, throwOnNonconsistent, ignoreVariation, needReadNames, -1, barcode);
 	}
-	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r1, SAMRecord r2, int[] cumNumCoord, boolean join, boolean throwOnNonconsistent, boolean ignoreVariation, boolean needReadNames, int minIntronLength) {
+	public static FactoryGenomicRegion getFactoryGenomicRegion(SAMRecord r1, SAMRecord r2, int[] cumNumCoord, boolean join, boolean throwOnNonconsistent, boolean ignoreVariation, boolean needReadNames, int minIntronLength, BiFunction<SAMRecord, SAMRecord, String> barcode) {
 		if (r2==null){
 			// missing information
 			IntArrayList reg = minIntronLength>=0?getGenomicRegionCoordinatesByBlocks(r1, minIntronLength):getGenomicRegionCoordinates(r1);
 			FactoryGenomicRegion re = new FactoryGenomicRegion(reg.toIntArray(), cumNumCoord, 
-					true,ignoreVariation,needReadNames,-1,r1.getMateAlignmentStart()<r1.getAlignmentStart()?-1:1, join);
+					true,ignoreVariation,needReadNames,-1,r1.getMateAlignmentStart()<r1.getAlignmentStart()?-1:1, join, barcode);
 			return re;
 		}
 		IntArrayList coords1 = minIntronLength>=0?getGenomicRegionCoordinatesByBlocks(r1, minIntronLength):getGenomicRegionCoordinates(r1);
@@ -178,7 +179,7 @@ public class BamUtils {
 				pairedEndIntron = -1;
 		}
 		
-		FactoryGenomicRegion re = new FactoryGenomicRegion(reg.getBoundaries(), cumNumCoord, cons,ignoreVariation,needReadNames,pairedEndIntron,0,join);
+		FactoryGenomicRegion re = new FactoryGenomicRegion(reg.getBoundaries(), cumNumCoord, cons,ignoreVariation,needReadNames,pairedEndIntron,0,join, barcode);
 		re.setUseBlocks(minIntronLength);
 		return re;
 	}

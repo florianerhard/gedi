@@ -24,6 +24,7 @@ import gedi.core.data.annotation.CompositeReferenceSequencesProvider;
 import gedi.core.data.annotation.ReferenceSequenceLengthProvider;
 import gedi.core.data.annotation.ReferenceSequencesProvider;
 import gedi.core.data.mapper.GenomicRegionDataMappingJob;
+import gedi.core.genomic.Genomic;
 import gedi.core.reference.LazyGenome;
 import gedi.gui.genovis.TracksDataManager;
 import gedi.util.job.Transition;

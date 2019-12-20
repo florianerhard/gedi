@@ -27,6 +27,7 @@ import java.util.function.DoubleUnaryOperator;
 import gedi.util.datastructure.array.decorators.NumericArraySlice;
 import gedi.util.datastructure.array.functions.NumericArrayFunction;
 import gedi.util.datastructure.array.functions.NumericArrayTransformation;
+import gedi.util.datastructure.array.sparse.AutoSparseDenseDoubleArrayCollector;
 import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.collections.intcollections.IntIterator;
 import gedi.util.functions.ExtendedIterator;
@@ -710,6 +711,13 @@ public interface NumericArray extends BinarySerializable {
 				return re;
 			}
 		};
+	}
+
+	default void add(AutoSparseDenseDoubleArrayCollector a) {
+		a.process((i,v)->{
+			this.add(i, v);
+			return v;
+		});
 	}
 
 }

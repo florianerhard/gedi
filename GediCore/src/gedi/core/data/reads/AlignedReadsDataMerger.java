@@ -136,17 +136,28 @@ public class AlignedReadsDataMerger {
 				fac.setWeight(data[i].getWeight(v));
 			if (data[i].hasGeometry())
 				fac.setGeometry(data[i].getGeometryBeforeOverlap(v), data[i].getGeometryOverlap(v),data[i].getGeometryAfterOverlap(v));
-			for (int c=0; c<data[i].getNumConditions(); c++)
-				fac.setCount(offsets[i]+c, data[i].getCount(v, c));
-			
 			for (AlignedReadsVariation vari : n[i].var)
 				fac.addVariation(vari);
 			
+			if (data[i].hasNonzeroInformation()) {
+				for (int c : data[i].getNonzeroCountIndicesForDistinct(v))
+					fac.setCount(offsets[i]+c, data[i].getCount(v, c));
+			}
+			else {
+				for (int c=0; c<data[i].getNumConditions(); c++)
+					fac.setCount(offsets[i]+c, data[i].getCount(v, c));
+			}
 			
 			for (i++ ; i<n.length; i++) {
 				if (n[i]!=null) {
-					for (int c=0; c<data[i].getNumConditions(); c++)
-						fac.setCount(offsets[i]+c, data[i].getCount(n[i].d, c));
+					if (data[i].hasNonzeroInformation()) {
+						for (int c : data[i].getNonzeroCountIndicesForDistinct(n[i].d))
+							fac.setCount(offsets[i]+c, data[i].getCount(n[i].d, c));
+					} 
+					else {
+						for (int c=0; c<data[i].getNumConditions(); c++)
+							fac.setCount(offsets[i]+c, data[i].getCount(n[i].d, c));	
+					}
 				}
 			}
 		}

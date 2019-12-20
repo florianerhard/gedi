@@ -34,6 +34,8 @@ import java.util.Arrays;
 public class PageFileWriter implements AutoCloseable, BinaryWriter {
 
 	private static final long PAGE_OVERLAP = Long.BYTES;
+
+	public static final long DEFAULT_PAGE_SIZE = 1<<28;
 	
 	protected RandomAccessFile file;
 	protected FileChannel channel;
@@ -42,7 +44,7 @@ public class PageFileWriter implements AutoCloseable, BinaryWriter {
 	protected long position=0; // relative to start-end!
 	protected ByteBuffer[] buffers = new ByteBuffer[1];
 	
-	protected long pageSize = 1<<28 ;//- PAGE_OVERLAP;
+	protected long pageSize = DEFAULT_PAGE_SIZE ;//- PAGE_OVERLAP;
 
 	protected FileLock lock;
 	

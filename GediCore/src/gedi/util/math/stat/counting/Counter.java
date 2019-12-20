@@ -119,6 +119,19 @@ public class Counter<T>  {
 		}
 	}
 	
+	public T getMaxElement(int d) {
+		int m = -1;
+		T re = null;
+		for (T k : map.keySet()) {
+			int[] v = map.get(k);
+			if (v[d]>m) {
+				m = v[d];
+				re = k;
+			}
+		}
+		return re;
+	}
+	
 	public Set<T> elements() {
 		return map.keySet();
 	}
@@ -332,5 +345,6 @@ public class Counter<T>  {
 	public double uncorrectedInformationContent(int dim) {
 		return Math.log(map.values().size())/Math.log(2)-(entropy(dim));
 	}
+	
 	
 }

@@ -64,7 +64,7 @@ public class PackRegionTrack<D> extends VisualizationTrackAdapter<IntervalTree<G
 	protected BoxRenderer<D> boxRenderer = new BoxRenderer<D>();
 	protected int hspace = 1;
 	protected int vspace = 1;
-	protected int maxTracks = 500;
+	protected int maxTracks = 5000;
 	protected double simpleBasePairsPerPixel;
 	
 	private RegionSelectionModel selection = new RegionSelectionModel();

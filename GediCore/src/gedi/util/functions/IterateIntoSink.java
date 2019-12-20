@@ -26,14 +26,17 @@ import java.util.function.Consumer;
  *
  * @param <T>
  */
-public class IterateIntoSink<T> {
+public class IterateIntoSink<T> implements Consumer<T> {
 
 	private LinkedBlockingQueue<T> queue;
 	private T terminator = (T) new Object();
 	private Thread t;
 	
 	public IterateIntoSink(Consumer<ExtendedIterator<T>> sink) {
-		this.queue = new LinkedBlockingQueue<T>(1024);
+		this(sink,1024);
+	}
+	public IterateIntoSink(Consumer<ExtendedIterator<T>> sink, int buffer) {
+		this.queue = new LinkedBlockingQueue<T>(buffer);
 		
 		
 		t = new Thread() {
@@ -89,6 +92,16 @@ public class IterateIntoSink<T> {
 			T re = n;
 			n = null;
 			return re;
+		}
+	}
+
+
+	@Override
+	public void accept(T t) {
+		try {
+			put(t);
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
 		}
 	}
 	

@@ -55,7 +55,7 @@ public class AlignedReadsDataContrastMapper implements GenomicRegionDataMapper<I
 			IntervalTree<GenomicRegion, AlignedReadsData> data) {
 		if (data.isEmpty()) return data;
 		
-		IntervalTree<GenomicRegion, AlignedReadsData> re = new IntervalTree<GenomicRegion,AlignedReadsData>(reference);
+		IntervalTree<GenomicRegion, AlignedReadsData> re = new IntervalTree<GenomicRegion,AlignedReadsData>(data.getReference());
 		Iterator<Entry<GenomicRegion, AlignedReadsData>> it = data.entrySet().iterator();
 		while (it.hasNext()) {
 			Entry<GenomicRegion, AlignedReadsData> e = it.next();

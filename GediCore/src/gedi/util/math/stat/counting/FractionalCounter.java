@@ -52,6 +52,10 @@ public class FractionalCounter<T>  {
 		this.total = new double[dim];
 	}
 	
+	public Set<T> elements() {
+		return map.keySet();
+	}
+		
 	/**
 	 * Inits an element (i.e. its count is 0). Do this this if you want a specific reporting order!
 	 * Does nothing if the element is already present!

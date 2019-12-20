@@ -35,7 +35,7 @@ import java.util.Map.Entry;
 @GenomicRegionDataMapping(fromType=IntervalTree.class,toType=PixelBlockToValuesMap.class)
 public class AlignedReadsDataToMismatchesMapper implements GenomicRegionDataMapper<IntervalTree<GenomicRegion,AlignedReadsData>, PixelBlockToValuesMap>{
 
-	private ReadCountMode mode = ReadCountMode.Divide;
+	private ReadCountMode mode = ReadCountMode.Weight;
 	
 	private SpecialAggregators aggregator = SpecialAggregators.Sum; 
 	private MismatchOutputType type = MismatchOutputType.Read;
@@ -125,6 +125,8 @@ public class AlignedReadsDataToMismatchesMapper implements GenomicRegionDataMapp
 							char g = ard.getMismatchGenomic(d, v).charAt(0);
 							char r = ard.getMismatchRead(d, v).charAt(0);
 							if (ard.isVariationFromSecondRead(d, v)) {
+								if (v>0 && ard.isMismatch(d, v-1) && ard.getMismatchPos(d, v)==ard.getMismatchPos(d, v-1))
+									continue;
 								g = SequenceUtils.getDnaComplement(g);
 								r = SequenceUtils.getDnaComplement(r);
 							}

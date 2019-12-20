@@ -30,12 +30,7 @@ public class StorageParameterType<T> implements GediParameterType<GenomicRegionS
 
 	@Override
 	public GenomicRegionStorage<T> parse(String s) {
-		try {
-			Path p = Paths.get(s);
-			return (GenomicRegionStorage<T>) WorkspaceItemLoaderExtensionPoint.getInstance().get(p).load(p);
-		} catch (Exception e) {
-			throw new RuntimeException("Could not load storage!",e);
-		}
+		return GenomicRegionStorage.load(s);
 	}
 
 	@Override

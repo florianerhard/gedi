@@ -44,10 +44,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.zip.GZIPInputStream;
 
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import cern.colt.bitvector.BitVector;
 
 public class CsvReaderFactory  {
@@ -78,11 +74,11 @@ public class CsvReaderFactory  {
 	}
 	public CsvReader createReader(String name, LineIterator it) {
 		
-		for (int i=0; i<skipLines.get(); i++)
+		for (int i=0; i<skipLines; i++)
 			it.next();
 		
 		// first, infer the separator!
-		String[] inferLines = new String[this.inferLines.get()];
+		String[] inferLines = new String[this.inferLines];
 		int index = 0;
 		while (it.hasNext() && index<inferLines.length) 
 			inferLines[index++] = it.next();
@@ -91,9 +87,9 @@ public class CsvReaderFactory  {
 		
 		if (index==0) return null;
 		
-		boolean maskQuotes = this.maskQuotes.get()==null?inferMaskQuotes(inferLines,index):this.maskQuotes.get();
+		boolean maskQuotes = this.maskQuotes==null?inferMaskQuotes(inferLines,index):this.maskQuotes;
 				
-		char sep = separator.get()==null?inferSeparator(inferLines,index, maskQuotes):separator.get();
+		char sep = separator==null?inferSeparator(inferLines,index, maskQuotes):separator;
 		
 		String[][] fields = new String[index][];
 		for (int i=0; i<fields.length;i++) 
@@ -118,7 +114,7 @@ public class CsvReaderFactory  {
 		}
 		
 		
-		boolean hasHeader = header.get()==null?(minHeaderType==parsers.length-1 || oneGreater):header.get();
+		boolean hasHeader = header==null?(minHeaderType==parsers.length-1 || oneGreater):header;
 		
 		String[] headerNames = new String[cols];
 		if (hasHeader) {
@@ -177,13 +173,13 @@ public class CsvReaderFactory  {
 	}
 
 
-	private ObjectProperty<Boolean> header = new SimpleObjectProperty<Boolean>(this, "header", null);
-	private IntegerProperty inferLines = new SimpleIntegerProperty(this,"inferLines",1000);
-	private ObjectProperty<Boolean> maskQuotes = new SimpleObjectProperty<Boolean>(this,"maskQuotes",null);
-	private IntegerProperty skipLines = new SimpleIntegerProperty(this,"skipLines",0);
-	private ObjectProperty<Character> separator = new SimpleObjectProperty<Character>(this,"separator",null);
-	private ObjectProperty<Parser[]> parsers = new  SimpleObjectProperty<Parser[]>(this,"parsers",DEFAULT_PARSERS);
-	private ObjectProperty<Class<?>> parseToClass = new  SimpleObjectProperty<Class<?>>(this,"parseToClass",null);
+	private Boolean header = null;
+	private int inferLines = 1000;
+	private Boolean maskQuotes = null;
+	private int skipLines = 0;
+	private Character separator = null;
+	private Parser[] parsers = DEFAULT_PARSERS;
+	private Class<?> parseToClass = null;
 	
 	private HashMap<String,Parser> nameToParser = new HashMap<>();
 	private HashMap<Integer,Parser> colToParser = new HashMap<>();
@@ -232,6 +228,69 @@ public class CsvReaderFactory  {
 	}
 	
 
+	public Boolean getHeader() {
+		return header;
+	}
+
+	public CsvReaderFactory setHeader(Boolean header) {
+		this.header = header;
+		return this;
+	}
+
+	public int getInferLines() {
+		return inferLines;
+	}
+
+	public CsvReaderFactory setInferLines(int inferLines) {
+		this.inferLines = inferLines;
+		return this;
+	}
+
+	public Boolean getMaskQuotes() {
+		return maskQuotes;
+	}
+
+	public CsvReaderFactory setMaskQuotes(Boolean maskQuotes) {
+		this.maskQuotes = maskQuotes;
+		return this;
+	}
+
+	public int getSkipLines() {
+		return skipLines;
+	}
+
+	public CsvReaderFactory setSkipLines(int skipLines) {
+		this.skipLines = skipLines;
+		return this;
+	}
+
+	public Character getSeparator() {
+		return separator;
+	}
+
+	public CsvReaderFactory setSeparator(Character separator) {
+		this.separator = separator;
+		return this;
+	}
+
+	public Parser[] getParsers() {
+		return parsers;
+	}
+
+	public CsvReaderFactory setParsers(Parser[] parsers) {
+		this.parsers = parsers;
+		return this;
+	}
+
+	public Class<?> getParseToClass() {
+		return parseToClass;
+	}
+
+	public CsvReaderFactory setParseToClass(Class<?> parseToClass) {
+		this.parseToClass = parseToClass;
+		return this;
+	}
+
 	private char inferSeparator(String[] lines, int n, boolean maskQuotes) {
 		if (n==0) return separators[0];
 		int[] c = new int[separators.length];
@@ -256,91 +315,7 @@ public class CsvReaderFactory  {
 		throw new RuntimeException("Cannot determine separator!");
 	}
 
-	public final ObjectProperty<Boolean> headerProperty() {
-		return this.header;
-	}
-
-	public final java.lang.Boolean getHeader() {
-		return this.headerProperty().get();
-	}
-
-	public final void setHeader(final java.lang.Boolean header) {
-		this.headerProperty().set(header);
-	}
-
-	public final IntegerProperty inferLinesProperty() {
-		return this.inferLines;
-	}
-
-	public final int getInferLines() {
-		return this.inferLinesProperty().get();
-	}
-
-	public final void setInferLines(final int inferLines) {
-		this.inferLinesProperty().set(inferLines);
-	}
-
-	public final IntegerProperty skipLinesProperty() {
-		return this.skipLines;
-	}
-
-	public final int getSkipLines() {
-		return this.skipLinesProperty().get();
-	}
-
-	public final void setSkipLines(final int skipLines) {
-		this.skipLinesProperty().set(skipLines);
-	}
-
-	public final ObjectProperty<Character> separatorProperty() {
-		return this.separator;
-	}
-
-	public final java.lang.Character getSeparator() {
-		return this.separatorProperty().get();
-	}
-
-	public final void setSeparator(final java.lang.Character separator) {
-		this.separatorProperty().set(separator);
-	}
-	
-	public final ObjectProperty<Parser[]> parsersProperty() {
-		return this.parsers;
-	}
-
-	public final Parser[] getParsers() {
-		return this.parsersProperty().get();
-	}
-
-	public final void setParsers(final Parser[] parsers) {
-		this.parsersProperty().set(parsers);
-	}
-
-	public final ObjectProperty<Boolean> maskQuotesProperty() {
-		return this.maskQuotes;
-	}
-
-	public final java.lang.Boolean getMaskQuotes() {
-		return this.maskQuotesProperty().get();
-	}
-
-	public final void setMaskQuotes(final java.lang.Boolean maskQuotes) {
-		this.maskQuotesProperty().set(maskQuotes);
-	}
 
 	
-	public final ObjectProperty<Class<?>> parseToClassProperty() {
-		return this.parseToClass;
-	}
-
-	public final Class<?> getParseToClass() {
-		return this.parseToClassProperty().get();
-	}
-
-	public final CsvReaderFactory setParseToClass(final Class<?> parsers) {
-		this.parseToClassProperty().set(parsers);
-		return this;
-	}
-
 	
 }

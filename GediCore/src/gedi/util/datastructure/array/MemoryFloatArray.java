@@ -106,7 +106,7 @@ public class MemoryFloatArray extends FloatArray {
         while (from< to) {
         	float tmp = a[from];
     		a[from++] = a[to];
-    		a[to++] = tmp;
+    		a[to--] = tmp;
         }
         return this;
 	}

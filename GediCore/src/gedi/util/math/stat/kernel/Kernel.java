@@ -29,7 +29,11 @@ public interface Kernel extends DoubleUnaryOperator {
 	}
 	
 	default PreparedIntKernel prepare() {
-		return new PreparedIntKernel(this);
+		return new PreparedIntKernel(this,false);
+	}
+	
+	default PreparedIntKernel prepare(boolean normalize) {
+		return new PreparedIntKernel(this,true);
 	}
 	
 	/**

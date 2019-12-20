@@ -32,6 +32,8 @@ import htsjdk.samtools.SAMRecord;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 
@@ -47,18 +49,25 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 	private boolean join;
 	private boolean overlapping;
 	
-	public BamAlignedReadDataFactory(GenomicRegion region, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, boolean join) {
+	BiFunction<SAMRecord,SAMRecord,String> barcodeFun;
+	
+	public BamAlignedReadDataFactory(GenomicRegion region, int[] cumNumCond, boolean ignoreVariation, boolean needReadNames, boolean join, BiFunction<SAMRecord, SAMRecord, String> barcode) {
 		super(cumNumCond[cumNumCond.length-1]);
 		this.cumNumCond = cumNumCond;
 		this.region = region;
 		this.ignoreVariation = ignoreVariation;
 		this.needReadNames = needReadNames;
 		this.join = join;
+		this.barcodeFun = barcode;
 	}
 	
 	public void setUseBlocks(int minIntronLength) {
 		if (minIntronLength>=0 && !ignoreVariation) throw new RuntimeException("Cannot use blocks when recording variations!");
 		this.minIntronLength = minIntronLength;
+	}
+	
+	public void setBarcodeFun(BiFunction<SAMRecord,SAMRecord, String> barcodeFun) {
+		this.barcodeFun = barcodeFun;
 	}
 	
 	@Override
@@ -101,8 +110,10 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 			else
 				setMultiplicity(s, 0);
 			
-			if (!ignoreVariation)
-				addVariations(record,record.getReadNegativeStrandFlag(),record.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
+			if (!ignoreVariation) {
+				boolean second = record.getReadPairedFlag() && record.getSecondOfPairFlag();
+				addVariations(record,record.getReadNegativeStrandFlag()!=second,record.getReadNegativeStrandFlag(),0,getCurrentVariationBuffer());
+			}
 			else
 				setMultiplicity(s, 0);
 			
@@ -116,10 +127,10 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 //			else if (record.getReadPairedFlag() && record.getSecondOfPairFlag())
 //				distinctToIds.get(s).add(record.getReadName()+BamUtils.SECOND_PAIR_SUFFIX);
 //			else 
-			if (!StringUtils.isInt(record.getReadName()))
+			if (!StringUtils.isInt(StringUtils.splitField(record.getReadName(),'#',0)))
 				throw new RuntimeException("Can only keep integer read names!");
 			
-			distinctToIds.get(s).add(Integer.parseInt(record.getReadName()));
+			distinctToIds.get(s).add(Integer.parseInt(StringUtils.splitField(record.getReadName(),'#',0)));
 			
 		}
 
@@ -137,6 +148,9 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 			for (int i=0; i<f.length; i++)
 				incrementCount(s, start+i, Integer.parseInt(f[i]));
 		}
+		
+		if (barcodeFun!=null)
+			addBarcode(s, start, barcodeFun.apply(record, null));
 		
 		
 	}
@@ -280,9 +294,9 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 		if (!BamUtils.getPairId(record1).equals(BamUtils.getPairId(record2)))
 				throw new RuntimeException("Read names do not match for mate pairs!");
 		if (needReadNames) {
-			if (!StringUtils.isInt(record1.getReadName()))
+			if (!StringUtils.isInt(StringUtils.splitField(record1.getReadName(),'#',0)))
 				throw new RuntimeException("Can only keep integer read names!");
-			distinctToIds.get(s).add(Integer.parseInt(record1.getReadName()));
+			distinctToIds.get(s).add(Integer.parseInt(StringUtils.splitField(record1.getReadName(),'#',0)));
 		}
 		
 		// handle counts
@@ -299,6 +313,9 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 			for (int i=0; i<f.length; i++)
 				incrementCount(s, start+i, Integer.parseInt(f[i]));
 		}
+		
+		if (barcodeFun!=null)
+			addBarcode(s, start, barcodeFun.apply(record1, record2));
 		
 		
 	}
@@ -317,6 +334,10 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 				to.add(createVarIndel(v));
 			return;
 		}
+		
+		if (record.getStringAttribute("MD")==null || record.getReadString().equals("*")) 
+			throw new RuntimeException("Need read sequences and MD tag to read variations for reads!");
+		
 		int coveredGenomic = getCoveredGenomicLength(record);
 		
 		int pos;
@@ -390,25 +411,25 @@ public class BamAlignedReadDataFactory extends AlignedReadsDataFactory {
 	}
 
 	private CharSequence getReferenceSequence(SAMRecord r, int s, int e) {
-		String md = r.getStringAttribute("MD");
-		if (md==null || r.getReadString().equals("*")) {
-			
-			
-			if (genomicSequence==null) {
-				if (md!=null) {
-					MismatchString mm = new MismatchString(r.getStringAttribute("MD"));
-					String seq = StringUtils.repeatSequence('N',mm.getGenomicLength()).toString();
-					seq = mm.reconstitute(seq);
-					return seq.substring(s, e);
-				}
-				return StringUtils.repeatSequence('N', e-s);
-			}
-			return genomicSequence.subSequence(s, e);
-		}
+//		String md = r.getStringAttribute("MD");
+//		if (md==null || r.getReadString().equals("*")) {
+//			
+//			
+//			if (genomicSequence==null) {
+//				if (md!=null) {
+//					MismatchString mm = new MismatchString(r.getStringAttribute("MD"));
+//					String seq = StringUtils.repeatSequence('N',mm.getGenomicLength()).toString();
+//					seq = mm.reconstitute(seq);
+//					return seq.substring(s, e);
+//				}
+//				return StringUtils.repeatSequence('N', e-s);
+//			}
+//			return genomicSequence.subSequence(s, e);
+//		}
 		return BamUtils.restoreSequence(r,false).substring(s, e);
 	}
 	private CharSequence getReadSequence(SAMRecord r, int s, int e) {
-		if (r.getReadString().length()==0 || r.getReadString().equals("*")) return StringUtils.repeatSequence('N', e-s);
+//		if (r.getReadString().length()==0 || r.getReadString().equals("*")) return StringUtils.repeatSequence('N', e-s);
 		return r.getReadString().substring(s,e);
 	}
 	

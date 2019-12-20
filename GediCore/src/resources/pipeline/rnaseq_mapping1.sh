@@ -16,8 +16,9 @@ varin("extract","Extract part of read",false);
 varin("nosoft","No softclipping",false);
 varin("adapter","Only for single end!",false);
 varin("introns","All/Annotated/None",false);
+varin("smartseq","*Full length* smart seq library, i.e. trim first 3bp",false);
+varin("umi","Reads start with umis (umi-len,spacer-len,umi2-len,spacer2-len; 6,4 for Lexogen UMIs!)",false);
 varin("citparam","e.g. -novar -nosec",false);
-varin("rrna","rrna genomic index",false);
 varin("starindex","folder of a combined STAR index",false);
 varin("starparam","additional parameter for STAR",false);
 varin("adapter1","Forward adapter sequence",false);
@@ -26,13 +27,11 @@ varin("adapter2","Backward adapter sequence",false);
 
 varout("reads","File name containing read mappings");
 
-
-
 ?>
 
 <?JS
 var novar;
-var starparam;
+var starparam = starparam?starparam:"";
 var nosec;
 var introns;
 var keepUnmapped;
@@ -41,6 +40,8 @@ var nthreads = nthreads?nthreads:Math.min(8,Runtime.getRuntime().availableProces
 var sharedMem;
 var pairedend;
 var nosoft;
+var smartseq;
+var umi;
 
 var extract;
 var extractparam = extract?"-extract "+extract+" ":"";
@@ -60,18 +61,22 @@ if (nosoft==true) alimode="EndToEnd";
 
 var getPrio=function(r) ParseUtils.parseEnumNameByPrefix(references[r], true, ReferenceType.class).prio;
 var garray = EI.wrap(DynamicObject.from(references).getProperties()).filter(function(i) getPrio(i)>1).toArray();
+var rrnaarray = EI.wrap(DynamicObject.from(references).getProperties()).filter(function(i) getPrio(i)==1).toArray();
 var genomes = EI.wrap(garray).concat(" ");
 
-var rrna;
+//var rrna;
 var starindex;
 if (!starindex && garray.length==1) starindex=ReadMapper.STAR.getIndex(Genomic.get(garray[0]),null);	
 if (!starindex) throw new RuntimeException("Specify a starindex! You can create one by gedi -e GenomicUtils -p -m star -g "+genomes);
-
+//if (rrnaarray.length>1) throw new RuntimeException("More than 1 rRNA index given!");
+//if (rrnaarray.length==1) rrna = ReadMapper.STAR.getIndex(Genomic.get(rrnaarray[0]),null);
+	
 var fastqname = name+".fastq";
 
 var test;
 var keepbams;
 var keepfastq;
+
 ?>
 
 
@@ -79,7 +84,7 @@ mkdir -p <?JS tmp ?>/<?JS name ?>
 cd <?JS tmp ?>/<?JS name ?>
 
 <?JS if (mode=="SRR") { ?>
-RETRY=1; until fastq-dump --split-files <?JS if(test) print("-X 10000"); ?> <?JS files ?>; do echo Retry after $RETRY; sleep $RETRY; RETRY=$((RETRY*2)); done
+RETRY=1; until fastq-dump --split-files <?JS if(test) print("-X 100000"); ?> <?JS files ?>; do echo Retry after $RETRY; sleep $RETRY; RETRY=$((RETRY*2)); done
 <?JS 
 fastqname="*.fastq";
 } else if (mode=="FASTQ") {  
@@ -103,15 +108,15 @@ for (var find=0; find<ff.length; find++) {
 	<?JS if (!test && f1.endsWith(".gz")) {  ?>
 	zcat <?JS f1 ?> > <?JS fq1 ?>
 	<?JS } else if (test && f1.endsWith(".gz")) {  ?>
-	zcat <?JS f1 ?> | head -n40000 > <? fq1 ?>
+	zcat <?JS f1 ?> | head -n400000 > <? fq1 ?>
 	<?JS } else if (!test && f1.endsWith(".bz2")) {  ?>
 	bzcat <?JS f1 ?> > <?JS fq1 ?>
 	<?JS } else if (test && f1.endsWith(".bz2")) {  ?>
-	bzcat <?JS f1 ?> | head -n40000  > <?JS fq1 ?>
+	bzcat <?JS f1 ?> | head -n400000  > <?JS fq1 ?>
 	<?JS } else if (!test) {  ?>
 	cp <?JS f1 ?> <?JS fq1 ?>
 	<?JS } else if (test) {  ?>
-	head -n40000 <?JS f1 ?> > <?JS fq1 ?>
+	head -n400000 <?JS f1 ?> > <?JS fq1 ?>
 	<?JS }
 }
 } ?>
@@ -151,7 +156,7 @@ fi
 <? } ?>
 
 
-gedi -t . -e FastqFilter -D <?extractparam?>-overwrite -ld <?JS name ?>.readlengths.tsv -min <?JS minlength ?> <?JS fastqname ?>
+gedi -t . -e FastqFilter -D <?extractparam?>-overwrite<? if (smartseq) print(" -smartseq"); ?><? if (umi) print(" -umi "+umi); ?> -ld <?JS name ?>.readlengths.tsv -min <?JS minlength ?> <?JS fastqname ?>
 
 
 	echo -ne "Trimmed\t" >> <?JS name ?>.reads.tsv
@@ -160,30 +165,34 @@ gedi -t . -e FastqFilter -D <?extractparam?>-overwrite -ld <?JS name ?>.readleng
 	echo $leftreads >> <?JS name ?>.reads.tsv
 
 
-<?JS if (rrna) { ?>
-# rRNA removal
-STAR --runMode alignReads --runThreadN <? nthreads ?>  --alignSJDBoverhangMin 9999 --alignSJoverhangMin 9999 --genomeDir <? rrna ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --outSAMtype BAM Unsorted --alignEndsType <? alimode ?> --outReadsUnmapped Fastx
-
-echo -ne "rRNA\t" >> <?JS name ?>.reads.tsv
-unimapped=$( grep "Uniquely mapped reads number"  Log.final.out | cut -f2 -d'|' | awk '{ print $1}' )
-multimapped=$( grep "Number of reads mapped to multiple loci"  Log.final.out | cut -f2 -d'|' | awk '{ print $1}' )
-echo $((unimapped+multimapped)) >> <?JS name ?>.reads.tsv
-
-<?JS
-				if (pairedend) {
+<?JS for each (var index in rrnaarray) { 
+rrna = ReadMapper.bowtie2.getIndex(Genomic.get(index),null);
 ?>
-mv Unmapped.out.mate1 <? print(fqs[0]) ?>
-mv Unmapped.out.mate2 <? print(fqs[1]) ?>
-<?JS			} else { ?>
-mv Unmapped.out.mate1 <? print(fqs[0]) ?>
-<?JS			} ?>
 
-<?JS } ?>
 
+# <? index ?> removal
+#STAR --runMode alignReads --runThreadN <? nthreads ?>  --seedPerWindowNmax 30 --alignSJDBoverhangMin 9999 --alignSJoverhangMin 9999 --genomeDir <? rrna ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --alignEndsType <? alimode ?> --outReadsUnmapped Fastx
+
+<?
+if (pairedend) { ?>
+bowtie2 -p <? nthreads ?> --un-conc un --local -x <? rrna ?> -1 <? print(fqs[0]) ?> -2 <? print(fqs[1]) ?> > /dev/null  
+mv un.1 <? print(fqs[0]) ?>
+mv un.2 <? print(fqs[1]) ?>
+<?
+} else { ?>
+bowtie2 -p <? nthreads ?> --un un --local -x <? rrna ?> -U <? print(fqs[0]) ?> > /dev/null  
+mv un <? print(fqs[0]) ?>
+<? } ?>
+
+	echo -ne "filtered <? index ?>\t" >> <?JS name ?>.reads.tsv
+	L=`wc -l <?JS fastqname ?> | head -n1 | awk '{print $1}'`
+	leftreads=$((L / 4))
+	echo $leftreads >> <?JS name ?>.reads.tsv
+<? } ?>
 
 
 # mapping
-STAR --runMode alignReads --runThreadN <? nthreads ?>  <? intronparam ?> --genomeDir <? starindex ?> <?JS print(sharedMem?"--genomeLoad LoadAndRemove":""); ?> --limitBAMsortRAM 4000000000 <? starparam ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --outSAMtype BAM SortedByCoordinate --alignEndsType <? alimode ?> --outSAMattributes nM MD NH  <?JS print(keepUnmapped?"--outReadsUnmapped Fastx":""); ?>
+STAR --runMode alignReads --runThreadN <? nthreads ?>  <? intronparam ?> --genomeDir <? starindex ?> <?JS print(sharedMem?"--genomeLoad LoadAndKeep":""); ?> --limitBAMsortRAM 8000000000 <? starparam ?> --readFilesIn <? fastqname ?> --outSAMmode NoQS --outSAMtype BAM SortedByCoordinate --alignEndsType <? alimode ?> --outSAMattributes nM MD NH  <?JS print(keepUnmapped?"--outReadsUnmapped Fastx":""); ?>
 mv Aligned.sortedByCoord.out.bam <? name ?>.bam
 <?JS
 			if (keepUnmapped) {
@@ -205,12 +214,23 @@ grep "Number of reads mapped to multiple loci"  Log.final.out | cut -f2 -d'|' | 
 mkdir -p <?JS wd ?>/report
 
 samtools index <? name ?>.bam
-gedi -t . -e Bam2CIT <? citparam ?> <? name ?>.cit <? name ?>.bam
+
+echo -ne "Mitochondrial\t" >> <?JS name ?>.reads.tsv
+gedi -t . -e Bam2CIT<? if (umi) print(" -umi"); ?> <? citparam ?> <? name ?>.cit <? name ?>.bam | tail -n1 | awk '{ print $2 }'>> <?JS name ?>.reads.tsv
 gedi -t . -e CorrectCIT <? name ?>.cit
 echo -ne "CIT\t" >> <?JS name ?>.reads.tsv
 gedi -t . -e ReadCount -g <? genomes ?> -m Weight <? name ?>.cit | tail -n1 | awk '{ print $2 }'>> <?JS name ?>.reads.tsv
 
 mv *.readlengths.* <?JS wd ?>/report
+
+<?JS if (umi) { ?>
+gedi -t . -e DedupUMI -prefix <? name ?> -plot <? name ?>.cit
+echo -ne "Dedup\t" >> <?JS name ?>.reads.tsv
+gedi -t . -e ReadCount -g <? genomes ?> -m Weight <? name ?>.cit | tail -n1 | awk '{ print $2 }'>> <?JS name ?>.reads.tsv
+
+mv <?JS name ?>.dedup* <?JS wd ?>/report
+<?JS } ?>
+
 mv <?JS name ?>.reads.tsv <?JS wd ?>/report
 
 if [ -f <?JS name ?>.cit ]; then
@@ -226,13 +246,17 @@ if [ -f <?JS name ?>.cit ]; then
 <?JS if (keepfastq) { ?>
    mkdir -p <?JS wd ?>/fastq
    mv *.fastq <?JS wd ?>/fastq
+   cd <?JS wd ?>/fastq
+   gzip *.fastq
 <?JS } ?>
+   cd <?JS wd ?>
    rm -rf <?JS tmp ?>/<?JS name ?>
 else
    (>&2 echo "There were some errors, did not delete temp directory!")
+   cd <?JS wd ?>
 fi
 
-cd <?JS wd ?>
+
 
 <?JS
 var png = output.file.getParentFile().getParentFile()+"/report/"+name+".reads.png";

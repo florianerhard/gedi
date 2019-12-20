@@ -20,6 +20,8 @@ package gedi.gui.genovis;
 import gedi.core.reference.LazyGenome;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
+import gedi.core.region.ImmutableReferenceGenomicRegion;
+import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.gui.PixelBasepairMapper;
 
 import java.awt.image.BufferedImage;
@@ -43,6 +45,11 @@ public interface GenoVisViewer {
 	default void refreshLocation() {
 		setLocation(getReference(), getRegion());
 	}
+	
+	default void setLocation(ReferenceGenomicRegion<?> rgr) {
+		setLocation(rgr.getReference(),rgr.getRegion());
+	}
+	
 	
 	default void setLocation(ReferenceSequence reference, GenomicRegion region) {
 		setLocation(new ReferenceSequence[] {reference}, new GenomicRegion[] {region});

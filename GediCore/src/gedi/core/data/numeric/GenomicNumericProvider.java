@@ -19,6 +19,7 @@ package gedi.core.data.numeric;
 
 
 import gedi.core.data.annotation.ReferenceSequenceLengthProvider;
+import gedi.core.data.numeric.GenomicNumericProvider.PositionNumericIterator;
 import gedi.core.reference.ReferenceSequence;
 import gedi.core.region.GenomicRegion;
 import gedi.core.region.ReferenceGenomicRegion;
@@ -134,6 +135,31 @@ public interface GenomicNumericProvider extends ReferenceSequenceLengthProvider 
 	public static interface PositionNumericIterator extends IntIterator {
 		double[] getValues(double[] re);
 		double getValue(int row);
+	}
+	
+	public static PositionNumericIterator empty() {
+		return new PositionNumericIterator() {
+			@Override
+			public int nextInt() {
+				return 0;
+			}
+
+			@Override
+			public boolean hasNext() {
+				return false;
+			}
+
+			@Override
+			public double[] getValues(double[] re) {
+				return null;
+			}
+
+			@Override
+			public double getValue(int row) {
+				return 0;
+			}
+			
+		};
 	}
 	
 	public default double aggregatedValue(ReferenceSequence reference, GenomicRegion region, int row, DoubleBinaryOperator aggregator) {

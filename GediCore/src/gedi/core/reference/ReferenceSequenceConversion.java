@@ -35,6 +35,23 @@ public enum ReferenceSequenceConversion implements UnaryOperator<ReferenceSequen
 		}
 	},
 	
+	trimToUnderscore {
+		@Override
+		public ReferenceSequence apply(ReferenceSequence t) {
+			String name = t.getName();
+			int under = name.lastIndexOf('_');
+			if (under!=-1) {
+				return Chromosome.obtain(name.substring(under+1),t.getStrand());
+			}
+			return t;
+		}
+		
+		@Override
+		public boolean altersName() {
+			return true;
+		}
+	},
+	
 	toEnsembl {
 
 		@Override

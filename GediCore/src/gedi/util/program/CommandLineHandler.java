@@ -33,7 +33,6 @@ import gedi.util.userInteraction.progress.ConsoleProgress;
 
 public class CommandLineHandler {
 
-	private static final Logger log = Logger.getLogger( CommandLineHandler.class.getName() );
 	
 	private String[] args;
 	private String title;
@@ -43,7 +42,6 @@ public class CommandLineHandler {
 		this.title  = title;
 		this.args = args;
 		this.description = description;
-		log.fine("Received command line parameters: #"+StringUtils.concat("#,#", args)+"#");
 	}
 	
 
@@ -52,68 +50,80 @@ public class CommandLineHandler {
 	 * @param spec
 	 * @return
 	 */
-	@SuppressWarnings("rawtypes")
 	public String parse(GediParameterSpec spec, GediParameterSet set) {
-		try {
-			spec.add("Commandline", getProgress(set),getD(set),getH(set),getHh(set),getHhh(set),getDry(set),getKeep(set));
+		Logger log = Logger.getLogger( CommandLineHandler.class.getName() );
+		log.fine("Received command line parameters: #"+StringUtils.concat("#,#", args)+"#");
+		spec.add("Commandline", getProgress(set),getD(set),getH(set),getHh(set),getHhh(set),getDry(set),getKeep(set));
+		
+		return parse(args,log,set);
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private String parse(String[] args, Logger log, GediParameterSet params) {
+		int i;
+		for (i=0; i<args.length; i++) {
 			
-			int i;
-			for (i=0; i<args.length; i++) {
+			if (args[i].startsWith("-")) {
 				
-				if (args[i].startsWith("-")) {
-					
-					log.fine("Parsing parameter "+args[i]);
-					
-					String name = args[i].substring(1);
-					if (name.startsWith("-")) name = name.substring(1);
-					
-					String value = null;
-					if (name.indexOf('=')>=0) {
-						int ind = name.indexOf('=');
-						value = name.substring(ind+1);
-						name = name.substring(0, ind);
+				log.fine("Parsing parameter "+args[i]);
+				
+				String name = args[i].substring(1);
+				if (name.startsWith("-")) name = name.substring(1);
+				
+				String value = null;
+				if (name.indexOf('=')>=0) {
+					int ind = name.indexOf('=');
+					value = name.substring(ind+1);
+					name = name.substring(0, ind);
+				}
+				
+				GediParameter param = params.get(name);
+				if (param==null)
+					return "Unknown parameter: "+args[i];
+				
+				if (param.isShortcut()) {
+					String re = parse(param.getShortcut(),log,params);
+					if (re!=null) return re;
+				}
+				
+				if (param.getType().hasValue() && value==null) {
+					++i;
+					if (i>=args.length || args[i].startsWith("-")) {
+						return "Missing argument for "+args[i-1];
 					}
+					value = args[i];
 					
-					GediParameter param = spec.get(name);
-					if (param==null)
-						return "Unknown parameter: "+args[i];
-					if (param.getType().hasValue() && value==null) {
-						++i;
-						if (i>=args.length || args[i].startsWith("-")) {
-							return "Missing argument for "+args[i-1];
-						}
-						value = args[i];
-						
-						if (param.isMulti() && param.getType().parsesMulti()) {
-							StringBuilder sb = new StringBuilder().append(value);
-							while (i+1<args.length && !args[i+1].startsWith("-")) 
-								sb.append(" ").append(args[++i]);
-							param.set(param.getType().parse(sb.toString()));
-							log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+sb.toString()+")");
-						} else {
-						
-							param.set(param.getType().parse(value));
-							log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+value+")");
-							if (param.isMulti()) {
-								while (i+1<args.length && !args[i+1].startsWith("-")) {
-									param.set(param.getType().parse(args[++i]));
-									log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+args[i-1]+")");
-								}
+					if (param.isMulti() && param.getType().parsesMulti()) {
+						StringBuilder sb = new StringBuilder().append(value);
+						while (i+1<args.length && !args[i+1].startsWith("-")) 
+							sb.append(" ").append(args[++i]);
+						param.set(param.getType().parse(sb.toString()));
+						log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+sb.toString()+")");
+					} else {
+					
+						param.set(param.getType().parse(value));
+						log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+value+")");
+						if (param.isMulti()) {
+							while (i+1<args.length && !args[i+1].startsWith("-")) {
+								param.set(param.getType().parse(args[++i]));
+								log.fine("Set parameter "+param.getName()+": "+param.getValue()+" ("+args[i-1]+")");
 							}
 						}
-					} 
-					else
-						param.set(param.getType().parse(value));
-				}
-				else {
-					return "Unknown parameter: "+args[i];
-				}
+					}
+				} 
+				else
+					param.set(param.getType().parse(value));
 			}
-			
-			return null;
-		} catch (Throwable e) {
-			return e.getMessage();
+			else {
+				return "Unknown parameter: "+args[i];
+			}
 		}
+		return null;
+	}
+
+
+	public String[] getArgs() {
+		return args;
 	}
 
 

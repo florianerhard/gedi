@@ -106,7 +106,7 @@ public class MemoryIntegerArray extends IntegerArray {
         while (from< to) {
         	int tmp = a[from];
     		a[from++] = a[to];
-    		a[to++] = tmp;
+    		a[to--] = tmp;
         }
         return this;
 	}

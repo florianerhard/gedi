@@ -1,30 +1,36 @@
 <GenomicRegionFeaturePipeline>
-	<Labels l="${labels}" />
 
-	<ChromosomeFeature id="Chromosome" />
-	<FeatureMapping id="chr" input="Chromosome">
-		<ContainsMapping contains="chr" to="chr"/>
-	</FeatureMapping>
+	<Labels l="${labels}" />
 
 	<OrfTypeFeature id="Orf type" />
 	
-	<CodonUsageFeature file="${prefix}codonusage.stat">
+	<CodonUsageFeature file="${prefix}codonusage_A.stat">
+		<Genomic genomic='genomic'/>
 		<RepresentationA/>
 		<MaxDownsampling/>
 		<Rscript url='classpath:/scripts/plot.codonusage.R' />		
 	</CodonUsageFeature>
 	
-	<CodonUsageFeature file="${prefix}codonusage_cds.stat">
+	<CodonUsageFeature file="${prefix}codonusage_cds_A.stat">
+		<Genomic genomic='genomic'/>
 		<Condition inputs="Orf type" cond="['CDS']" />
 		<RepresentationA/>
 		<MaxDownsampling/>
 		<Rscript url='classpath:/scripts/plot.codonusage.R' />		
 	</CodonUsageFeature>
 	
-	<CodonUsageFeature file="${prefix}codonusage_cds_chr.stat">
+	
+	<CodonUsageFeature file="${prefix}codonusage_sticky.stat">
+		<Genomic genomic='genomic'/>
+		<Sticky/>
+		<MaxDownsampling/>
+		<Rscript url='classpath:/scripts/plot.codonusage.R' />		
+	</CodonUsageFeature>
+	
+	<CodonUsageFeature file="${prefix}codonusage_cds_sticky.stat">
+		<Genomic genomic='genomic'/>
 		<Condition inputs="Orf type" cond="['CDS']" />
-		<Condition inputs="chr" cond="['chr']" />
-		<RepresentationA/>
+		<Sticky/>
 		<MaxDownsampling/>
 		<Rscript url='classpath:/scripts/plot.codonusage.R' />		
 	</CodonUsageFeature>

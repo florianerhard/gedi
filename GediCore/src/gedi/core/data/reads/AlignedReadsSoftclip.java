@@ -103,6 +103,11 @@ public class AlignedReadsSoftclip implements AlignedReadsVariation {
 			return false;
 		return true;
 	}
+
+	@Override
+	public AlignedReadsVariation reposition(int newPos) {
+		return this;
+	}
 	
 	
 }

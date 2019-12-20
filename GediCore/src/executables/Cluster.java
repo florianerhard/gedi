@@ -160,7 +160,7 @@ public class Cluster {
 		name = args[i++];
 		command = args[i++];
 		
-		Gedi.startup(true,LogMode.Silent);
+		Gedi.startup(true,LogMode.Silent,null);
 
 		String batch;
 		DynamicObject defaultParam = DynamicObject.getEmpty();
@@ -209,6 +209,7 @@ public class Cluster {
 			out.writeLine(jhp.apply(batch));
 			out.close();
 			String jid = jhp.getJs().invokeFunction("exec", f.getAbsolutePath(), dep);
+			jid = StringUtils.trim(jid, '\n', ' ', '\t');
 			System.out.println(jid);
 		}
 		

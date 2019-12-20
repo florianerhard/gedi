@@ -25,6 +25,8 @@ import gedi.util.datastructure.collections.doublecollections.DoubleIterator;
 import gedi.util.datastructure.collections.intcollections.IntIterator;
 import gedi.util.functions.BooleanUnaryOperator;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.functions.StringIterator;
+import gedi.util.io.randomaccess.PageFileWriter;
 import gedi.util.io.randomaccess.serialization.BinarySerializer;
 import gedi.util.mutable.MutablePair;
 import gedi.util.orm.Orm;
@@ -145,7 +147,7 @@ public class FunctorUtils {
 
 	}
 
-	public static class SubstringIterator implements ExtendedIterator<String> {
+	public static class SubstringIterator implements StringIterator {
 
 		private String s;
 		private int l;
@@ -942,6 +944,47 @@ public class FunctorUtils {
 	}
 	
 	/**
+	 * May not be sorted; every element by the parent iterator is checked whether it is a first element. For each first element,
+	 * a block is supplied and all subsequent, not first elements are added to the block
+	 * @author erhard
+	 *
+	 * @param <T>
+	 * @param <C>
+	 */
+	public static class FixedBlockIterator<T,C> extends TryNextIterator<C> {
+
+		private Iterator<T> it;
+		private int i=0;
+		private int n;
+		private Supplier<C> blockSupplier;
+		private BiConsumer<C, T> adder;
+		
+		
+		
+		public FixedBlockIterator(Iterator<T> it, int n,
+				Supplier<C> blockSupplier, BiConsumer<C, T> adder) {
+			this.it = it;
+			this.n = n;
+			this.blockSupplier = blockSupplier;
+			this.adder = adder;
+		}
+
+		@Override
+		protected C tryNext() {
+			if (!it.hasNext())
+				return null;
+			
+			C re = blockSupplier.get();
+			while (it.hasNext() && i++<n) {
+				adder.accept(re, it.next());
+			}
+			i=0;
+			
+			return re;
+		}
+	}
+	
+	/**
 	 * Iterator must be sorted; the resulting iterator yields all equal (comparison is 0) objects combined
 	 * @author erhard
 	 *
@@ -1053,7 +1096,7 @@ public class FunctorUtils {
 				Collection<T> collector = null;
 				try {
 					if (serializer!=null)
-						collector = new SerializerSortingCollection<T>(serializer, strong, 64*1024);
+						collector = new SerializerSortingCollection<T>(serializer, strong, (int) (PageFileWriter.DEFAULT_PAGE_SIZE*0.9));
 					else
 						collector = new FastSortingCollection<T>(proto, strong, 64*1024);
 				} catch (Throwable e) {
@@ -1853,6 +1896,15 @@ public class FunctorUtils {
 		}
 		return re;
 	}
+	
+	public static <T> int countIntIterator(Iterator<T> iterator) {
+		int re = 0;
+		while (iterator.hasNext()) {
+			iterator.next();
+			re++;
+		}
+		return re;
+	}
 
 
 
@@ -1881,7 +1933,7 @@ public class FunctorUtils {
 		return new FuseIterator<>(iterators,l->{
 			T[] re = (T[]) Array.newInstance(cls, iterators.length);
 			for (int i=0; i<re.length; i++)
-				re[i] = iterators[i].next();
+				re[i] = l.get(i);
 			return re;
 		});
 	}
@@ -1972,10 +2024,10 @@ public class FunctorUtils {
 		return new ChainedComparator<I>(cmp);
 	}
 
-	public static ExtendedIterator<String> substringIterator(String str, int length) {
+	public static StringIterator substringIterator(String str, int length) {
 		return new SubstringIterator(str,length, true);
 	}
-	public static ExtendedIterator<String> substringIterator(String str, int length, boolean overlapping) {
+	public static StringIterator substringIterator(String str, int length, boolean overlapping) {
 		return new SubstringIterator(str,length, overlapping);
 	}
 	
@@ -2009,6 +2061,14 @@ public class FunctorUtils {
 	
 	public static <T,C> BlockIterator<T,C> blockIterator(Iterator<T> it, Predicate<T> first, Supplier<C> blockSupplier, BiConsumer<C, T> adder) {
 		return new BlockIterator<>(it,first,blockSupplier,adder);
+	}
+
+	public static <T> FixedBlockIterator<T,ArrayList<T>> blockIterator(Iterator<T> it, int n) {
+		return new FixedBlockIterator<T,ArrayList<T>>(it,n,ArrayList::new,ArrayList<T>::add);
+	}
+	
+	public static <T,C> FixedBlockIterator<T,C> blockIterator(Iterator<T> it, int n, Supplier<C> blockSupplier, BiConsumer<C, T> adder) {
+		return new FixedBlockIterator<>(it,n,blockSupplier,adder);
 	}
 
 	/**

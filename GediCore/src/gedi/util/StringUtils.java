@@ -26,6 +26,7 @@ import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
 import gedi.util.functions.EI;
 import gedi.util.functions.ExtendedIterator;
+import gedi.util.functions.StringIterator;
 import gedi.util.math.stat.RandomNumbers;
 import gedi.util.sequence.Alphabet;
 
@@ -918,7 +919,7 @@ public class StringUtils {
 		
 	}
 
-	public static ExtendedIterator<String> iteratePermutations(String s) {
+	public static StringIterator iteratePermutations(String s) {
 		return new PermutationIterator(s);
 	}
 
@@ -928,7 +929,7 @@ public class StringUtils {
 	 * @author erhard
 	 *
 	 */
-	public static class PermutationIterator implements ExtendedIterator<String> {
+	public static class PermutationIterator implements StringIterator {
 
 		private int n;
 		private	char[] a;
@@ -973,7 +974,7 @@ public class StringUtils {
 	 * @param alpha
 	 * @return
 	 */
-	public static ExtendedIterator<String> iterateHammingHull(String s, Alphabet alpha) {
+	public static StringIterator iterateHammingHull(String s, Alphabet alpha) {
 		return new HammingIterator(s,alpha);
 	}
 
@@ -983,7 +984,7 @@ public class StringUtils {
 	 * @author erhard
 	 *
 	 */
-	public static class HammingIterator implements ExtendedIterator<String> {
+	public static class HammingIterator implements StringIterator {
 
 		private int pos = 0;
 		private int sPos = 0;
@@ -1771,7 +1772,7 @@ public class StringUtils {
 		return sb.toString();
 	}
 
-	public static String createExceptionMessage(Exception e) {
+	public static String createExceptionMessage(Throwable e) {
 		StringBuilder sb = new StringBuilder();
 		for (Throwable t=e; t!=null; t=t.getCause()) {
 			if (t.getMessage()!=null && t.getMessage().length()>0) {
@@ -1782,6 +1783,33 @@ public class StringUtils {
 		}
 		return sb.toString();
 	}
+
+	public static int getLongestCommonPrefix(String[] a) {
+		if (a.length==0) return 0;
+		int re = a[0].length();
+		for (int i=1; i<a.length;i++)
+			re = Math.min(re, getLongestCommonPrefix(a[0],a[i]));
+		return re;
+	}
 	
+	public static int getLongestCommonPrefix(String a, String b) {
+		int i;
+		for (i=0; i<Math.min(a.length(), b.length()) && a.charAt(i)==b.charAt(i); i++);
+		return i;
+	}
+	
+	public static int getLongestCommonSuffix(String[] a) {
+		if (a.length==0) return 0;
+		int re = a[0].length();
+		for (int i=1; i<a.length;i++)
+			re = Math.min(re, getLongestCommonSuffix(a[0],a[i]));
+		return re;
+	}
+	
+	public static int getLongestCommonSuffix(String a, String b) {
+		int i;
+		for (i=0; i<Math.min(a.length(), b.length()) && a.charAt(a.length()-1-i)==b.charAt(b.length()-1-i); i++);
+		return i;
+	}
 
 }

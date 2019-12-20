@@ -6,7 +6,7 @@ varin("wd","Working directory",true);
 varin("reads","File containing reads",true);
 varin("tokens","Array of pipeline tokens (to resolve dependencies of programs)",true);
 varin("references","Definitions of reference sequences",true);
-
+varin("referenceSequenceConversion","referenceSequenceConversion",true);
 ?>
 
 <?JS 
@@ -22,9 +22,16 @@ reads = new File(reads).getAbsolutePath();
 			genomes = genomes+" "+r;
 	}
 
+	var referenceSequenceConversion;
+	
+	var add = "";
+	if (referenceSequenceConversion) {
+			add=add+" --referenceSequenceConversion="+referenceSequenceConversion;
+		}
+
 ?>
 
-<?JS prerunner(id+".report",tokens) ?>gedi -e Stats -prefix <?JS wd ?>/report/<?JS print(FileUtils.getNameWithoutExtension(reads)); ?>. -g <?JS genomes ?> <?JS reads?><?JS var end=postrunner(id+".report") ?>
+<?JS prerunner(id+".report",tokens) ?>gedi -e Stats -prefix <?JS wd ?>/report/<?JS print(FileUtils.getNameWithoutExtension(reads)); ?>. -g <?JS genomes ?><? add ?> <?JS reads?><?JS var end=postrunner(id+".report") ?>
 
-
-<?JS prerunner(id+".count",tokens) ?>gedi -e Stats -prefix <?JS wd ?>/report/<?JS print(FileUtils.getNameWithoutExtension(reads)); ?>. -g <?JS genomes ?> -count <?JS reads?><?JS var end2=postrunner(id+".count") ?>
+mkdir -p <?JS wd ?>/counts
+<?JS prerunner(id+".count",tokens) ?>gedi -e Stats -prefix <?JS wd ?>/counts/<?JS print(FileUtils.getNameWithoutExtension(reads)); ?>. -g <?JS genomes ?><? add ?> -count <?JS reads?><?JS var end2=postrunner(id+".count") ?>

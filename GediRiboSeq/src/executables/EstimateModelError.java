@@ -2263,12 +2263,12 @@ private static class GapsProcessor {
 
 		public RibotaperProcessor(String prefix) throws UsageException, IOException, RserveException {
 			
-			ribotaperout = new LineOrientedFile(prefix+".ribotaper.data").write(true).writef("Location\tTotal\tinframe\tp.value\n");
-			r = RConnect.R();
-			if (!r.requirePackage("multitaper")) 
-				throw new UsageException("Cannot compute ribotaper pvalues, multitaper package is missing!");
-			r.run(getClass().getResource("/scripts/ribotaper.R"));
-			log.info("Established R connection for ribotaper scoring");
+//			ribotaperout = new LineOrientedFile(prefix+".ribotaper.data").write(true).writef("Location\tTotal\tinframe\tp.value\n");
+//			r = RConnect.R();
+//			if (!r.requirePackage("multitaper")) 
+//				throw new UsageException("Cannot compute ribotaper pvalues, multitaper package is missing!");
+//			r.run(getClass().getResource("/scripts/ribotaper.R"));
+//			log.info("Established R connection for ribotaper scoring");
 		}
 
 		public void process(Inferred inferred) throws IOException, REngineException {
@@ -2282,13 +2282,13 @@ private static class GapsProcessor {
 			double total = EI.wrap(data).sum();
 		
 			synchronized (this) {
-				try {
-					r.assign("x", data);
-					double pval = r.eval("ribotaper(x)$pval").asDouble();
+//				try {
+//					r.assign("x", data);
+					double pval = 1; //r.eval("ribotaper(x)$pval").asDouble();
 					ribotaperout.writef("%s\t%.1f\t%.1f\t%.5g\n", mi.trans.toLocationString(),total,inframe,pval);
-				} catch (REXPMismatchException e) {
-					throw new RuntimeException("Could not read result of ribotaper!",e);
-				}
+//				} catch (REXPMismatchException e) {
+//					throw new RuntimeException("Could not read result of ribotaper!",e);
+//				}
 			}
 			
 		}

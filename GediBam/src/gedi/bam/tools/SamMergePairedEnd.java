@@ -105,7 +105,7 @@ public class SamMergePairedEnd implements UnaryOperator<Iterator<SAMRecord>> {
 				if (!f.getMateReferenceName().equals(s.getReferenceName()) || f.getMateAlignmentStart()!=s.getAlignmentStart())
 					throw new RuntimeException("Mapping problem: first and second do not match: \n"+f+s);
 				
-				FactoryGenomicRegion m = BamUtils.getFactoryGenomicRegion(f, s, cumNumCoord, join,true,ignoreVariation,false);
+				FactoryGenomicRegion m = BamUtils.getFactoryGenomicRegion(f, s, cumNumCoord, join,true,ignoreVariation,false, null);
 				m.add(f,s, 0);
 				Chromosome chr = Chromosome.obtain(f.getReferenceName(), !f.getReadNegativeStrandFlag());
 				re[i] = BamUtils.createRecord(f.getHeader(), chr, m, m.create(), 0, f.getReadName(), Math.min(f.getMappingQuality(),s.getMappingQuality()));

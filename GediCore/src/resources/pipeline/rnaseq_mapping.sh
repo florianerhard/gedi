@@ -44,6 +44,7 @@ for each (var d in datasets) {
 		var srrs = EI.wrap(srrPat.matcher(xml)).sort().toArray(String.class);
 		log.info("SRA entry: Name: "+d.name+" gsm: "+d.gsm+" id: "+arr[0].asString()+" SRR: "+Arrays.toString(srrs));
 		nameToModeAndFiles[d.name] = ["SRR",srrs,d.hasOwnProperty("adapter")?d.adapter:adapter,false];
+		Thread.sleep(1000);
 	} else if (d.hasOwnProperty("sra")) {
 		var srrs = d.sra;
 		log.info("SRA entry: Name: "+d.name+" srr: "+srrs);

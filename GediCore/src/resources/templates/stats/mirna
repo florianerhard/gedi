@@ -1,0 +1,180 @@
+<GenomicRegionFeaturePipeline>
+	<Labels l="<?JS print(EI.wrap(labels).concat(',')) ?>" />
+
+	<MirbaseGffReader.fromWebMature id="miRs" org="<? org ?>" />
+	<MirbaseGffReader.fromWebPrecursor id="mirs" org="<? org ?>" />
+
+	<SequenceFeature id="5p Bias">
+		<Genomic g="genomic"/>
+		<From position="FivePrime" offset="-1" />
+		<To position="FivePrime" offset="1" />
+	</SequenceFeature>
+
+	<SequenceFeature id="3p Bias">
+		<Genomic g="genomic"/>
+		<From position="ThreePrime" offset="-1" />
+		<To position="ThreePrime" offset="1" />
+	</SequenceFeature>
+	
+	<MultiReadFeature id="Ambiguity" />
+	<LengthFeature id="Read length" />
+	<GenomeFeature id="Genome" g="genomic" />
+	
+	<ReadMismatchCountFeature id="MismatchCount" />
+	<ReadMismatchPositionFeature id="Mismatch Positions" />
+	<ReadMismatchTypeFeature id="Mismatch Types" />
+	<ReadMismatchGenomicFeature id="Mismatch Genomic" />
+	<ReadMismatchReadFeature id="Mismatch Read" />
+
+	<AnnotationFeature id="miR" data="false" >
+		<add storage="miRs" />
+	</AnnotationFeature>
+
+	<AnnotationFeature id="mir" data="false" >
+		<add storage="mirs" />
+	</AnnotationFeature>
+
+
+	<MapFeature id="miR.name" input="miR">
+		<Field n='data' />
+		<Field n='name' />
+	</MapFeature>
+	<MapFeature id="mir.name" input="mir">
+		<Field n='data' />
+		<Field n='name' />
+	</MapFeature>
+
+	<AbsolutePosition id="Start" input="miR" >
+		<AnnotationPosition p="FivePrime" />
+		<ReadPosition p="FivePrime" />
+	</AbsolutePosition>
+	<AbsolutePosition id="Stop" input="miR" >
+		<AnnotationPosition p="ThreePrime" />
+		<ReadPosition p="ThreePrime" />
+	</AbsolutePosition>
+
+	<ConstantFeature id="Type" c="None" />
+	<MultiFeatureMapping input="Type,miR,mir,Start,Stop">
+		<Mapping from="['None'],[U],[*],[0],[0]" to="['Mature'],[*],[*],[*],[*]" />
+		<Mapping from="['None'],[U],[*],[0],[U]" to="['3p variant'],[*],[*],[*],[*]" />
+		<Mapping from="['None'],[U],[*],[U],[0]" to="['5p variant'],[*],[*],[*],[*]" />
+		<Mapping from="['None'],[U],[*],[U],[U]" to="['5+3p variant'],[*],[*],[*],[*]" />
+		<Mapping from="['None'],[],[U],[*],[*]" to="['Precursor'],[*],[*],[*],[*]" />
+	</MultiFeatureMapping>
+
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>types.counts.tsv" input="miR.name,Type">
+	</FeatureStatisticOutput>
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>counts.tsv" input="miR.name">
+		<Condition js="this.getProgram().getUniqueInputById('Type','None').equals('Mature') || this.getProgram().getUniqueInputById('Type','None').equals('3p variant')" />
+	</FeatureStatisticOutput>
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>precursor.tsv" input="mir.name">
+	</FeatureStatisticOutput>
+	
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>genome.tsv" input="Genome">
+		<Barplot aes="fill,x,y" position="fill">
+			<RotateLabels/>
+			<Title>Genome distribution</Title>
+			<Description>The distribution of reads to input genomes for all conditions</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>type.tsv" input="Type,Genome">
+		<Barplot aes="fill,facet,x,y" position="fill">
+			<RotateLabels/>
+			<Title>Read types</Title>
+			<Description>The distribution of reads in the annotated miRs for each condition.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>length.tsv" input="Read length">
+		<Barplot aes="x,,y" position="stack">
+			<Section>Read length</Section>
+			<Title>Length histogram</Title>
+			<Description>The read length distribution after mapping reads.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>length_unique.tsv" input="Read length">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Barplot aes="x,,y" position="stack">
+			<Section>Read length</Section>
+			<Title>Length histogram (U)</Title>
+			<Description>The read length distribution after mapping reads. Only reads uniquely mapping are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>5pbias.tsv" input="5p Bias">
+		<Barplot aes="x,,y" position="stack">
+			<Section>Bias</Section>
+			<Title>5' read bias</Title>
+			<Description>Shows the number of dinucleotides composed of the nucleotide immediately upstream of the read position and the first read nucleotide.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	<FeatureStatisticOutput file="<?JS prefix ?>3pbias.tsv" input="3p Bias">
+		<Barplot aes="x,,y" position="stack">
+			<Section>Bias</Section>
+			<Title>3' read bias</Title>
+			<Description>Shows the number of dinucleotides composed of the last read nucleotide and the nucleotide immediately downstream of the read position.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	
+	<FeatureStatisticOutput file="<?JS prefix ?>mismatchcount.tsv" input="MismatchCount,Ambiguity">
+		<Barplot aes="x,fill,,y" position="stack">
+			<Section>Mismatches</Section>
+			<Title>Mismatch histogram</Title>
+			<Description>Shows the number of mismatches per read, distinguishing uniquely and ambiguously mapping reads.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	<FeatureStatisticOutput file="<?JS prefix ?>mismatches.tsv" input="Mismatch Positions,Mismatch Genomic,Mismatch Read">
+		<Barplot aes="x,facet,fill,,y" position="stack">
+			<Section>Mismatches</Section>
+			<Title>Mismatch distribution</Title>
+			<Description>Shows the mismatch distribution along reads. The panels correspond to the genomic base, read bases are color coded.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+	<FeatureStatisticOutput file="<?JS prefix ?>mismatches_unique.tsv" input="Mismatch Positions,Mismatch Genomic,Mismatch Read">
+		<Condition inputs="Ambiguity" cond="['unique']" />
+		<Barplot aes="x,facet,fill,,y" position="stack">
+			<Section>Mismatches</Section>
+			<Title>Mismatch distribution (U)</Title>
+			<Description>Shows the mismatch distribution along reads. The panels correspond to the genomic base, read bases are color coded. Only reads uniquely mapping are considered.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	<FeatureStatisticOutput file="<?JS prefix ?>start.tsv" input="Start">
+		<Condition js="Math.abs(this.getUniqueInput(0,6))&lt;=5" />
+		<Barplot aes="x,,y" position="stack">
+			<Section>Position</Section>
+			<Title>Start</Title>
+			<Description>Shows the number of reads at the annotated miRNA 5' end.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+	<FeatureStatisticOutput file="<?JS prefix ?>stop.tsv" input="Stop">
+		<Condition js="Math.abs(this.getUniqueInput(0,6))&lt;=5" />
+		<Barplot aes="x,,y" position="stack">
+			<Section>Position</Section>
+			<Title>Stop</Title>
+			<Description>Shows the number of reads at the annotated miRNA 3' end.</Description>
+		</Barplot>
+	</FeatureStatisticOutput>
+
+
+	
+<?JS0
+includeExtensions("/resources/templates/stats/mirna");
+?>
+
+
+</GenomicRegionFeaturePipeline>
+

@@ -27,13 +27,19 @@ import gedi.core.region.ReferenceGenomicRegion;
 import gedi.util.StringUtils.ReversedCharSequence;
 import gedi.util.datastructure.charsequence.MaskedCharSequence;
 import gedi.util.datastructure.tree.Trie;
+import gedi.util.dynamic.DynamicObject;
+import gedi.util.functions.EI;
 import gedi.util.io.text.fasta.index.FastaIndexFile.FastaIndexEntry;
+import gedi.util.mutable.MutableInteger;
+import gedi.util.oml.cps.CpsReader;
 import gedi.util.sequence.WithFlankingSequence;
 
 import java.awt.Color;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -53,7 +59,7 @@ public class SequenceUtils {
 	public static final char[] compl_rna_nucleotides = {'U','G','C','A','N','-'};
 	public static final int[] inv_nucleotides = new int[256];
 	public static final char[][] dna_iupac = new char[256][];
-	public static final HashMap<String, String> code = new HashMap<String, String>();
+	public static final Trie<String> code = new Trie<String>();
 	public static final String STOP_CODON = "*";
 	static {
 		code.put("GCT", "A");
@@ -173,6 +179,7 @@ public class SequenceUtils {
 		return sb.toString();
 	}
 
+	
 
 	public static boolean isWobble(char a, char b) {
 		a = Character.toUpperCase(a);
@@ -208,6 +215,28 @@ public class SequenceUtils {
 		for (int i=dnaSequence.length()-1; i>=0; i--)
 			sb.append(getDnaComplement(dnaSequence.charAt(i)));
 		return sb.toString();
+	}
+	
+	public static char[] getDnaReverseComplementInplace(char[] dnaSequence) {
+		for (int i=0; i<dnaSequence.length/2; i++) {
+			char tmp=getDnaComplement(dnaSequence[i]);
+			dnaSequence[i]=getDnaComplement(dnaSequence[dnaSequence.length-1-i]);
+			dnaSequence[dnaSequence.length-1-i]=tmp;
+		}
+		if (dnaSequence.length%2==1)
+			dnaSequence[dnaSequence.length/2]=getDnaComplement(dnaSequence[dnaSequence.length/2]);
+		return dnaSequence;
+	}
+	
+	public static char[] getRnaReverseComplementInplace(char[] rnaSequence) {
+		for (int i=0; i<rnaSequence.length/2; i++) {
+			char tmp=getRnaComplement(rnaSequence[i]);
+			rnaSequence[i]=getRnaComplement(rnaSequence[rnaSequence.length-1-i]);
+			rnaSequence[rnaSequence.length-1-i]=tmp;
+		}
+		if (rnaSequence.length%2==1)
+			rnaSequence[rnaSequence.length/2]=getRnaComplement(rnaSequence[rnaSequence.length/2]);
+		return rnaSequence;
 	}
 	
 	public static class SixFrameTranslatedSequence implements CharSequence {
@@ -396,28 +425,12 @@ public class SequenceUtils {
 
 
 
-	public static Color[] nucleotideColors = {new Color(1, 0.5f, 0.5f, 1), new Color(0.5f, 1, 0.5f, 1), new Color(0.5f, 0.5f, 1, 1), new Color(1, 0.9f, 0.5f, 1)};
 
 	public static Function<Character, Color> getNucleotideColorizer() {
-		return new NucleotideColorizer();
-	}
-
-	public static class NucleotideColorizer implements Function<Character,Color> {
-
-		@Override
-		public Color apply(Character c) {
-			c = Character.toLowerCase(c);
-			if (c=='a') 
-				return nucleotideColors[0];
-			if (c=='c') 
-				return nucleotideColors[1];
-			if (c=='g') 
-				return nucleotideColors[2];
-			if (c=='t'||c=='u') 
-				return nucleotideColors[3];
-			return Color.lightGray;
-		}
-
+		DynamicObject d = new CpsReader().parse(SequenceUtils.class.getResourceAsStream("/resources/colors.cps")).getForClasses(new HashSet<>(Arrays.asList("basecolors")));
+		HashMap<Character, Color> map = EI.wrap(d.get("styles").asArray()).index(m->m.getEntry("name").asString().charAt(0),m->PaintUtils.parseColor(m.getEntry("fill").asString()));
+		map.put('U', map.get('T'));
+		return c->map.containsKey(c)?map.get(c):Color.gray;
 	}
 
 
@@ -490,5 +503,44 @@ public class SequenceUtils {
 		if (t.getData().get5Utr(t).getRegion().getTotalLength()<min5utr || t.getData().get3Utr(t).getRegion().getTotalLength()<min3utr) return false;
 		return true;
 	}
+
+
+	public static ArrayList<GenomicRegion> getPolyAStretches(String seq) {
+		return getPolyAStretches(seq, 10, 1);
+	}
+
+	public static ArrayList<GenomicRegion> getPolyAStretches(String seq, int minlen, int maxctcount) {
+		
+		ArrayList<GenomicRegion> re = new ArrayList<>();
+		
+		int[] cumA = new int[seq.length()];
+		int[] cumG = new int[seq.length()];
+		for (int i=0; i<seq.length(); i++) {
+			if (seq.charAt(i)=='A')
+				cumA[i]++;
+			else if (seq.charAt(i)=='G')
+				cumG[i]++;
+		}
+		ArrayUtils.cumSumInPlace(cumA, 1);
+		ArrayUtils.cumSumInPlace(cumG, 1);
+		for (int i=minlen; i<cumA.length; i++) {
+			int na=cumA[i]-cumA[i-minlen];
+			int ng=cumG[i]-cumG[i-minlen];
+			if (na+ng>=minlen-maxctcount && na>ng) {
+				// extend
+				int s;
+				for (s=i+1; s<cumA.length; s++) {
+					na=cumA[s]-cumA[i-minlen];
+					ng=cumG[s]-cumG[i-minlen];
+					if (na+ng<s-i+minlen-maxctcount || na<=ng) 
+						break;
+				}
+				re.add(new ArrayGenomicRegion(i-minlen,s));
+			}
+		}
+		
+		return re;
+	}
+	
 	
 }

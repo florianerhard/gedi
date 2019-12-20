@@ -51,7 +51,38 @@ public enum ReadMapper {
 		}
 		
 	},
+
 	
+	bowtie2 {
+
+		@Override
+		public String getIndex(Genomic genomic, ReferenceType t) {
+			return genomic.getInfos().get("bowtie2-"+(t==ReferenceType.Transcriptomic?"transcriptomic":"genomic"));
+		}
+		
+		@Override
+		public boolean isInherentGenomicTranscriptomicMapper() {
+			return false;
+		}
+		
+		@Override
+		public String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, int maxMismatch) {
+			throw new RuntimeException("Not implemented!");
+		}
+		
+		@Override
+		public String getPacBioCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads) {
+			throw new RuntimeException("Not implemented!");
+		}
+
+		@Override
+		public String getRnaSeqCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped,
+				int nthreads, boolean shared) {
+			throw new RuntimeException("Not implemented!");
+		}
+		
+	},
+
 	STAR {
 
 		@Override
@@ -66,7 +97,7 @@ public enum ReadMapper {
 		
 		@Override
 		public String getShortReadCommand(ReadMappingReferenceInfo info, String input, String output, String unmapped, int nthreads, int maxMismatch) {
-			return String.format("STAR --runMode alignReads --runThreadN %d --outFilterMismatchNmax %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignEndsType EndToEnd  --outSAMattributes nM MD  %s\n"
+			return String.format("STAR --runMode alignReads --runThreadN %d --outFilterMismatchNmax %d --genomeDir %s --readFilesIn %s --outSAMmode NoQS --outSAMunmapped Within --alignIntronMax 1 ---alignEndsType EndToEnd  --outSAMattributes nM MD  %s\n"
 					+ "mv Aligned.out.sam %s %s",
 				nthreads,maxMismatch, info.index,input,unmapped!=null?"--outReadsUnmapped Fastx":"",output,unmapped!=null?"\nmv Unmapped.out.mate1 "+unmapped:"");
 		}

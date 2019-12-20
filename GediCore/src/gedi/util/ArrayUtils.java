@@ -17,6 +17,8 @@
  */
 package gedi.util;
 
+import gedi.core.region.ArrayGenomicRegion;
+import gedi.core.region.GenomicRegion;
 import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.functions.TriFunction;
 import gedi.util.math.stat.RandomNumbers;
@@ -623,6 +625,14 @@ public class ArrayUtils {
 		return re;
 	}
 
+	public static <T,K> HashMap<K, Integer> createIndexMap(T[] array,Function<T,K> fun) {
+		HashMap<K,Integer> re = new HashMap<K, Integer>();
+		for (int i=0; i<array.length; i++)
+			re.put(fun.apply(array[i]), i);
+		return re;
+	}
+
+	
 
 	public static <A,K> HashMap<K, A> index(Iterable<A> a, Function<? super A,? extends K> toKey) {
 		return index(a.iterator(),toKey,v->v,false);
@@ -860,6 +870,23 @@ public class ArrayUtils {
 	 */
 	public static void reverse(double[] p, int from, int to) {
 		double tmp;
+		int l = to-1;
+		int k = from;
+		for (; k<l; k++, l--) {
+			tmp = p[k];
+			p[k] = p[l];
+			p[l] = tmp;
+		}
+	}
+	
+	/**
+	 * from inclusice, to exclusive
+	 * @param p
+	 * @param from
+	 * @param to
+	 */
+	public static <T> void reverse(T[] p, int from, int to) {
+		T tmp;
 		int l = to-1;
 		int k = from;
 		for (; k<l; k++, l--) {
@@ -1178,7 +1205,7 @@ public class ArrayUtils {
 	 * @return the new array without the item
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> T[] removeItemFromArray(T[] array,int index) {
+	public static <T> T[] removeIndexFromArray(T[] array,int index) {
 		T[] re = (T[]) Array.newInstance(array.getClass().getComponentType(), Array.getLength(array)-1);
 		System.arraycopy(array, 0, re, 0, index);
 		System.arraycopy(array, index+1, re, index, re.length-index);
@@ -1201,7 +1228,7 @@ public class ArrayUtils {
 		System.arraycopy(array, index+1, re, index, re.length-index);
 		return re;
 	}
-
+	
 	/**
 	 * Removes an item from an array and returns a new array.
 	 * @param <T> the class
@@ -1209,9 +1236,24 @@ public class ArrayUtils {
 	 * @param index the index of the item to remove
 	 * @return the new array without the item
 	 */
-	public static int[] removeFromArray(int[] array,int index) {
+	public static int[] removeIndexFromArray(int[] array,int index) {
 		if (index==-1) throw new IllegalArgumentException("Item not in array!");
 		int[] re = new int[array.length-1];
+		System.arraycopy(array, 0, re, 0, index);
+		System.arraycopy(array, index+1, re, index, re.length-index);
+		return re;
+	}
+	
+	/**
+	 * Removes an item from an array and returns a new array.
+	 * @param <T> the class
+	 * @param array the array
+	 * @param index the index of the item to remove
+	 * @return the new array without the item
+	 */
+	public static double[] removeIndexFromArray(double[] array,int index) {
+		if (index==-1) throw new IllegalArgumentException("Item not in array!");
+		double[] re = new double[array.length-1];
 		System.arraycopy(array, 0, re, 0, index);
 		System.arraycopy(array, index+1, re, index, re.length-index);
 		return re;
@@ -5057,8 +5099,7 @@ public class ArrayUtils {
 		else
 			for (int i=0; i<a.length; i++) a[i]/=sum;
 	}
-
-
+	
 	/**
 	 * L2 normalization
 	 * @param a
@@ -5712,5 +5753,35 @@ public class ArrayUtils {
 		return re;
 	}
 
+	public static double[] extract(GenomicRegion coord, double[] a, double[] re) {
+		if (re==null || re.length<coord.getTotalLength()) re = new double[coord.getTotalLength()];
+		int c = 0;
+		for (int i=0; i<coord.getNumParts(); i++) {
+			System.arraycopy(a, coord.getStart(i), re, c, coord.getLength(i));
+			c+=coord.getLength(i);
+		}
+		return re;
+	}
+	
+	public static int[] extract(GenomicRegion coord, int[] a, int[] re) {
+		if (re==null || re.length<coord.getTotalLength()) re = new int[coord.getTotalLength()];
+		int c = 0;
+		for (int i=0; i<coord.getNumParts(); i++) {
+			System.arraycopy(a, coord.getStart(i), re, c, coord.getLength(i));
+			c+=coord.getLength(i);
+		}
+		return re;
+	}
+	
+	public static <T> T[] extract(GenomicRegion coord, T[] a, T[] re) {
+		if (re==null || re.length<coord.getTotalLength()) re = (T[]) Array.newInstance(a.getClass().getComponentType(), coord.getTotalLength());
+		int c = 0;
+		for (int i=0; i<coord.getNumParts(); i++) {
+			System.arraycopy(a, coord.getStart(i), re, c, coord.getLength(i));
+			c+=coord.getLength(i);
+		}
+		return re;
+	}
+	
 
 }

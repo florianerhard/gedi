@@ -30,7 +30,9 @@ import gedi.util.mutable.MutableTuple;
 import jdk.nashorn.internal.objects.NativeArray;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,11 +50,11 @@ import java.util.regex.Matcher;
 public interface EI {
 	
 	
-	public static ExtendedIterator<String> split(String s, char separator) {
+	public static StringIterator split(String s, char separator) {
 		if (s.length()==0)
-			return empty();
+			return StringIterator.empty();
 		
-		return new ExtendedIterator<String>() {
+		return new StringIterator() {
 			int p = 0;
 			int sepIndex=s.indexOf(separator);
 			@Override
@@ -134,6 +136,8 @@ public interface EI {
 	}
 	
 	public static <T> ExtendedIterator<T> wrap(Iterator<T> it) {
+		if (it instanceof ExtendedIterator)
+			return (ExtendedIterator<T>) it;
 		return new ExtendedIterator<T>() {
 
 			@Override
@@ -207,12 +211,12 @@ public interface EI {
 	}
 	
 	
-	public static ExtendedIterator<String> wrap(Matcher regexMatcher) {
+	public static StringIterator wrap(Matcher regexMatcher) {
 		return wrap(regexMatcher,0);
 	}
 	
-	public static ExtendedIterator<String> wrap(Matcher regexMatcher, int group) {
-		return new ExtendedIterator<String>() {
+	public static StringIterator wrap(Matcher regexMatcher, int group) {
+		return new StringIterator() {
 			boolean isFound = false;
 			@Override
 			public boolean hasNext() {
@@ -318,18 +322,37 @@ public interface EI {
 	public static <T> ExtendedIterator<T> merge(Comparator<? super T> comp, Iterator<T>... it) {
 		return FunctorUtils.mergeIterator(it, comp);
 	}
-	public static ExtendedIterator<String> substrings(String str, int s) {
+	public static StringIterator substrings(String str, int s) {
 		return FunctorUtils.substringIterator(str, s);
+	}
+	public static StringIterator substrings(String str, int s, boolean overlapping) {
+		return FunctorUtils.substringIterator(str, s,overlapping);
 	}
 	public static LineIterator lines(String path, String commentPrefixes) throws IOException {
 		return new LineOrientedFile(path).lineIterator(commentPrefixes);
 	}
 	
+	public static LineIterator lines(InputStream stream) throws IOException {
+		return new LineIterator(stream);
+	}
+	
+	public static LineIterator lines(File file) throws IOException {
+		return new LineOrientedFile(file.getPath()).lineIterator();
+	}
+	
+	
 	public static LineIterator lines(String path) throws IOException {
 		return new LineOrientedFile(path).lineIterator();
 	}
-	public static ExtendedIterator<String> fileNames(String path) throws IOException {
-		return EI.wrap(new File(path).list());
+	public static LineIterator lines2(String path) {
+		try {
+			return new LineOrientedFile(path).lineIterator();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	public static StringIterator fileNames(String path) throws IOException {
+		return EI.wrap(new File(path).list()).str();
 	}
 	public static ExtendedIterator<File> files(String path) throws IOException {
 		return EI.wrap(new File(path).listFiles());

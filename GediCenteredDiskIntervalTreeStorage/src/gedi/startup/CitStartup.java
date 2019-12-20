@@ -21,7 +21,6 @@ import gedi.app.Startup;
 import gedi.app.classpath.ClassPath;
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorageLoader;
-import gedi.core.data.table.CsvTableLoader;
 import gedi.core.region.GenomicRegionStorage;
 import gedi.core.region.GenomicRegionStorageCapabilities;
 import gedi.core.region.GenomicRegionStorageExtensionPoint;

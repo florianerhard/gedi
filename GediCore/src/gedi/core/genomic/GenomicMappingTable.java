@@ -79,29 +79,37 @@ public class GenomicMappingTable {
 		if (!cache.containsKey(key)) {
 			if (tables==null) createTable();
 			
-			HashSet<DataFrame> fs = tables.get(from);
-			HashSet<DataFrame> ts = tables.get(to);
+			synchronized (cache) {
 			
-			HashSet<DataFrame> use = new HashSet<DataFrame>(fs);
-			use.retainAll(ts);
-			
-			if (use.isEmpty()) return null;
-			
-			HashMap<String,String> map = new HashMap<>();
-			for (DataFrame f : use) {
-				DataColumn<?> fc = f.getColumn(from);
-				DataColumn<?> tc = f.getColumn(to);
-				for (int r=0; r<f.rows(); r++)
-					map.put(fc.getFactorValue(r).name(), tc.getFactorValue(r).name());
+				if (!cache.containsKey(key)) {
+					HashSet<DataFrame> fs = tables.get(from);
+					HashSet<DataFrame> ts = tables.get(to);
+					
+					HashSet<DataFrame> use = new HashSet<DataFrame>(fs);
+					use.retainAll(ts);
+					
+					if (use.isEmpty()) return null;
+					
+					HashMap<String,String> map = new HashMap<>();
+					for (DataFrame f : use) {
+						DataColumn<?> fc = f.getColumn(from);
+						DataColumn<?> tc = f.getColumn(to);
+						for (int r=0; r<f.rows(); r++)
+							map.put(fc.getFactorValue(r).name(), tc.getFactorValue(r).name());
+					}
+					cache.put(key, map);
+				}
 			}
-			cache.put(key, map);
+			
+			
 		}
 		HashMap<String, String> m = cache.get(key);
 		return f->m.get(f);
 	}
 
 	
-	private void createTable() {
+	private synchronized void createTable() {
+		if (tables!=null) return;
 		tables = new HashMap<>();
 		for (Supplier<DataFrame> t : tablers) {
 			DataFrame df = t.get();

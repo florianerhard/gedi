@@ -17,11 +17,11 @@
  */
 package gedi.util.datastructure.array.decorators;
 
+import java.io.IOException;
+
 import gedi.util.datastructure.array.NumericArray;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.BinaryWriter;
-
-import java.io.IOException;
 
 public class NumericArraySlice implements NumericArray {
 
@@ -38,6 +38,10 @@ public class NumericArraySlice implements NumericArray {
 	@Override
 	public String toString() {
 		return toArrayString();
+	}
+	
+	public void setParent(NumericArray parent) {
+		this.parent = parent;
 	}
 	
 	public NumericArraySlice setSlice(int start, int end) {

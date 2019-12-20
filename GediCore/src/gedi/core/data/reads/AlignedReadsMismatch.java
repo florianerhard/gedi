@@ -111,6 +111,11 @@ public class AlignedReadsMismatch implements AlignedReadsVariation {
 		return true;
 	}
 
+	@Override
+	public AlignedReadsMismatch reposition(int newPos) {
+		return new AlignedReadsMismatch(newPos, genomic, read, isFromSecondRead);
+	}
+
 	
 	
 }

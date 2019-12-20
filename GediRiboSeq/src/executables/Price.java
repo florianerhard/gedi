@@ -35,6 +35,7 @@ import gedi.riboseq.javapipeline.PriceSetupOrfInference;
 import gedi.riboseq.javapipeline.PriceSignalToNoise;
 import gedi.riboseq.javapipeline.PriceStartPredictionTraining;
 import gedi.riboseq.javapipeline.PriceWriteCodons;
+import gedi.util.LogUtils.LogMode;
 import gedi.util.program.CommandLineHandler;
 import gedi.util.program.GediProgram;
 
@@ -45,7 +46,7 @@ public class Price {
 		System.setProperty("smile.threads", "1");
 		
 		
-		Gedi.startup(true);
+		Gedi.startup(true,LogMode.Normal,"Price");
 		
 		PriceParameterSet params = new PriceParameterSet();
 		GediProgram pipeline = GediProgram.create("PRICE",

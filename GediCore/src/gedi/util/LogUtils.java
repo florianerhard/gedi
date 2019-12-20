@@ -21,7 +21,18 @@ import java.net.URL;
 import java.util.logging.LogManager;
 
 
+/**
+ * Call config before any logging method is used, and then use
+ * @author erhard
+ *
+ */
 public class LogUtils {
+	
+	static {
+        // must be called before any Logger method is used.
+        System.setProperty("java.util.logging.manager", MyLogManager.class.getName());
+    }
+
 
 	public enum LogMode {
 		Normal,Silent,Debug
@@ -42,11 +53,27 @@ public class LogUtils {
 //			Logger.getLogger("global").getParent().removeHandler(h);
 //	}
 	
+    public static class MyLogManager extends LogManager {
+        static MyLogManager instance;
+        public MyLogManager() { instance = this; }
+        @Override public void reset() { if (doShutdown) reset0(); }
+        private void reset0() { super.reset(); }
+        public static void resetFinally() { if (instance!=null) instance.reset0(); }
+    }
+    
+    public static void shutdown() {
+    	MyLogManager.resetFinally();
+    }
+
+    private static boolean doShutdown = true;
+	
 	public static void config() {
-		config(LogMode.Normal);
+		config(LogMode.Normal,true);
 	}
 	
-	public static void config(LogMode mode) {
+	public static void config(LogMode mode, boolean doShutdown) {
+		LogUtils.doShutdown = doShutdown;
+		
 		String fname = System.getProperty("java.util.logging.config.file");
 		if (fname == null) { // already configured, do nothing!
 			try {
@@ -60,6 +87,7 @@ public class LogUtils {
 				URL intlog = LogUtils.class.getResource(res);
 				InputStream str = intlog.openStream();
 				LogManager.getLogManager().readConfiguration(str);
+				
 				str.close();
 			} catch (Exception e) {
 				throw new RuntimeException("Could not read internal logging configuration!",e);

@@ -180,6 +180,11 @@ public class IndexGenome {
 			else if (args[i].equals("-f")) {
 				folder=checkParam(args, ++i);
 			}
+			else if (args[i].equals("-nomapping")) {
+				bowtie=false;
+				star=false;
+				kallisto=false;
+			}
 			else if (args[i].equals("-nobowtie")) {
 				bowtie=false;
 			}
@@ -215,7 +220,6 @@ public class IndexGenome {
 		String annopath;
 		String genetabpath;
 		String transtabpath;
-		String triepath;
 		String annoStorageClass;
 		
 		if (genbank!=null || gff!=null) {
@@ -332,7 +336,6 @@ public class IndexGenome {
 			prefix = folder==null?path:new File(folder,FileUtils.getNameWithoutExtension(path)).toString();
 			if (seq!=null && folder==null) prefix = FileUtils.getNameWithoutExtension(seq); 
 			annopath = prefix+".index";
-			triepath = prefix+".names";
 			genetabpath = prefix+".genes.tab";
 			transtabpath = prefix+".transcripts.tab";
 			
@@ -440,21 +443,6 @@ public class IndexGenome {
 				annoStorageClass = aaano.getClass().getSimpleName();
 			}
 			
-			progress.init().setDescription("Indexing annotation file in "+path).setCount(genes.size());
-			Trie<ImmutableReferenceGenomicRegion<Void>> trie = new Trie<ImmutableReferenceGenomicRegion<Void>>();
-			for (String gene : featureMap.keySet()) {
-				ImmutableReferenceGenomicRegion<String[]> g = featureMap.get(gene).get("gene");
-				if (g!=null)
-					trie.put(gene, new ImmutableReferenceGenomicRegion<>(g.getReference(), g.getRegion()));
-			}
-//			for (GenbankFeature g : makeIt.apply(new String[] {"gene"}).loop()) {
-//				ImmutableReferenceGenomicRegion<Void> rgr = new ImmutableReferenceGenomicRegion<Void>(ref, g.getPosition().toGenomicRegion());
-//				String id = g.getStringValue("gene");
-//				if (id!=null) trie.put(id, rgr);
-//			}
-			Orm.serialize(triepath, trie);
-			progress.finish();
-			
 			annotPath = StringUtils.removeFooter(seqpath,"fi")+"gtf";
 			if (!new File(annotPath).exists()) {
 				progress.init().setDescription("Output GTF for "+path).setCount((int) aaano.size());
@@ -505,6 +493,11 @@ public class IndexGenome {
 					
 					annotPath = ensemblOrg+"."+ensemblVer+".gtf";
 					String fastaPath = ensemblOrg+"."+ensemblVer+".fasta";
+					if (folder!=null) {
+						annotPath = folder+"/"+annotPath;
+						fastaPath = folder+"/"+fastaPath;
+						new File(annotPath).getParentFile().mkdirs();
+					}
 					String uensemblVer = ensemblVer;
 					try {
 						if (!new File(annotPath).exists()) {
@@ -557,7 +550,6 @@ public class IndexGenome {
 			}
 
 			annopath = prefix+".index";
-			triepath = prefix+".names";
 			genetabpath = prefix+".genes.tab";
 			transtabpath = prefix+".transcripts.tab";
 			annoStorageClass = null;
@@ -588,25 +580,6 @@ public class IndexGenome {
 					annoStorageClass = aaano.getClass().getSimpleName();
 				}
 				
-				if (!new File(triepath).exists()) {
-					FastaIndexSequenceProvider sss = new FastaIndexSequenceProvider(new FastaIndexFile(seqpath).open());
-					progress.init().setDescription("Indexing names in "+annopath);
-					Trie<ImmutableReferenceGenomicRegion<Void>> trie = new Trie<ImmutableReferenceGenomicRegion<Void>>();
-					for (String[]a :new LineOrientedFile(annotPath).lineIterator("#").map(a->StringUtils.split(a, '\t')).filter(a->a[2].equals("gene")).loop()) {
-						ImmutableReferenceGenomicRegion<Void> rgr = new ImmutableReferenceGenomicRegion<Void>(Chromosome.obtain(a[0],a[6]), new ArrayGenomicRegion(Integer.parseInt(a[3])-1,Integer.parseInt(a[4])));
-						if (sss.getSequenceNames().contains(rgr.getReference().getName())) {
-							String id = GtfFileReader.getGtfField("gene_id", a[8]);
-							String n = GtfFileReader.getGtfField("gene_name", a[8]);
-							if (id!=null) trie.put(id, rgr);
-							if (n!=null) trie.put(n, rgr);
-						}
-						progress.incrementProgress();
-					}
-					Orm.serialize(triepath, trie);
-					progress.finish();
-					System.err.println("Indexed names file in "+annopath);
-					
-				}
 			}
 		}
 		
@@ -625,8 +598,8 @@ public class IndexGenome {
 		
 		if (transcriptome) {
 		
-			out.writef("\n\n\t<Annotation name=\"Transcripts\">\n\t\t<%s file=\"%s\" />\n\t</Annotation>\n\t<NameIndex path=\"%s\" />\n",
-					annoStorageClass,new File(annopath).getAbsolutePath(),new File(triepath).getAbsolutePath());
+			out.writef("\n\n\t<Annotation name=\"Transcripts\">\n\t\t<%s file=\"%s\" />\n\t</Annotation>\n",
+					annoStorageClass,new File(annopath).getAbsolutePath());
 			
 			out.writef("\t<GenomicMappingTable from=\"Transcripts\" >\n");
 			out.writef("\t\t<Csv file=\"%s\" field=\"transcriptId,proteinId,biotype,source\" />\n",new File(transtabpath).getAbsolutePath());

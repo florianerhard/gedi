@@ -77,9 +77,11 @@ public class EquivalenceClassCountEM<O> {
 		}
 		N = ArrayUtils.sum(alpha);
 	}
-
 	
 	public double compute(int miniter, int maxiter, BiConsumer<O,Double> proportionSetter) {
+		return compute(miniter, maxiter, proportionSetter, null);
+	}
+	public double compute(int miniter, int maxiter, BiConsumer<O,Double> proportionSetter, BiConsumer<O,Double> readSetter) {
 		
 		double[] w = new double[l.length];
 		double[] pi = new double[l.length];
@@ -165,8 +167,14 @@ public class EquivalenceClassCountEM<O> {
 			
 		}
 		
-		for (O o : o2Index.keySet())
-			proportionSetter.accept(o,pi[o2Index.get(o)]);
+		if (proportionSetter!=null)
+			for (O o : o2Index.keySet())
+				proportionSetter.accept(o,pi[o2Index.get(o)]);
+		
+		if (readSetter!=null)
+			for (O o : o2Index.keySet())
+				readSetter.accept(o,w[o2Index.get(o)]);
+		
 		
 		double ll = 0;
 		for (int ei=0; ei<E.length; ei++) {
@@ -180,7 +188,6 @@ public class EquivalenceClassCountEM<O> {
 		
 		return ll;
 	}
-	
 	
 	
 }

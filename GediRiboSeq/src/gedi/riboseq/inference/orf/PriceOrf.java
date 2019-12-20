@@ -55,6 +55,17 @@ public class PriceOrf implements BinarySerializable {
 	transient double[] geommeanbuffer;
 	transient int[] geommeanbuffernonzero;
 	
+	public PriceOrf reset() {
+		predictedStartAminoAcid = 0;
+		alternativeStartAminoAcids = new int[0];
+		startScores = new double[0];
+		startRangeScores = new double[0];
+		combinedP = 0;
+		startCodon = "ATG";
+		type = PriceOrfType.CDS;
+		return this;
+	}
+	
 	public ImmutableReferenceGenomicRegion<PriceOrf> restrictToLongestStart(
 			ImmutableReferenceGenomicRegion<PriceOrf> orf) {
 		
@@ -416,6 +427,13 @@ public class PriceOrf implements BinarySerializable {
 
 	public double getProfile(int condition, int position) {
 		return codonProfiles[condition][position];
+	}
+
+	public double[] getProfileAtPosition(int position) {
+		double[] re = new double[codonProfiles.length];
+		for (int c=0; c<re.length; c++)
+			re[c] = codonProfiles[c][position];
+		return re;
 	}
 
 

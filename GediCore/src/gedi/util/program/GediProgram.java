@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 import gedi.app.Gedi;
+import gedi.util.ArrayUtils;
 import gedi.util.StringUtils;
 import gedi.util.functions.EI;
 import gedi.util.io.text.LineOrientedFile;
@@ -85,6 +86,10 @@ public abstract class GediProgram {
 	
 	protected int getIntParameter(int index) {
 		return (Integer)inputSpec.get(index).get();
+	}
+	
+	protected long getLongParameter(int index) {
+		return (Long)inputSpec.get(index).get();
 	}
 	
 	protected double getDoubleParameter(int index) {
@@ -174,44 +179,45 @@ public abstract class GediProgram {
 	}
 	public static void run(GediProgram program, GediParameter<File> parameterFile, CommandLineHandler cmd) {
 		
-		Gedi.startup(true);
-
-		String error = cmd.parse(program.getInputSpec(),program.parameterSet);
-
-		if (program.getBooleanParameter(CommandLineHandler.hhh) || program.getBooleanParameter(CommandLineHandler.hh) || program.getBooleanParameter(CommandLineHandler.h) || error!=null) {
-			int verbosity = 1;
-			if (program.getBooleanParameter(CommandLineHandler.hh)) verbosity=2;
-			if (program.getBooleanParameter(CommandLineHandler.hhh)) verbosity=3;
-					
-			cmd.usage(error,program.getInputSpec(),program.getOutputSpec(),verbosity);
-			System.exit(error!=null?1:0);
-		}
-		if (program.getRunFlag()!=null && !program.getRunFlag().get().booleanValue())
-			return;
-		
-		
 		try {
+			
+			Gedi.startup(true);
+
+			String error = cmd.parse(program.getInputSpec(),program.parameterSet);
+
+			if (program.getBooleanParameter(CommandLineHandler.hhh) || program.getBooleanParameter(CommandLineHandler.hh) || program.getBooleanParameter(CommandLineHandler.h) || error!=null) {
+				int verbosity = 1;
+				if (program.getBooleanParameter(CommandLineHandler.hh)) verbosity=2;
+				if (program.getBooleanParameter(CommandLineHandler.hhh)) verbosity=3;
+						
+				cmd.usage(error,program.getInputSpec(),program.getOutputSpec(),verbosity);
+				System.exit(error!=null?1:0);
+			}
+			if (program.getRunFlag()!=null && !program.getRunFlag().get().booleanValue())
+				return;
 			
 			if (parameterFile!=null) {
 				parameterFile.getFile().getAbsoluteFile().getParentFile().mkdirs();
 				program.inputSpec.writeParameterFile(parameterFile.getFile());
 			}
 			
+			program.initParameter(program.parameterSet,program.getInputSpec());
+			
 			ProgressManager man = new ProgressManager();
 			program.getParameter("progress");
 			
-			GediProgramContext context = new GediProgramContext(Logger.getLogger("GEDI"),program.getBooleanParameter(CommandLineHandler.progress)?()->new ConsoleProgress(System.err,man):()->new NoProgress(), program.getBooleanParameter(CommandLineHandler.dry));
+			GediProgramContext context = new GediProgramContext(Logger.getLogger("GEDI"),program.getBooleanParameter(CommandLineHandler.progress)?()->new ConsoleProgress(System.err,man):()->new NoProgress(), program.getBooleanParameter(CommandLineHandler.dry),program.parameterSet);
 			error = program.execute(context);
 			
 			if (error!=null) throw new RuntimeException("Could not run program: "+error);
 			
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			
 			String emsg = StringUtils.createExceptionMessage(e);
 			
 			cmd.usage(emsg,program.getInputSpec(),program.getOutputSpec(),1);
 			
-			if (program.getBooleanParameter(CommandLineHandler.D))
+			if (program.getBooleanParameter(CommandLineHandler.D) || ArrayUtils.linearSearch(cmd.getArgs(),"-D")>=0)
 				e.printStackTrace();
 			System.exit(2);
 		}
@@ -226,6 +232,10 @@ public abstract class GediProgram {
 	}
 	
 	
+	protected void initParameter(GediParameterSet params, GediParameterSpec inputSpec) {
+		
+	}
+
 	/**
 	 * Create a program composed of subprograms.
 	 * @return
@@ -260,6 +270,12 @@ public abstract class GediProgram {
 		ExecutorService pool = Executors.newCachedThreadPool(new ProgramThreadFactory());
 		
 		GediProgram re = new GediProgram(name) {
+			
+			@Override
+			protected void initParameter(GediParameterSet params, GediParameterSpec inputSpec) {
+				for (GediProgram s : subs) 
+					s.initParameter(params, inputSpec);
+			}
 			
 			@Override
 			public String execute(GediProgramContext context) throws Exception {

@@ -17,15 +17,18 @@
  */
 package gedi.core.data.reads;
 
+import gedi.util.datastructure.collections.intcollections.IntArrayList;
 import gedi.util.dynamic.DynamicObject;
 import gedi.util.io.randomaccess.BinaryReader;
 import gedi.util.io.randomaccess.serialization.BinarySerializable;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 
 public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializable {
 
+	int conditions;
 	int[][] nonzeros;
 	int[][] count;
 	short[][] var;
@@ -43,6 +46,8 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	 */
 	public DefaultAlignedReadsData(AlignedReadsData data) {
 		
+		conditions = data.getNumConditions();
+		
 		if (data instanceof DefaultAlignedReadsData) {
 			DefaultAlignedReadsData d = (DefaultAlignedReadsData)data;
 			count = d.count;
@@ -56,22 +61,29 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 			int distinct = data.getDistinctSequences();
 			int condition = data.getNumConditions();
 			
-			count = new int[distinct][condition];
 			var = new short[distinct][];
 			indels = new CharSequence[distinct][];
 			multiplicity = new int[distinct];
 			
-			for (int i=0; i<count.length; i++) {
-				count[i] = new int[condition];
-				for (int j=0; j<condition; j++) {
-					count[i][j] = data.getCount(i, j);
-				}
-			}
+			
 			
 			if (data.hasNonzeroInformation()) {
 				nonzeros = new int[distinct][];
-				for (int i=0; i<nonzeros.length; i++)
-					nonzeros[i]=data.getNonzeroCountsForDistinct(i);
+				count = new int[distinct][];
+				for (int i=0; i<nonzeros.length; i++) {
+					nonzeros[i]=data.getNonzeroCountIndicesForDistinct(i);
+					count[i] = new int[nonzeros[i].length];
+					for (int ind=0; ind<count[i].length; ind++)
+						count[i][ind] = data.getNonzeroCountValueForDistinct(i,ind);
+				}
+			} else {
+				count = new int[distinct][condition];
+				for (int i=0; i<count.length; i++) {
+					count[i] = new int[condition];
+					for (int j=0; j<condition; j++) {
+						count[i][j] = data.getCount(i, j);
+					}
+				}
 			}
 			
 			for (int i=0; i<count.length; i++) {
@@ -126,9 +138,39 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	
 	@Override
-	public int[] getNonzeroCountsForDistinct(int distinct) {
+	public int[] getNonzeroCountIndicesForDistinct(int distinct) {
 		return nonzeros[distinct];
 	}
+	
+	@Override
+	public int getNonzeroCountValueForDistinct(int distinct, int index) {
+		return count[distinct][index];
+	}
+	
+
+//	void computeNonZeros() {
+//		nonzeros = new int[getDistinctSequences()][];
+//		for (int d=0; d<nonzeros.length; d++) {
+//			IntArrayList cr = new IntArrayList();
+//			for (int c = 0; c<getNumConditions(); c++)
+//				if (getCount(d,c)>0)
+//					cr.add(c);
+//			nonzeros[d] = cr.toIntArray();
+//		}
+//		convertCountsToNonZeros();
+//	}
+	
+//	void convertCountsToNonZeros() {
+//		for (int d=0; d<nonzeros.length; d++) {
+//			int[] nc = new int[nonzeros[d].length];
+//			int i = 0;
+//			for (int ind : nonzeros[d]) {
+//				nc[i++] = count[d][ind];
+//			}
+//			count[d] = nc;
+//		}
+//	}
+
 
 	@Override
 	public boolean hasWeights() {
@@ -240,15 +282,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 //	}
 	
 	
-	public double getDensity() {
-		int n = 0;
-		for (int i=0; i<count.length; i++)
-			for (int j=0; j<count[i].length; j++)
-				if (count[i][j]>0)
-					n++;
-		return (double)n/(count.length*count[0].length);
-	}
-	
+
 	@Override
 	public void deserialize(BinaryReader in) throws IOException {
 		int d = in.getCInt();// distinct
@@ -259,39 +293,64 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 			c = in.getCInt();//conditions
 		else
 			c = gi.getEntry(CONDITIONSATTRIBUTE).asInt();
+		conditions = c;
 		
-		count = new int[d][c];
 		var = new short[d][];
 		indels = new CharSequence[d][];
 		multiplicity = new int[d];
 		
 		if (!gi.hasProperty(SPARSEATTRIBUTE) || gi.getEntry(SPARSEATTRIBUTE).asInt()==0) {
+			count = new int[d][c];
 			for (int i=0; i<d; i++)
 				for (int j=0; j<c; j++)
 					count[i][j] = in.getCInt();
 		}
-		else {
+		else if (gi.getEntry(SPARSEATTRIBUTE).asInt()==1) {
 			int co = in.getCInt();
+			IntArrayList[] countcre = new IntArrayList[d];
+			IntArrayList[] nonzerocre = new IntArrayList[d];
+			for (int di=0; di<d; di++) {
+				countcre[di] = new IntArrayList();
+				nonzerocre[di] = new IntArrayList();
+			}
 			
 			for (int i=0; i<co; i++) {
 				int pos = in.getCInt();
+				int di = pos/c;
+				int ci = pos%c;
 				int count = in.getCInt();
-				this.count[pos/c][pos%c] = count;
+				countcre[di].add(count);
+				nonzerocre[di].add(ci);
 			}
 			
+			count = new int[d][];
 			nonzeros = new int[d][];
-			for (int i=0; i<count.length; i++) {
-				int nc = 0;
-				for (int j=0; j<c; j++) {
-					if (count[i][j]>0) nc++;
-				}
-				nonzeros[i] = new int[nc];
-				nc=0;
-				for (int j=0; j<c; j++) {
-					if (count[i][j]>0) 
-						nonzeros[i][nc++]=j;
-				}
+			for (int i=0; i<d; i++) {
+				count[i] = countcre[i].toIntArray();
+				nonzeros[i] = nonzerocre[i].toIntArray();
 			}
+			
+		} else {
+			IntArrayList countcre = new IntArrayList();
+			IntArrayList nonzerocre = new IntArrayList();
+			count = new int[d][];
+			nonzeros = new int[d][];
+			for (int i=0; i<d; i++) {
+				int co = in.getCInt();
+				countcre.clear();
+				nonzerocre.clear();
+				
+				for (int ci=0; ci<co; ci++) {
+					int cii = in.getCInt();
+					int count = in.getCInt();
+					countcre.add(count);
+					nonzerocre.add(cii);
+				}
+				
+				count[i] = countcre.toIntArray();
+				nonzeros[i] = nonzerocre.toIntArray();
+			}
+			
 		}
 		
 		
@@ -364,7 +423,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 
 	
 	private static void checkPositionEncoding(int pos) {
-		if (pos>=1<<11) throw new RuntimeException("Cannot encode positions >"+(1<<11));
+		if (pos>MAX_POSITION) throw new RuntimeException("Cannot encode positions >"+(1<<11));
 	}
 	
 	static short encodeMismatch(int pos, char genomic, char read, boolean secondRead) {
@@ -413,6 +472,7 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	static final int TYPE_INSERTION = 1;
 	static final int TYPE_DELETION = 2;
 	static final int TYPE_SOFTCLIP = 3;
+	public static final int MAX_POSITION = (1<<11)-1;
 	
 	static int type(short mask) {
 		int smask = mask & 0xFFFF;
@@ -424,10 +484,18 @@ public class DefaultAlignedReadsData implements AlignedReadsData, BinarySerializ
 	}
 	@Override
 	public int getNumConditions() {
-		return count[0].length;
+		return hasNonzeroInformation()?conditions:count[0].length;
 	}
 	@Override
 	public int getCount(int distinct, int condition) {
+		
+		if (hasNonzeroInformation()) {
+			
+			int ind = Arrays.binarySearch(nonzeros[distinct], condition);
+			if (ind<0) return 0;
+			return count[distinct][ind];
+		}
+		
 		if (distinct>=count.length || condition>=count[distinct].length)
 			return 0;
 		return count[distinct][condition];
