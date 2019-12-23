@@ -20,17 +20,18 @@ package executables;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 
 import gedi.centeredDiskIntervalTree.CenteredDiskIntervalTreeStorage;
 import gedi.core.data.annotation.Transcript;
 import gedi.core.data.reads.AlignedReadsData;
-import gedi.core.data.reads.BarcodedAlignedReadsData;
 import gedi.core.data.reads.DefaultAlignedReadsData;
 import gedi.core.data.reads.ReadCountMode;
 import gedi.core.genomic.Genomic;
@@ -45,6 +46,7 @@ import gedi.core.region.MutableReferenceGenomicRegion;
 import gedi.core.region.feature.special.Downsampling;
 import gedi.core.region.intervalTree.MemoryIntervalTreeStorage;
 import gedi.util.ArrayUtils;
+import gedi.util.FileUtils;
 import gedi.util.SequenceUtils;
 import gedi.util.StringUtils;
 import gedi.util.datastructure.array.MemoryDoubleArray;
@@ -57,6 +59,9 @@ import gedi.util.functions.ExtendedIterator;
 import gedi.util.functions.IterateIntoSink;
 import gedi.util.io.text.HeaderLine;
 import gedi.util.io.text.LineWriter;
+import gedi.util.math.stat.descriptive.WeightedMeanVarianceOnline;
+import gedi.util.mutable.MutablePair;
+import gedi.util.mutable.MutableTriple;
 import gedi.util.program.CommandLineHandler;
 import gedi.util.program.GediParameter;
 import gedi.util.program.GediParameterSet;
@@ -69,6 +74,7 @@ import gedi.util.program.parametertypes.GenomicParameterType;
 import gedi.util.program.parametertypes.IntParameterType;
 import gedi.util.program.parametertypes.StorageParameterType;
 import gedi.util.program.parametertypes.StringParameterType;
+import gedi.util.r.RRunner;
 
 
 public class Polya {
@@ -99,6 +105,7 @@ public class Polya {
 		
 		PolyaParameterSet params = new PolyaParameterSet();
 		GediProgram pipeline = GediProgram.create("Polya",
+				new PolyaClusterPositionInferenceProgram(params),
 				new PolyaClusterProgram(params),
 				new PolyaAnnotateClusterProgram(params),
 				new PolyaAnalyzeClusterProgram(params)
@@ -208,7 +215,7 @@ public class Polya {
 			Genomic g = getParameter(1);
 			int nthreads = getIntParameter(2);
 			File cl = getParameter(3);
-			GenomicRegionStorage<BarcodedAlignedReadsData> reads = getParameter(4);
+			GenomicRegionStorage<DefaultAlignedReadsData> reads = getParameter(4);
 			
 			int downstreamAnnotated = 120;
 			int polyaUp = 20;
@@ -371,6 +378,7 @@ public class Polya {
 			addInput(params.flank);
 			addInput(params.test);
 			addInput(params.strandness);
+			addInput(params.infer3pparam);
 
 			addOutput(params.clustercit);
 		}
@@ -566,6 +574,135 @@ public class Polya {
 	}
 	
 	
+	public static class PolyaClusterPositionInferenceProgram extends GediProgram {
+
+		public PolyaClusterPositionInferenceProgram(PolyaParameterSet params) {
+			addInput(params.prefix);
+			addInput(params.reads);
+			addInput(params.genomic);
+			addInput(params.nthreads);
+			addInput(params.plot);
+			
+			addOutput(params.infer3pparam);
+			addOutput(params.infer3ptsv);
+		}
+
+		@Override
+		public String execute(GediProgramContext context) throws Exception {
+			String prefix = getParameter(0);
+			GenomicRegionStorage<DefaultAlignedReadsData> reads = getParameter(1);
+			Genomic genomic = getParameter(2);
+			int nthreads = getIntParameter(3);
+			boolean plot = getParameter(4);
+
+			
+			String[] signals = {"AATAAA","ATTAAA","AGTAAA","TATAAA"};
+			Trie<Integer> strie = new Trie<>();
+			for (int i=0; i<signals.length; i++)
+				strie.put(signals[i], i);
+			
+			int[] signalrange = {12,30}; // most of the ccds transcripts have the start of the aataaa in there! 
+			int minDistOther = 1000;
+			
+			int[] count = new int[6];
+			
+			ArrayList<ImmutableReferenceGenomicRegion<Transcript>> niceTranscripts = genomic.getTranscripts().ei()
+				.progress(context.getProgress(), (int)genomic.getTranscripts().size(), t->t.getData().getTranscriptId())
+				.sideEffect(x->count[0]++)
+				.filter(t->t.getData().isCoding())
+				.sideEffect(x->count[1]++)
+				.filter(t->{
+					int t3p = GenomicRegionPosition.ThreePrime.position(t);
+					int t3p1 = GenomicRegionPosition.ThreePrime.position(t,1);
+					return genomic.getTranscripts()
+						.ei(new ImmutableReferenceGenomicRegion<>(t.getReference(), new ArrayGenomicRegion(Math.min(t3p1,t3p),Math.max(t3p1,t3p))))
+						.filter(o->!o.equals(t))
+						.filter(o->Math.abs(GenomicRegionPosition.ThreePrime.position(o)-t3p)<minDistOther)
+						.count()==0;
+				})
+				.sideEffect(x->count[2]++)
+				.map(t->new MutableTriple<>(t,genomic.getSequence(t.getData().get3Utr(t)).toString(),genomic.getSequence(t.getDownstream(50)).toString()))
+				.filter(tr->{
+					String expectPas = tr.Item2.substring(Math.max(0, tr.Item2.length()-signalrange[1]));
+					int paspos = expectPas.indexOf(signals[0]);
+					return paspos>=0 && paspos<signalrange[1]-signalrange[0];
+				})
+				.sideEffect(x->count[3]++)
+				.filter(tr->tr.Item2.length()>signalrange[1]?
+					strie.iterateAhoCorasick(tr.Item2.substring(0,tr.Item2.length()-signalrange[1])).count()==0
+					:true
+				)
+				.sideEffect(x->count[4]++)
+				.filter(tr->
+					SequenceUtils.getPolyAStretches(tr.Item2+tr.Item3).size()==0
+				)
+				.sideEffect(x->count[5]++)
+				.map(tr->tr.Item1)
+				.list();
+			
+			context.logf("Initial transcripts:  %d",count[0]);
+			context.logf("Removed non-coding:   %d",count[1]);
+			context.logf("Removed unclear 3':   %d",count[2]);
+			context.logf("Removed no PAS:       %d",count[3]);
+			context.logf("Removed another PAS:  %d",count[4]);
+			context.logf("Removed pA stretches: %d",count[5]);
+			
+			Collections.shuffle(niceTranscripts);
+			
+			ClusterPositionStatistics stat = EI.wrap(niceTranscripts)
+				.parallelized(nthreads, 8, ei->ei.map(t->{
+					ClusterPositionStatistics tmvo = new ClusterPositionStatistics();
+					for (ImmutableReferenceGenomicRegion<DefaultAlignedReadsData> read : reads.ei(t).filter(r->t.getRegion().contains(r.map(0))).loop()) {
+						int s = read.map(0);
+						if (t.getRegion().contains(s)) {
+							int dist = t.getRegion().getTotalLength()-t.induce(s);
+							if (dist<=1000) 
+								tmvo.add(dist, read.getData().getTotalCountOverall(ReadCountMode.Weight));
+						}
+					}
+					return new MutablePair<>(tmvo,t);
+				}))
+				.progress(context.getProgress(),(int)niceTranscripts.size(), t->t.Item2.toLocationString())
+				.reduce(new ClusterPositionStatistics(),(a,b)->b.add(a.Item1));
+
+			FileUtils.writeAllLines(new String[] {"Name\tValue","Mean\t"+stat.mvo.getMean(),"Sd\t"+stat.mvo.getStandardDeviation(),""}, getOutputFile(0));
+
+			EI.seq(0, stat.histo.length).filterInt(i->stat.histo[i]>0).map(i->i+"\t"+stat.histo[i]).print("Distance\tFrequency", getOutputFile(1).getPath());
+			
+			
+			if (plot) {
+				try {
+					context.getLog().info("Running R scripts for plotting");
+					RRunner r = new RRunner(prefix+".plotclusterdist.R");
+					r.set("prefix",prefix);
+					r.addSource(getClass().getResourceAsStream("/resources/R/plotclusterdist.R"));
+					r.run(true);
+				} catch (Throwable e) {
+					context.getLog().log(Level.SEVERE, "Could not plot!", e);
+				}
+			}
+			
+			return null;
+		}
+		
+		
+	}
+
+	private static class ClusterPositionStatistics {
+		private WeightedMeanVarianceOnline mvo = new WeightedMeanVarianceOnline();
+		private double[] histo = new double[1000];
+		public void add(int d, double w) {
+			mvo.add(d,w);
+			histo[d]+=w;
+		}
+		
+		
+		public ClusterPositionStatistics add(ClusterPositionStatistics other) {
+			this.mvo.add(other.mvo);
+			ArrayUtils.add(this.histo, other.histo);
+			return this;
+		}
+	}
 	
 	public static class PolyaParameterSet extends GediParameterSet {
 
@@ -576,6 +713,7 @@ public class Polya {
 		public GediParameter<Genomic> genomic = new GediParameter<Genomic>(this,"g", "Genomic name", true, new GenomicParameterType());
 		public GediParameter<GenomicRegionStorage<AlignedReadsData>> reads = new GediParameter<GenomicRegionStorage<AlignedReadsData>>(this,"reads", "The mapped reads from the ribo-seq experiment.", false, new StorageParameterType<AlignedReadsData>());
 		public GediParameter<Strandness> strandness = new GediParameter<Strandness>(this,"strandness", "Whether sequencing protocol was stranded (Sensse), strand unspecific (Unspecific), or opposite strand (Antisense).", false, new EnumParameterType<>(Strandness.class));
+		public GediParameter<Boolean> plot = new GediParameter<Boolean>(this,"plot", "Produce plots", false, new BooleanParameterType());
 
 		public GediParameter<Boolean> test = new GediParameter<Boolean>(this,"test", "Only search against chromosome 22", false, new BooleanParameterType());
 		
@@ -585,6 +723,9 @@ public class Polya {
 		public GediParameter<File> motifs = new GediParameter<File>(this,"${prefix}.motif.tsv", "Clusters for the viewer", false, new FileParameterType());
 		public GediParameter<File> pairwise = new GediParameter<File>(this,"${prefix}.pairwise.tsv", "Clusters for the viewer", false, new FileParameterType());
 		
+		public GediParameter<File> infer3ptsv = new GediParameter<File>(this,"${prefix}.3p.tsv", "Table of 3' end information.", false, new FileParameterType());
+		public GediParameter<File> infer3pparam = new GediParameter<File>(this,"${prefix}.3p.parameter", "3' parameter file.", false, new FileParameterType());
+
 	}
 
 	

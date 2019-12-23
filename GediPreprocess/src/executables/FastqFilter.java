@@ -95,6 +95,7 @@ public class FastqFilter {
 		System.err.println(" -extract <from-to>\t\t\tExtract from read (trimming; e.g. 10-60: remove first 10 bases, take only next 50 bases)");
 		System.err.println(" -overwrite\t\t\tInstead of writing to stdout, overwrite the input files!");
 		System.err.println(" -smartseq\t\t\tRemove the first three bases and trim poly-A stretches (>=7) in the end!");
+		System.err.println(" -umi\t\t\tTrim umis and append to read name (Format: umi-length[,spacer-length[,umi-read2-length,spacer-read2-length]])");
 		System.err.println(" -ld <file>\t\t\tWrite length distribution (and plot it)");
 		System.err.println(" -h\t\t\tShow this message");
 		System.err.println(" -D\t\t\tOutput debugging information");
