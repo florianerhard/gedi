@@ -690,7 +690,7 @@ public class Polya {
 
 	private static class ClusterPositionStatistics {
 		private WeightedMeanVarianceOnline mvo = new WeightedMeanVarianceOnline();
-		private double[] histo = new double[1000];
+		private double[] histo = new double[1001];
 		public void add(int d, double w) {
 			mvo.add(d,w);
 			histo[d]+=w;
